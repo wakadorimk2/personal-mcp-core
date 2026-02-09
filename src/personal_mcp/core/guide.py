@@ -1,12 +1,39 @@
-from pathlib import Path
+from __future__ import annotations
 
-ROOT = Path(__file__).resolve().parents[3]
-GUIDE_PATH = ROOT / "AI_GUIDE.md"
+from importlib import resources
 
 
 def load_ai_guide() -> str:
     """
     Load AI_GUIDE.md as plain text.
-    This is intended to be injected as system-level context.
+
+    Intended use:
+    - Inject as system-level context for LLM/tool clients.
+    - Prefer packaged resource for installed environments.
+    - Fallback to repo-root AI_GUIDE.md for development checkouts.
     """
-    return GUIDE_PATH.read_text(encoding="utf-8")
+    # 1) Primary: packaged resource
+    try:
+        return (
+            resources.files("personal_mcp")
+            .joinpath("AI_GUIDE.md")
+            .read_text(encoding="utf-8")
+        )
+    except (FileNotFoundError, OSError, UnicodeDecodeError):
+        pass
+
+    # 2) Fallback: repo-root file (dev)
+    from pathlib import Path
+
+    # core/guide.py -> personal_mcp/core -> src -> repo root
+    guide_path = Path(__file__).resolve().parents[3] / "AI_GUIDE.md"
+    try:
+        return guide_path.read_text(encoding="utf-8")
+    except FileNotFoundError as exc:
+        raise RuntimeError(
+            f"AI guide file not found. Tried packaged resource and {guide_path}."
+        ) from exc
+    except UnicodeDecodeError as exc:
+        raise RuntimeError(
+            f"Failed to decode AI guide at {guide_path} using UTF-8."
+        ) from exc
