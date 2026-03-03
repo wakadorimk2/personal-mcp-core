@@ -47,8 +47,21 @@ def test_poe2_log_add_stores_tags(data_dir: Path) -> None:
     assert "boss" in record["tags"]
 
 
-def test_poe2_log_list_reads_from_events_jsonl(data_dir: Path, capsys: pytest.CaptureFixture) -> None:
-    main(["poe2-log-add", "test entry", "--kind", "note", "--tags", "mapping", "--data-dir", str(data_dir)])
+def test_poe2_log_list_reads_from_events_jsonl(
+    data_dir: Path, capsys: pytest.CaptureFixture
+) -> None:
+    main(
+        [
+            "poe2-log-add",
+            "test entry",
+            "--kind",
+            "note",
+            "--tags",
+            "mapping",
+            "--data-dir",
+            str(data_dir),
+        ]
+    )
     capsys.readouterr()  # discard poe2-log-add output
 
     main(["poe2-log-list", "--json", "--data-dir", str(data_dir)])

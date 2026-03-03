@@ -155,8 +155,20 @@ python -m personal_mcp.server poe2-log-list --kind=milestone --since 2026-03-01
 ## 開発者向け
 
 ```bash
-# 開発用インストール
-pip install -e .
+# 開発用インストール（ruff + pytest を含む）
+pip install -e ".[dev]"
+
+# コードチェック
+ruff check .
+
+# 自動修正
+ruff check . --fix
+
+# フォーマット
+ruff format .
+
+# テスト
+pytest
 
 # エントリーポイント動作確認
 python -m personal_mcp.server poe2-log-list --n 5

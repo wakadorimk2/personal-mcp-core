@@ -11,6 +11,7 @@ from personal_mcp.tools.event import event_add, event_list
 # helpers
 # ---------------------------------------------------------------------------
 
+
 def _local_date(ts_str: str) -> str:
     """Convert ISO timestamp to local YYYY-MM-DD (timezone-agnostic)."""
     return datetime.fromisoformat(ts_str).astimezone().strftime("%Y-%m-%d")
@@ -23,6 +24,7 @@ def _write_events(path: Path, events: list) -> None:
 # ---------------------------------------------------------------------------
 # event_add tests (existing)
 # ---------------------------------------------------------------------------
+
 
 def test_event_add_creates_jsonl_with_one_line(data_dir: Path) -> None:
     path = data_dir / "events.jsonl"
@@ -59,8 +61,8 @@ _TS_DAY2_A = "2026-03-03T12:00:00+00:00"  # day2 morning
 _TS_DAY2_B = "2026-03-03T14:00:00+00:00"  # day2 afternoon
 
 _EVENTS = [
-    {"ts": _TS_DAY1_A, "domain": "mood",    "payload": {"text": "day1 mood"},    "tags": []},
-    {"ts": _TS_DAY2_A, "domain": "poe2",    "payload": {"text": "day2 poe2"},    "tags": ["farming"]},
+    {"ts": _TS_DAY1_A, "domain": "mood", "payload": {"text": "day1 mood"}, "tags": []},
+    {"ts": _TS_DAY2_A, "domain": "poe2", "payload": {"text": "day2 poe2"}, "tags": ["farming"]},
     {"ts": _TS_DAY2_B, "domain": "general", "payload": {"text": "day2 general"}, "tags": []},
 ]
 
@@ -137,8 +139,10 @@ def test_event_list_empty_for_unmatched_domain(data_dir: Path) -> None:
 # mood-add tests (via server.main)
 # ---------------------------------------------------------------------------
 
+
 def test_mood_add_writes_mood_domain(data_dir: Path) -> None:
     from personal_mcp.server import main
+
     main(["mood-add", "少し疲れた", "--data-dir", str(data_dir)])
 
     path = data_dir / "events.jsonl"
@@ -151,6 +155,7 @@ def test_mood_add_writes_mood_domain(data_dir: Path) -> None:
 
 def test_mood_add_no_numeric_score_in_payload(data_dir: Path) -> None:
     from personal_mcp.server import main
+
     main(["mood-add", "まあまあ", "--data-dir", str(data_dir)])
 
     path = data_dir / "events.jsonl"
@@ -162,6 +167,7 @@ def test_mood_add_no_numeric_score_in_payload(data_dir: Path) -> None:
 
 def test_mood_add_with_tags(data_dir: Path) -> None:
     from personal_mcp.server import main
+
     main(["mood-add", "元気", "--tags", "work,tired", "--data-dir", str(data_dir)])
 
     path = data_dir / "events.jsonl"
@@ -176,6 +182,7 @@ def test_mood_add_appends_to_existing_events(data_dir: Path) -> None:
     path.write_text('{"dummy": true}\n', encoding="utf-8")
 
     from personal_mcp.server import main
+
     main(["mood-add", "追記テスト", "--data-dir", str(data_dir)])
 
     lines = path.read_text(encoding="utf-8").splitlines()
@@ -189,11 +196,13 @@ def test_mood_add_appends_to_existing_events(data_dir: Path) -> None:
 # text output format tests (via server.main)
 # ---------------------------------------------------------------------------
 
+
 def test_event_list_text_has_date_header(data_dir: Path, capsys: pytest.CaptureFixture) -> None:
     _write_events(data_dir / "events.jsonl", _EVENTS)
     day2 = _local_date(_TS_DAY2_A)
 
     from personal_mcp.server import main
+
     main(["event-list", "--date", day2, "--data-dir", str(data_dir)])
 
     captured = capsys.readouterr()
@@ -206,8 +215,11 @@ def test_event_list_text_has_date_header(data_dir: Path, capsys: pytest.CaptureF
         assert f"--- {day1} ---" not in captured.out
 
 
-def test_event_list_text_no_output_when_empty(data_dir: Path, capsys: pytest.CaptureFixture) -> None:
+def test_event_list_text_no_output_when_empty(
+    data_dir: Path, capsys: pytest.CaptureFixture
+) -> None:
     from personal_mcp.server import main
+
     main(["event-list", "--data-dir", str(data_dir)])
     captured = capsys.readouterr()
     assert captured.out.strip() == ""
@@ -217,6 +229,7 @@ def test_event_list_json_flag_returns_array(data_dir: Path, capsys: pytest.Captu
     _write_events(data_dir / "events.jsonl", _EVENTS)
 
     from personal_mcp.server import main
+
     main(["event-list", "--json", "--data-dir", str(data_dir)])
 
     captured = capsys.readouterr()
@@ -229,6 +242,7 @@ def test_event_list_json_flag_returns_array(data_dir: Path, capsys: pytest.Captu
 
 def test_event_list_json_empty_is_array(data_dir: Path, capsys: pytest.CaptureFixture) -> None:
     from personal_mcp.server import main
+
     main(["event-list", "--json", "--data-dir", str(data_dir)])
     captured = capsys.readouterr()
     parsed = json.loads(captured.out)
@@ -240,11 +254,13 @@ def test_event_list_text_line_format(data_dir: Path, capsys: pytest.CaptureFixtu
     _write_events(data_dir / "events.jsonl", [_EVENTS[1]])  # day2 poe2 only
 
     from personal_mcp.server import main
+
     main(["event-list", "--data-dir", str(data_dir)])
 
     captured = capsys.readouterr()
-    lines = [l for l in captured.out.splitlines() if not l.startswith("---")]
+    lines = [l for l in captured.out.splitlines() if not l.startswith("---")]  # noqa: E741
     assert len(lines) == 1
     # format: HH:MM [domain] text
     import re
+
     assert re.match(r"^\d{2}:\d{2} \[poe2\] day2 poe2$", lines[0])
