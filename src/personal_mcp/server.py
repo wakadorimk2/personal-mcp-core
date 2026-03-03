@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 
 from personal_mcp.adapters.mcp_server import get_system_context
 from personal_mcp.tools.event import event_add, event_list
+from personal_mcp.tools.poe2_client_watcher import watch_client_log
 
 
 def _print_event_timeline(records: List[Dict[str, Any]]) -> None:
@@ -80,6 +81,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     p_log.add_argument("--meta-json", default="{}")
     p_log.add_argument("--data-dir", default="data")
 
+    p_watch = sub.add_parser("poe2-watch", help="tail Client.txt and record area transitions")
+    p_watch.add_argument("--client-log", default=None, metavar="PATH",
+                         help="path to Client.txt (overrides POE2_CLIENT_LOG env var)")
+    p_watch.add_argument("--data-dir", default="data")
+
     # src/personal_mcp/server.py の subcommand 追加分だけ（イメージ）
     p_list = sub.add_parser("poe2-log-list", help="list poe2 log entries")
     p_list.add_argument("--n", type=int, default=20)
@@ -146,6 +152,17 @@ def main(argv: Optional[List[str]] = None) -> int:
             data_dir=args.data_dir,
         )
         print(json.dumps(rec, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.cmd == "poe2-watch":
+        import os
+        from pathlib import Path
+
+        client_log = args.client_log or os.environ.get("POE2_CLIENT_LOG")
+        if not client_log:
+            print("error: --client-log or POE2_CLIENT_LOG must be set", flush=True)
+            return 1
+        watch_client_log(Path(client_log), data_dir=args.data_dir)
         return 0
 
     if args.cmd == "poe2-log-list":
