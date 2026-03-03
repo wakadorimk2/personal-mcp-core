@@ -258,7 +258,7 @@ def test_event_list_text_line_format(data_dir: Path, capsys: pytest.CaptureFixtu
     main(["event-list", "--data-dir", str(data_dir)])
 
     captured = capsys.readouterr()
-    lines = [l for l in captured.out.splitlines() if not l.startswith("---")]
+    lines = [l for l in captured.out.splitlines() if not l.startswith("---")]  # noqa: E741
     assert len(lines) == 1
     # format: HH:MM [domain] text
     import re
