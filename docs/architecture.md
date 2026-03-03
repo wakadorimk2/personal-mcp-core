@@ -101,7 +101,7 @@ external requirements. The placeholder prints context length to verify the load 
 
 ### Purpose
 
-All domains (poe2, mood, general) converge to a single `Event` type so that:
+All domains (poe2, mood, general, eng, worklog) converge to a single `Event` type so that:
 
 - Storage code (`append_jsonl`) needs no domain-specific branches.
 - History can be reconstructed from JSONL files alone, without domain knowledge.
@@ -112,7 +112,7 @@ All domains (poe2, mood, general) converge to a single `Event` type so that:
 | Field     | Type              | Description                                              |
 |-----------|-------------------|----------------------------------------------------------|
 | `ts`      | `str`             | ISO 8601 timestamp (UTC recommended)                     |
-| `domain`  | `str`             | Source domain — e.g. `"poe2"`, `"mood"`, `"general"`    |
+| `domain`  | `str`             | Source domain — MVP supported: `"poe2"`, `"mood"`, `"general"`, `"eng"`, `"worklog"` |
 | `payload` | `Dict[str, Any]`  | Domain-specific data; all values must be JSON-serializable |
 | `tags`    | `List[str]`       | Optional labels for filtering; use `[]` if not needed    |
 
@@ -123,19 +123,22 @@ from dataclasses import asdict
 from personal_mcp.core.event import Event
 
 event = Event(
-    ts="2026-03-03T12:00:00+00:00",
-    domain="poe2",
-    payload={"text": "ボスを倒した", "kind": "note"},
-    tags=["boss", "victory"],
+    ts="2026-03-04T11:00:00+00:00",
+    domain="eng",
+    payload={"text": "JSONL append-only方針を確認", "meta": {"kind": "milestone"}},
+    tags=["schema"],
 )
 
 asdict(event)
 # {
-#   "ts": "2026-03-03T12:00:00+00:00",
-#   "domain": "poe2",
-#   "payload": {"text": "ボスを倒した", "kind": "note"},
-#   "tags": ["boss", "victory"]
+#   "ts": "2026-03-04T11:00:00+00:00",
+#   "domain": "eng",
+#   "payload": {"text": "JSONL append-only方針を確認", "meta": {"kind": "milestone"}},
+#   "tags": ["schema"]
 # }
 ```
+
+`kind` はトップレベルの `payload` に置かず、`payload.meta.kind` に入れる。
+`payload.meta` 自体は省略可能（`poe2-watch` による自動記録など）。
 
 `asdict(event)` の結果はそのまま `append_jsonl(path, asdict(event))` に渡せる。
