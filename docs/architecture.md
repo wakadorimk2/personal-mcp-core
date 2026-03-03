@@ -59,11 +59,11 @@ AI-specific adapters reference them from their own directories.
 
 ```
 docs/skills/                          ← Canonical skill definitions (AI-agnostic)
-├── implement-issue-minimal.md
+├── minimal-safe-impl.md
 └── research-propose-structured.md
 
 .claude/skills/                       ← Claude Code adapters
-├── implement-issue-minimal/SKILL.md
+├── minimal-safe-impl/SKILL.md
 └── research-propose-structured/SKILL.md
 
 # Future: .codex/skills/ for Codex adapters, etc.
@@ -71,7 +71,7 @@ docs/skills/                          ← Canonical skill definitions (AI-agnost
 
 | Kind | Canonical source | Adapter location |
 |---|---|---|
-| impl | `docs/skills/implement-issue-minimal.md` | `.claude/skills/implement-issue-minimal/` |
+| impl | `docs/skills/minimal-safe-impl.md` | `.claude/skills/minimal-safe-impl/` |
 | research | `docs/skills/research-propose-structured.md` | `.claude/skills/research-propose-structured/` |
 
 **Rule**: canonical docs are AI-agnostic. Adapter files contain only tool-specific invocation syntax and constraints.

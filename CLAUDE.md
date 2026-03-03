@@ -63,7 +63,7 @@ Event model principle:
 
 ## Skills
 - Project skills live under `.claude/skills/`.
-- For implementation tasks tied to a GitHub Issue, use: `/implement-issue-minimal <issue-url-or-number>`
+- For implementation tasks tied to a GitHub Issue, use: `/minimal-safe-impl <issue-url-or-number>`
 - For research/proposal tasks (no code changes), use: `/research-propose-structured <topic-or-issue-url>`
 
 ## AI_GUIDE.md sync rule

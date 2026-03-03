@@ -10,16 +10,15 @@ disable-model-invocation: true
 > このファイルは Claude Code 用のアダプタです。
 > **正本（AI非依存）**: [`docs/skills/research-propose-structured.md`](../../../docs/skills/research-propose-structured.md)
 >
-> Mission / Rules / Output テンプレは正本を参照してください。
-> このファイルには Claude 固有の制約・呼び出し方法のみ記載します。
+> 振る舞い・Rules・Procedure・Output テンプレは正本を参照してください。
+> このファイルには Claude 固有の呼び出し構文と引数だけを記載します。
 
 ---
 
-## Claude 固有の制約
+## Claude 固有の呼び出し
 
 - 入力は `$ARGUMENTS`（テーマ/制約/URL/issue番号のいずれか）
-- 必要なら issue / ドキュメントを読んでから整理する
-- 足りない情報は「仮定/未確定」として明記し、条件付きで提案する
+- 調査開始前に必ず正本を読む
 
 ## Invocation Examples
 
