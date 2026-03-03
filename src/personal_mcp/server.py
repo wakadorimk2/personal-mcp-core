@@ -18,6 +18,7 @@ def _print_event_timeline(records: List[Dict[str, Any]]) -> None:
         --- YYYY-MM-DD ---
         HH:MM [domain] text
     """
+
     def local_date(r: Dict[str, Any]) -> str:
         try:
             return datetime.fromisoformat(r.get("ts", "")).astimezone().strftime("%Y-%m-%d")
@@ -82,8 +83,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     p_log.add_argument("--data-dir", default="data")
 
     p_watch = sub.add_parser("poe2-watch", help="tail Client.txt and record area transitions")
-    p_watch.add_argument("--client-log", default=None, metavar="PATH",
-                         help="path to Client.txt (overrides POE2_CLIENT_LOG env var)")
+    p_watch.add_argument(
+        "--client-log",
+        default=None,
+        metavar="PATH",
+        help="path to Client.txt (overrides POE2_CLIENT_LOG env var)",
+    )
     p_watch.add_argument("--data-dir", default="data")
 
     # src/personal_mcp/server.py の subcommand 追加分だけ（イメージ）
@@ -173,7 +178,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             data_dir=args.data_dir,
         )
         if args.kind:
-            rows = [r for r in rows if r.get("payload", {}).get("meta", {}).get("kind") == args.kind]
+            rows = [
+                r for r in rows if r.get("payload", {}).get("meta", {}).get("kind") == args.kind
+            ]
         if args.tag:
             rows = [r for r in rows if args.tag in (r.get("tags") or [])]
         if args.json:
@@ -183,7 +190,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 kind = r.get("payload", {}).get("meta", {}).get("kind", "?")
                 tags_str = ",".join(r.get("tags") or [])
                 text = r.get("payload", {}).get("text", "")
-                print(f'{r.get("ts","?")} [{kind}] ({tags_str}) {text}')
+                print(f"{r.get('ts', '?')} [{kind}] ({tags_str}) {text}")
         return 0
 
     return 1

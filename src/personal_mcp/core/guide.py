@@ -14,11 +14,7 @@ def load_ai_guide() -> str:
     """
     # 1) Primary: packaged resource
     try:
-        return (
-            resources.files("personal_mcp")
-            .joinpath("AI_GUIDE.md")
-            .read_text(encoding="utf-8")
-        )
+        return resources.files("personal_mcp").joinpath("AI_GUIDE.md").read_text(encoding="utf-8")
     except (FileNotFoundError, OSError, UnicodeDecodeError):
         pass
 
@@ -34,6 +30,4 @@ def load_ai_guide() -> str:
             f"AI guide file not found. Tried packaged resource and {guide_path}."
         ) from exc
     except UnicodeDecodeError as exc:
-        raise RuntimeError(
-            f"Failed to decode AI guide at {guide_path} using UTF-8."
-        ) from exc
+        raise RuntimeError(f"Failed to decode AI guide at {guide_path} using UTF-8.") from exc

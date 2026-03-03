@@ -30,5 +30,7 @@ def test_parse_area_line_null_is_skipped() -> None:
 
 
 def test_parse_area_line_unknown_is_skipped() -> None:
-    line = "2026/03/03 21:39:17 243033031 7fbd122e [INFO Client 20632] [SCENE] Set Source [(unknown)]"
+    line = (
+        "2026/03/03 21:39:17 243033031 7fbd122e [INFO Client 20632] [SCENE] Set Source [(unknown)]"
+    )
     assert parse_area_line(line) is None
