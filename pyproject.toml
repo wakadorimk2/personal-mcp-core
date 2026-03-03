@@ -8,7 +8,10 @@ version = "0.1.0"
 requires-python = ">=3.10"
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+dev = [
+    "ruff>=0.3",
+    "pytest>=8.0",
+    ]
 
 [project.scripts]
 personal-mcp = "personal_mcp.server:main"
@@ -21,3 +24,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 personal_mcp = ["AI_GUIDE.md"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
