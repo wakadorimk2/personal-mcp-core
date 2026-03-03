@@ -106,7 +106,7 @@ python -m personal_mcp.server poe2-watch --client-log /path/to/Client.txt
 - 区切りは必要時のみ `_`
 - `eng` は広いエンジニアリング活動（調査・設計・思考）、`worklog` は具体的な作業記録（セッション・進捗）として使い分ける
 
-`event-add` は技術上任意文字列を受け付けるが、MVP の明示サポート対象は上記のみとする。追加 domain は別 issue で定義する。
+`event-add` で受け付ける domain は上記 allowlist のみとする。追加 domain は別 issue で定義する。
 
 ### eng / worklog の最小 kind セット
 

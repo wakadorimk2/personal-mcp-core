@@ -62,6 +62,46 @@ def test_event_add_event_list_e2e(tmp_path: Path) -> None:
     assert texts == {"alpha", "beta"}
 
 
+def test_event_add_accepts_eng_domain(tmp_path: Path) -> None:
+    data_dir = tmp_path / "data"
+    events_path = data_dir / "events.jsonl"
+
+    _run("event-add", "eng event", "--domain", "eng", "--data-dir", str(data_dir))
+
+    record = json.loads(events_path.read_text(encoding="utf-8").splitlines()[0])
+    assert record["domain"] == "eng"
+    assert record["payload"]["text"] == "eng event"
+
+
+def test_event_add_accepts_worklog_domain(tmp_path: Path) -> None:
+    data_dir = tmp_path / "data"
+    events_path = data_dir / "events.jsonl"
+
+    _run("event-add", "worklog event", "--domain", "worklog", "--data-dir", str(data_dir))
+
+    record = json.loads(events_path.read_text(encoding="utf-8").splitlines()[0])
+    assert record["domain"] == "worklog"
+    assert record["payload"]["text"] == "worklog event"
+
+
+def test_event_add_rejects_disallowed_domain_without_creating_file(tmp_path: Path) -> None:
+    data_dir = tmp_path / "data"
+    events_path = data_dir / "events.jsonl"
+
+    result = _run(
+        "event-add",
+        "bad event",
+        "--domain",
+        "art",
+        "--data-dir",
+        str(data_dir),
+        check=False,
+    )
+
+    assert result.returncode != 0
+    assert not events_path.exists()
+
+
 # ---------------------------------------------------------------------------
 # 2. mood-add → event-list --domain mood
 # ---------------------------------------------------------------------------

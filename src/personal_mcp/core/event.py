@@ -5,6 +5,9 @@ from dataclasses import dataclass
 from typing import Any, Dict, List
 
 
+ALLOWED_DOMAINS = frozenset({"poe2", "mood", "general", "eng", "worklog"})
+
+
 @dataclass
 class Event:
     """Common event schema for all domains (poe2, mood, general, eng, worklog).

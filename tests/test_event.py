@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from personal_mcp.core.event import ALLOWED_DOMAINS
 from personal_mcp.tools.event import event_add, event_list
 
 
@@ -50,6 +51,32 @@ def test_event_add_appends_without_overwriting(data_dir: Path) -> None:
     record = json.loads(lines[1])
     assert record["domain"] == "mood"
     assert record["payload"]["text"] == "second"
+
+
+@pytest.mark.parametrize("domain", ["eng", "worklog"])
+def test_event_add_accepts_new_allowed_domains(data_dir: Path, domain: str) -> None:
+    path = data_dir / "events.jsonl"
+
+    event_add(domain=domain, text=f"{domain} entry", data_dir=str(data_dir))
+
+    lines = path.read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 1
+    record = json.loads(lines[0])
+    assert record["domain"] == domain
+    assert record["payload"]["text"] == f"{domain} entry"
+
+
+def test_event_add_rejects_disallowed_domain_without_writing(data_dir: Path) -> None:
+    path = data_dir / "events.jsonl"
+
+    with pytest.raises(ValueError, match="unsupported domain: art"):
+        event_add(domain="art", text="bad domain", data_dir=str(data_dir))
+
+    assert not path.exists()
+
+
+def test_allowed_domains_keeps_existing_supported_domains() -> None:
+    assert {"poe2", "mood", "general"}.issubset(ALLOWED_DOMAINS)
 
 
 # ---------------------------------------------------------------------------

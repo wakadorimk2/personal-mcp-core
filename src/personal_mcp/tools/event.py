@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from personal_mcp.core.event import Event
+from personal_mcp.core.event import ALLOWED_DOMAINS, Event
 from personal_mcp.storage.jsonl import append_jsonl, read_jsonl
 
 
@@ -34,6 +34,9 @@ def event_add(
     meta: Optional[Dict[str, Any]] = None,
     data_dir: str = "data",
 ) -> Dict[str, Any]:
+    if domain not in ALLOWED_DOMAINS:
+        raise ValueError(f"unsupported domain: {domain}")
+
     payload: Dict[str, Any] = {"text": text}
     if meta:
         payload["meta"] = meta
