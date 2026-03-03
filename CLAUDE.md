@@ -13,8 +13,14 @@ When starting any task, read files in this order before writing or changing anyt
 
 1. `CLAUDE.md` (this file) — constraints and conventions
 2. `AI_GUIDE.md` — the owner's values and behavioral expectations for AI
-3. `docs/architecture.md` — system structure and extension points (if it exists)
-4. Only then: the specific files relevant to the task
+3. `docs/AI_ROLE_POLICY.md` — authoritative role split for Claude/Codex operations
+4. `docs/architecture.md` — system structure and extension points (if it exists)
+5. Only then: the specific files relevant to the task
+
+## AI role split
+
+Claude remains the no-side-effect implementation side, and Codex remains the side-effecting executor/verifier.
+Authoritative policy: [`docs/AI_ROLE_POLICY.md`](./docs/AI_ROLE_POLICY.md)
 
 ## Commands
 
