@@ -269,6 +269,7 @@ def test_event_list_text_line_format(data_dir: Path, capsys: pytest.CaptureFixtu
 # event-today tests (via server.main)
 # ---------------------------------------------------------------------------
 
+
 # Build test timestamps dynamically so tests are stable regardless of run date.
 # Use noon UTC so the local date matches across UTC-11..UTC+11 timezones.
 def _today_utc_noon() -> str:
