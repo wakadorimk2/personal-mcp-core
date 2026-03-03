@@ -127,6 +127,31 @@ python -m personal_mcp.server poe2-log-list --kind=milestone --since 2026-03-01
 
 ---
 
+## 互換性ポリシー（MVP期間中）
+
+> 詳細・背景: [Issue #19](https://github.com/wakadorimk2/personal-mcp-core/issues/19)
+
+### 保証するもの
+
+- **JSONL イベント形式**（`data/events.jsonl` のフィールド定義）
+  - 破壊的変更を行う場合は `schema_version` フィールドを追加し、ワンタイム移行スクリプトを同伴する
+
+### 保証しないもの
+
+- CLI コマンド名・オプション
+- 内部モジュール構造・import パス
+- MCP アダプター IF
+- 設定ファイル形式
+
+### 破壊的変更の方針
+
+- MVP 期間中はいつでも破壊的変更を行う可能性がある
+- **恒久互換レイヤは持たない**
+- データ形式を変更する場合は、ワンタイム移行スクリプトを同伴する（互換レイヤは残さない）
+- 変更時はドキュメントを更新する
+
+---
+
 ## 開発者向け
 
 ```bash

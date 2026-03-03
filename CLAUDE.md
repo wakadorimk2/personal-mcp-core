@@ -99,3 +99,11 @@ Changes should be minimal, reversible, and slow by design. Do not over-engineer 
 * Do not make UX more stimulating (no urgency cues, streaks, countdowns, or progress bars)
 * Do not introduce gamification elements of any kind
 * Do not implement numeric optimization logic ahead of explicit user request
+
+## Compatibility policy
+
+MVP 期間中の互換性方針は以下を参照（重複コピペしない）：
+
+* [README — 互換性ポリシー（MVP期間中）](./README.md#互換性ポリシーmvp期間中)
+* [AI_GUIDE.md — 互換性に関するガードレール](./AI_GUIDE.md#互換性に関するガードレール)
+* 背景: [Issue #19](https://github.com/wakadorimk2/personal-mcp-core/issues/19)
