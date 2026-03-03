@@ -9,11 +9,8 @@ disable-model-invocation: true
 
 > このファイルは Claude Code 用のアダプタです。
 > **正本（AI非依存）**: [`docs/skills/minimal-safe-impl.md`](../../../docs/skills/minimal-safe-impl.md)
->
 > 振る舞い・Rules・Procedure・Output テンプレは正本を参照してください。
 > このファイルには Claude 固有の呼び出し構文と引数だけを記載します。
-
----
 
 ## Claude 固有の呼び出し
 
