@@ -75,7 +75,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     p_mood.add_argument("--tags", default="")
     p_mood.add_argument("--data-dir", default="data")
 
-    p_log = sub.add_parser("poe2-log-add", help="append a poe2 log entry")  # legacy: use event-add --domain poe2
+    p_log = sub.add_parser(
+        "poe2-log-add", help="append a poe2 log entry"
+    )  # legacy: use event-add --domain poe2
     p_log.add_argument("text", help="log text")
     p_log.add_argument("--kind", default="note")
     p_log.add_argument("--tags", default="")
@@ -92,7 +94,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     p_watch.add_argument("--data-dir", default="data")
 
     # src/personal_mcp/server.py の subcommand 追加分だけ（イメージ）
-    p_list = sub.add_parser("poe2-log-list", help="list poe2 log entries")  # legacy: use event-list --domain poe2
+    p_list = sub.add_parser(
+        "poe2-log-list", help="list poe2 log entries"
+    )  # legacy: use event-list --domain poe2
     p_list.add_argument("--n", type=int, default=20)
     p_list.add_argument("--kind", default=None)
     p_list.add_argument("--tag", default=None)
