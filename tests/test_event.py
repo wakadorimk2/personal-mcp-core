@@ -1,6 +1,6 @@
 import json
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -56,7 +56,6 @@ def test_event_add_appends_without_overwriting(data_dir: Path) -> None:
 # event_list tests
 # ---------------------------------------------------------------------------
 
-# Use noon UTC so local date is consistent across UTC-11 to UTC+11 timezones
 _TS_DAY1_A = "2026-03-02T12:00:00+00:00"  # day1
 _TS_DAY2_A = "2026-03-03T12:00:00+00:00"  # day2 morning
 _TS_DAY2_B = "2026-03-03T14:00:00+00:00"  # day2 afternoon
@@ -270,27 +269,30 @@ def test_event_list_text_line_format(data_dir: Path, capsys: pytest.CaptureFixtu
 # ---------------------------------------------------------------------------
 
 
-# Build test timestamps dynamically so tests are stable regardless of run date.
-# Use noon UTC so the local date matches across UTC-11..UTC+11 timezones.
-def _today_utc_noon() -> str:
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    return f"{today}T12:00:00+00:00"
+# Build test timestamps from local noon so event-today stays stable near UTC date boundaries.
+def _today_local_noon() -> str:
+    return (
+        datetime.now().astimezone().replace(hour=12, minute=0, second=0, microsecond=0).isoformat()
+    )
 
 
-def _yesterday_utc_noon() -> str:
-    yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
-    return f"{yesterday}T12:00:00+00:00"
+def _yesterday_local_noon() -> str:
+    return (
+        (datetime.now().astimezone() - timedelta(days=1))
+        .replace(hour=12, minute=0, second=0, microsecond=0)
+        .isoformat()
+    )
 
 
 def test_event_today_returns_only_today(data_dir: Path) -> None:
     events = [
         {
-            "ts": _yesterday_utc_noon(),
+            "ts": _yesterday_local_noon(),
             "domain": "mood",
             "payload": {"text": "yesterday"},
             "tags": [],
         },
-        {"ts": _today_utc_noon(), "domain": "poe2", "payload": {"text": "today"}, "tags": []},
+        {"ts": _today_local_noon(), "domain": "poe2", "payload": {"text": "today"}, "tags": []},
     ]
     _write_events(data_dir / "events.jsonl", events)
 
@@ -304,7 +306,7 @@ def test_event_today_returns_only_today(data_dir: Path) -> None:
 
 def test_event_today_excludes_yesterday(data_dir: Path) -> None:
     events = [
-        {"ts": _yesterday_utc_noon(), "domain": "mood", "payload": {"text": "old"}, "tags": []},
+        {"ts": _yesterday_local_noon(), "domain": "mood", "payload": {"text": "old"}, "tags": []},
     ]
     _write_events(data_dir / "events.jsonl", events)
 
@@ -318,7 +320,7 @@ def test_event_today_excludes_yesterday(data_dir: Path) -> None:
 def test_event_today_text_no_date_header(data_dir: Path, capsys: pytest.CaptureFixture) -> None:
     """event-today must not print '--- YYYY-MM-DD ---' headers."""
     events = [
-        {"ts": _today_utc_noon(), "domain": "mood", "payload": {"text": "hello"}, "tags": []},
+        {"ts": _today_local_noon(), "domain": "mood", "payload": {"text": "hello"}, "tags": []},
     ]
     _write_events(data_dir / "events.jsonl", events)
 
@@ -335,7 +337,7 @@ def test_event_today_text_line_format(data_dir: Path, capsys: pytest.CaptureFixt
     """Each line must match 'HH:MM [domain] text' exactly."""
     events = [
         {
-            "ts": _today_utc_noon(),
+            "ts": _today_local_noon(),
             "domain": "general",
             "payload": {"text": "line check"},
             "tags": [],
@@ -367,8 +369,18 @@ def test_event_today_empty_output_when_no_events(
 
 def test_event_today_domain_filter(data_dir: Path, capsys: pytest.CaptureFixture) -> None:
     events = [
-        {"ts": _today_utc_noon(), "domain": "mood", "payload": {"text": "mood event"}, "tags": []},
-        {"ts": _today_utc_noon(), "domain": "poe2", "payload": {"text": "poe2 event"}, "tags": []},
+        {
+            "ts": _today_local_noon(),
+            "domain": "mood",
+            "payload": {"text": "mood event"},
+            "tags": [],
+        },
+        {
+            "ts": _today_local_noon(),
+            "domain": "poe2",
+            "payload": {"text": "poe2 event"},
+            "tags": [],
+        },
     ]
     _write_events(data_dir / "events.jsonl", events)
 
@@ -383,7 +395,12 @@ def test_event_today_domain_filter(data_dir: Path, capsys: pytest.CaptureFixture
 
 def test_event_today_json_flag(data_dir: Path, capsys: pytest.CaptureFixture) -> None:
     events = [
-        {"ts": _today_utc_noon(), "domain": "mood", "payload": {"text": "json check"}, "tags": []},
+        {
+            "ts": _today_local_noon(),
+            "domain": "mood",
+            "payload": {"text": "json check"},
+            "tags": [],
+        },
     ]
     _write_events(data_dir / "events.jsonl", events)
 
