@@ -52,4 +52,4 @@
 ---
 
 **呼び出し例:**
-> "Research options for adding a new adapter. Load `.claude/skills/research_propose_structured.md` and follow it."
+> "Research options for adding a new adapter. Load `.claude/skills/research_propose_structured/SKILL.md` and follow it."

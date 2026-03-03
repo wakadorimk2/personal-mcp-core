@@ -59,23 +59,23 @@ Event model principle:
 | New MCP tool                               | src/personal_mcp/tools/<name>.py + entry in docs/tools.md (create if needed) |
 | Architecture decisions                     | docs/architecture.md                                                         |
 | Bug fix / refactor                         | Relevant .py file only; update docs only if public behavior changes          |
-| Claude Code skill definitions              | .claude/skills/<name>.md                                                     |
+| Claude Code skill definitions              | .claude/skills/<name>/SKILL.md                                               |
 
 ## Skills usage policy
 
 Skills are reusable instruction sets for Claude Code. They are loaded manually — no auto-invocation.
 
-**Location:** `.claude/skills/`
+**Location:** `.claude/skills/<name>/SKILL.md`
 
 **Available skills:**
 
-| Skill file                          | Use when                                               |
+| Skill                               | Use when                                               |
 | ----------------------------------- | ------------------------------------------------------ |
-| `implement_issue_minimal.md`        | Implementing a GitHub issue (1 issue = 1 invocation)   |
-| `research_propose_structured.md`    | Researching options or proposing an approach (no code) |
+| `implement_issue_minimal`           | Implementing a GitHub issue (1 issue = 1 invocation)   |
+| `research_propose_structured`       | Researching options or proposing an approach (no code) |
 
 **Rules:**
-* Load a skill by referencing its path in your prompt (e.g., "follow `.claude/skills/implement_issue_minimal.md`")
+* Load a skill by referencing its path in your prompt (e.g., "follow `.claude/skills/implement_issue_minimal/SKILL.md`")
 * Use `implement_issue_minimal` for coding tasks; use `research_propose_structured` for decision-making or exploration
 * Do not mix the two — implementation and research are separate concerns
 * Skills do not override CLAUDE.md or AI_GUIDE.md constraints

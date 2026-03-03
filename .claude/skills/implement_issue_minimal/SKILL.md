@@ -57,4 +57,4 @@ diff AI_GUIDE.md src/personal_mcp/AI_GUIDE.md
 ---
 
 **呼び出し例:**
-> "Implement GitHub issue #25. Load `.claude/skills/implement_issue_minimal.md` and follow it."
+> "Implement GitHub issue #25. Load `.claude/skills/implement_issue_minimal/SKILL.md` and follow it."
