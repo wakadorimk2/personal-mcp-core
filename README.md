@@ -43,7 +43,7 @@
 MVP の中核はすでに実装されている。現在は共通イベント基盤で記録し、PoE2 はその上の代表ユースケースとして扱っている。
 
 ```bash
-# 任意ドメインのイベントを追加する
+# eng / worklog など明示サポート domain のイベントを追加する
 python -m personal_mcp.server event-add "設計メモを書いた" \
   --domain=worklog --tags=design,docs
 
@@ -67,26 +67,137 @@ python -m personal_mcp.server poe2-watch --client-log /path/to/Client.txt
 
 ## データモデル方針
 
-イベントは共通 JSONL 形式で表現する：
+イベントは共通 JSONL 形式（`data/events.jsonl`）で表現する。追記のみ。編集・削除はしない。
 
-| フィールド | 説明 |
+### 最小イベント契約
+
+| フィールド | 必須/推奨 | 説明 |
+| --- | --- | --- |
+| `ts` | 必須 | タイムスタンプ（ISO 8601 タイムゾーン付き）。内部保存は UTC を原則とする |
+| `domain` | 必須 | ドメイン識別子（下記 MVP 許可リストを参照） |
+| `payload.text` | 必須 | 記録本文 |
+| `tags` | 必須 | タグリスト（空配列可） |
+| `payload.meta.kind` | 推奨 | イベント種別（`note` / `session` / `milestone` など） |
+| `payload.meta.source` | 推奨 | データ取得元（`"manual"` など） |
+| `payload.meta.ref` | 推奨 | 参照先（Issue 番号など） |
+
+`payload.meta` ごと省略できる（`poe2-watch` による自動記録など）。新しいトップレベルフィールドは追加しない。
+
+### タイムスタンプ方針
+
+- 内部保存は UTC を原則とする（実装の `_now_iso()` は `datetime.now(timezone.utc).isoformat()` を使用）
+- ドキュメント上のイベント例は読みやすさのため JST（`+09:00`）で表記する
+- 保存フォーマット自体はタイムゾーン付き ISO 8601 とし、既存レコードのオフセットはそのまま保持する
+
+### MVP で明示サポートする domain
+
+| domain | 説明 |
 | --- | --- |
-| `ts` | タイムスタンプ（UTC ISO 8601） |
-| `domain` | ドメイン（`poe2` / `mood` / `general` / 任意文字列） |
-| `payload.text` | 記録本文 |
-| `payload.meta` | 補助情報（任意。PoE2 の `kind` や自動取得元など） |
-| `tags` | タグリスト |
+| `poe2` | Path of Exile 2 の活動記録 |
+| `mood` | 気分・体調記録 |
+| `general` | 分類不要なメモや雑記 |
+| `eng` | エンジニアリング全般（調査・設計・学習など） |
+| `worklog` | 作業記録・進捗ログ |
 
-**現在の実装：**
+**domain 命名ルール：**
+
+- ASCII 小文字
+- 単数名詞または短いカテゴリ名
+- 区切りは必要時のみ `_`
+- `eng` は広いエンジニアリング活動（調査・設計・思考）、`worklog` は具体的な作業記録（セッション・進捗）として使い分ける
+
+`event-add` は技術上任意文字列を受け付けるが、MVP の明示サポート対象は上記のみとする。追加 domain は別 issue で定義する。
+
+### eng / worklog の最小 kind セット
+
+`payload.meta.kind` に設定する推奨値（`eng` / `worklog` 向け）：
+
+| kind | 用途 |
+| --- | --- |
+| `note` | 調査メモ、気づき、短い記録 |
+| `session` | 作業セッション、切り分け、実施ログ |
+| `milestone` | 方針確定、区切り、到達点 |
+
+### イベント例
+
+#### eng / note
+
+```json
+{
+  "ts": "2026-03-04T18:00:00+09:00",
+  "domain": "eng",
+  "payload": {
+    "text": "MCP adapterの調査メモ",
+    "meta": {
+      "kind": "note",
+      "source": "manual"
+    }
+  },
+  "tags": ["research"]
+}
+```
+
+#### worklog / session
+
+```json
+{
+  "ts": "2026-03-04T19:00:00+09:00",
+  "domain": "worklog",
+  "payload": {
+    "text": "Issue #23の切り分け",
+    "meta": {
+      "kind": "session",
+      "ref": "#23"
+    }
+  },
+  "tags": ["debug"]
+}
+```
+
+#### eng / milestone
+
+```json
+{
+  "ts": "2026-03-04T20:00:00+09:00",
+  "domain": "eng",
+  "payload": {
+    "text": "JSONL append-only方針を確認",
+    "meta": {
+      "kind": "milestone"
+    }
+  },
+  "tags": ["schema"]
+}
+```
+
+#### worklog / note
+
+```json
+{
+  "ts": "2026-03-04T21:00:00+09:00",
+  "domain": "worklog",
+  "payload": {
+    "text": "レビュー前に再現手順を整理",
+    "meta": {
+      "kind": "note",
+      "source": "manual"
+    }
+  },
+  "tags": ["review"]
+}
+```
+
+### 現在の実装
 
 - 汎用 `event-add` / `event-list` / `event-today` がある
 - `mood-add` は `domain="mood"` のイベントとして保存する
 - `poe2-log-add` / `poe2-log-list` は `domain="poe2"` の専用入口として動く
 - `poe2-watch` は `Client.txt` から `area_transition` を自動記録する
 
-**原則：**
+### 原則
 
 - 追記のみ。編集・削除はしない。
+- 既存 `poe2` / `mood` / `general` のレコード形式を壊さない。
 - 自動取得を後から足すときも、同じイベント形式で追加する。
 
 ---
