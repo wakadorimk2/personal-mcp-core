@@ -8,7 +8,6 @@ from typing import Any, Dict, List, Optional
 
 from personal_mcp.adapters.mcp_server import get_system_context
 from personal_mcp.tools.event import event_add, event_list
-from personal_mcp.tools.poe2_log import log_add, log_list
 
 
 def _print_event_timeline(records: List[Dict[str, Any]]) -> None:
@@ -138,30 +137,36 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.cmd == "poe2-log-add":
         tags = [t for t in args.tags.split(",") if t]
         meta: Dict[str, Any] = json.loads(args.meta_json)
-        rec = log_add(
+        meta["kind"] = args.kind
+        rec = event_add(
+            domain="poe2",
             text=args.text,
-            kind=args.kind,
             tags=tags,
             meta=meta,
             data_dir=args.data_dir,
         )
-        print(json.dumps(rec.__dict__, ensure_ascii=False, indent=2))
+        print(json.dumps(rec, ensure_ascii=False, indent=2))
         return 0
-    
+
     if args.cmd == "poe2-log-list":
-        rows = log_list(
+        rows = event_list(
+            domain="poe2",
             n=args.n,
-            kind=args.kind,
-            tag=args.tag,
             since=args.since,
             data_dir=args.data_dir,
         )
+        if args.kind:
+            rows = [r for r in rows if r.get("payload", {}).get("meta", {}).get("kind") == args.kind]
+        if args.tag:
+            rows = [r for r in rows if args.tag in (r.get("tags") or [])]
         if args.json:
             print(json.dumps(rows, ensure_ascii=False, indent=2))
         else:
             for r in rows:
-                tags = ",".join(r.get("tags") or [])
-                print(f'{r.get("ts","?")} [{r.get("kind","?")}] ({tags}) {r.get("text","")}')
+                kind = r.get("payload", {}).get("meta", {}).get("kind", "?")
+                tags_str = ",".join(r.get("tags") or [])
+                text = r.get("payload", {}).get("text", "")
+                print(f'{r.get("ts","?")} [{kind}] ({tags_str}) {text}')
         return 0
 
     return 1
