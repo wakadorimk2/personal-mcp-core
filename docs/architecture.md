@@ -51,6 +51,33 @@ Persistent storage (daily logs, habit data, game state) belongs in
 `src/personal_mcp/storage/`. Design the data model in `docs/data-flow.md` first,
 then implement.
 
+## Skills layer
+
+Skills define how AI agents interact with this repository.
+The canonical (AI-agnostic) definitions live in `docs/skills/`;
+AI-specific adapters reference them from their own directories.
+
+```
+docs/skills/                          ← Canonical skill definitions (AI-agnostic)
+├── implement-issue-minimal.md
+└── research-propose-structured.md
+
+.claude/skills/                       ← Claude Code adapters
+├── implement-issue-minimal/SKILL.md
+└── research-propose-structured/SKILL.md
+
+# Future: .codex/skills/ for Codex adapters, etc.
+```
+
+| Kind | Canonical source | Adapter location |
+|---|---|---|
+| impl | `docs/skills/implement-issue-minimal.md` | `.claude/skills/implement-issue-minimal/` |
+| research | `docs/skills/research-propose-structured.md` | `.claude/skills/research-propose-structured/` |
+
+**Rule**: canonical docs are AI-agnostic. Adapter files contain only tool-specific invocation syntax and constraints.
+
+---
+
 ## Design decisions
 
 ### Why AI_GUIDE.md is duplicated
