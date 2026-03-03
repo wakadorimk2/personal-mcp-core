@@ -272,10 +272,7 @@ def test_event_list_text_line_format(data_dir: Path, capsys: pytest.CaptureFixtu
 # Build test timestamps from local noon so event-today stays stable near UTC date boundaries.
 def _today_local_noon() -> str:
     return (
-        datetime.now()
-        .astimezone()
-        .replace(hour=12, minute=0, second=0, microsecond=0)
-        .isoformat()
+        datetime.now().astimezone().replace(hour=12, minute=0, second=0, microsecond=0).isoformat()
     )
 
 
