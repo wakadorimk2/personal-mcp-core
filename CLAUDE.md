@@ -61,24 +61,10 @@ Event model principle:
 | Bug fix / refactor                         | Relevant .py file only; update docs only if public behavior changes          |
 | Claude Code skill definitions              | .claude/skills/<name>/SKILL.md                                               |
 
-## Skills usage policy
-
-Skills are reusable instruction sets for Claude Code. They are loaded manually — no auto-invocation.
-
-**Location:** `.claude/skills/<name>/SKILL.md`
-
-**Available skills:**
-
-| Skill                               | Use when                                               |
-| ----------------------------------- | ------------------------------------------------------ |
-| `implement_issue_minimal`           | Implementing a GitHub issue (1 issue = 1 invocation)   |
-| `research_propose_structured`       | Researching options or proposing an approach (no code) |
-
-**Rules:**
-* Load a skill by referencing its path in your prompt (e.g., "follow `.claude/skills/implement_issue_minimal/SKILL.md`")
-* Use `implement_issue_minimal` for coding tasks; use `research_propose_structured` for decision-making or exploration
-* Do not mix the two — implementation and research are separate concerns
-* Skills do not override CLAUDE.md or AI_GUIDE.md constraints
+## Skills
+- Project skills live under `.claude/skills/`.
+- For implementation tasks tied to a GitHub Issue, use: `/implement-issue-minimal <issue-url-or-number>`
+- For research/proposal tasks (no code changes), use: `/research-propose-structured <topic-or-issue-url>`
 
 ## AI_GUIDE.md sync rule
 
