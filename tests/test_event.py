@@ -1,5 +1,6 @@
 import json
-from datetime import datetime
+import re
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -261,6 +262,148 @@ def test_event_list_text_line_format(data_dir: Path, capsys: pytest.CaptureFixtu
     lines = [l for l in captured.out.splitlines() if not l.startswith("---")]  # noqa: E741
     assert len(lines) == 1
     # format: HH:MM [domain] text
-    import re
-
     assert re.match(r"^\d{2}:\d{2} \[poe2\] day2 poe2$", lines[0])
+
+
+# ---------------------------------------------------------------------------
+# event-today tests (via server.main)
+# ---------------------------------------------------------------------------
+
+
+# Build test timestamps dynamically so tests are stable regardless of run date.
+# Use noon UTC so the local date matches across UTC-11..UTC+11 timezones.
+def _today_utc_noon() -> str:
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return f"{today}T12:00:00+00:00"
+
+
+def _yesterday_utc_noon() -> str:
+    yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
+    return f"{yesterday}T12:00:00+00:00"
+
+
+def test_event_today_returns_only_today(data_dir: Path) -> None:
+    events = [
+        {
+            "ts": _yesterday_utc_noon(),
+            "domain": "mood",
+            "payload": {"text": "yesterday"},
+            "tags": [],
+        },
+        {"ts": _today_utc_noon(), "domain": "poe2", "payload": {"text": "today"}, "tags": []},
+    ]
+    _write_events(data_dir / "events.jsonl", events)
+
+    today = datetime.now().astimezone().strftime("%Y-%m-%d")
+    from personal_mcp.tools.event import event_list as _event_list
+
+    result = _event_list(date=today, data_dir=str(data_dir))
+    assert len(result) == 1
+    assert result[0]["payload"]["text"] == "today"
+
+
+def test_event_today_excludes_yesterday(data_dir: Path) -> None:
+    events = [
+        {"ts": _yesterday_utc_noon(), "domain": "mood", "payload": {"text": "old"}, "tags": []},
+    ]
+    _write_events(data_dir / "events.jsonl", events)
+
+    today = datetime.now().astimezone().strftime("%Y-%m-%d")
+    from personal_mcp.tools.event import event_list as _event_list
+
+    result = _event_list(date=today, data_dir=str(data_dir))
+    assert result == []
+
+
+def test_event_today_text_no_date_header(data_dir: Path, capsys: pytest.CaptureFixture) -> None:
+    """event-today must not print '--- YYYY-MM-DD ---' headers."""
+    events = [
+        {"ts": _today_utc_noon(), "domain": "mood", "payload": {"text": "hello"}, "tags": []},
+    ]
+    _write_events(data_dir / "events.jsonl", events)
+
+    from personal_mcp.server import main
+
+    main(["event-today", "--data-dir", str(data_dir)])
+
+    captured = capsys.readouterr()
+    assert "---" not in captured.out
+    assert "[mood] hello" in captured.out
+
+
+def test_event_today_text_line_format(data_dir: Path, capsys: pytest.CaptureFixture) -> None:
+    """Each line must match 'HH:MM [domain] text' exactly."""
+    events = [
+        {
+            "ts": _today_utc_noon(),
+            "domain": "general",
+            "payload": {"text": "line check"},
+            "tags": [],
+        },
+    ]
+    _write_events(data_dir / "events.jsonl", events)
+
+    from personal_mcp.server import main
+
+    main(["event-today", "--data-dir", str(data_dir)])
+
+    captured = capsys.readouterr()
+    lines = captured.out.strip().splitlines()
+    assert len(lines) == 1
+    assert re.match(r"^\d{2}:\d{2} \[general\] line check$", lines[0])
+
+
+def test_event_today_empty_output_when_no_events(
+    data_dir: Path, capsys: pytest.CaptureFixture
+) -> None:
+    """No events today → empty output (no messages, no headers)."""
+    from personal_mcp.server import main
+
+    main(["event-today", "--data-dir", str(data_dir)])
+
+    captured = capsys.readouterr()
+    assert captured.out.strip() == ""
+
+
+def test_event_today_domain_filter(data_dir: Path, capsys: pytest.CaptureFixture) -> None:
+    events = [
+        {"ts": _today_utc_noon(), "domain": "mood", "payload": {"text": "mood event"}, "tags": []},
+        {"ts": _today_utc_noon(), "domain": "poe2", "payload": {"text": "poe2 event"}, "tags": []},
+    ]
+    _write_events(data_dir / "events.jsonl", events)
+
+    from personal_mcp.server import main
+
+    main(["event-today", "--domain", "mood", "--data-dir", str(data_dir)])
+
+    captured = capsys.readouterr()
+    assert "[mood] mood event" in captured.out
+    assert "poe2" not in captured.out
+
+
+def test_event_today_json_flag(data_dir: Path, capsys: pytest.CaptureFixture) -> None:
+    events = [
+        {"ts": _today_utc_noon(), "domain": "mood", "payload": {"text": "json check"}, "tags": []},
+    ]
+    _write_events(data_dir / "events.jsonl", events)
+
+    from personal_mcp.server import main
+
+    main(["event-today", "--json", "--data-dir", str(data_dir)])
+
+    captured = capsys.readouterr()
+    parsed = json.loads(captured.out)
+    assert isinstance(parsed, list)
+    assert len(parsed) == 1
+    assert parsed[0]["domain"] == "mood"
+    assert "---" not in captured.out
+
+
+def test_event_today_json_empty_is_array(data_dir: Path, capsys: pytest.CaptureFixture) -> None:
+    from personal_mcp.server import main
+
+    main(["event-today", "--json", "--data-dir", str(data_dir)])
+
+    captured = capsys.readouterr()
+    parsed = json.loads(captured.out)
+    assert parsed == []

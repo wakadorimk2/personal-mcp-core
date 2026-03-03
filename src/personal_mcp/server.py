@@ -11,6 +11,22 @@ from personal_mcp.tools.event import event_add, event_list
 from personal_mcp.tools.poe2_client_watcher import watch_client_log
 
 
+def _local_time(r: Dict[str, Any]) -> str:
+    try:
+        return datetime.fromisoformat(r.get("ts", "")).astimezone().strftime("%H:%M")
+    except Exception:
+        return "??:??"
+
+
+def _print_event_lines(records: List[Dict[str, Any]]) -> None:
+    """Print events as 'HH:MM [domain] text', oldest first. No headers."""
+    for r in reversed(records):  # records are newest-first; display oldest-first
+        t = _local_time(r)
+        dom = r.get("domain", "?")
+        text = r.get("payload", {}).get("text", "")
+        print(f"{t} [{dom}] {text}")
+
+
 def _print_event_timeline(records: List[Dict[str, Any]]) -> None:
     """Print events grouped by local date, newest date first.
 
@@ -24,12 +40,6 @@ def _print_event_timeline(records: List[Dict[str, Any]]) -> None:
             return datetime.fromisoformat(r.get("ts", "")).astimezone().strftime("%Y-%m-%d")
         except Exception:
             return "unknown"
-
-    def local_time(r: Dict[str, Any]) -> str:
-        try:
-            return datetime.fromisoformat(r.get("ts", "")).astimezone().strftime("%H:%M")
-        except Exception:
-            return "??:??"
 
     # records are newest-first; preserve that order for date grouping
     seen: List[str] = []
@@ -45,7 +55,7 @@ def _print_event_timeline(records: List[Dict[str, Any]]) -> None:
         print(f"--- {d} ---")
         # within each date, display in chronological order (oldest first)
         for r in reversed(groups[d]):
-            t = local_time(r)
+            t = _local_time(r)
             dom = r.get("domain", "?")
             text = r.get("payload", {}).get("text", "")
             print(f"{t} [{dom}] {text}")
@@ -69,6 +79,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     p_elist.add_argument("--since", default=None)
     p_elist.add_argument("--data-dir", default="data")
     p_elist.add_argument("--json", action="store_true")
+
+    p_etoday = sub.add_parser("event-today", help="list today's events")
+    p_etoday.add_argument("--domain", default=None)
+    p_etoday.add_argument("--data-dir", default="data")
+    p_etoday.add_argument("--json", action="store_true")
 
     p_mood = sub.add_parser("mood-add", help="append a mood event to data/events.jsonl")
     p_mood.add_argument("text", help="mood text")
@@ -105,6 +120,19 @@ def main(argv: Optional[List[str]] = None) -> int:
     p_list.add_argument("--json", action="store_true")
 
     args = parser.parse_args(argv)
+
+    if args.cmd == "event-today":
+        today = datetime.now().astimezone().strftime("%Y-%m-%d")
+        records = event_list(
+            date=today,
+            domain=args.domain,
+            data_dir=args.data_dir,
+        )
+        if args.json:
+            print(json.dumps(records, ensure_ascii=False, indent=2))
+        else:
+            _print_event_lines(records)
+        return 0
 
     if args.cmd == "event-list":
         records = event_list(
