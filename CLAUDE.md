@@ -59,6 +59,12 @@ Event model principle:
 | New MCP tool                               | src/personal_mcp/tools/<name>.py + entry in docs/tools.md (create if needed) |
 | Architecture decisions                     | docs/architecture.md                                                         |
 | Bug fix / refactor                         | Relevant .py file only; update docs only if public behavior changes          |
+| Claude Code skill definitions              | .claude/skills/<name>/SKILL.md                                               |
+
+## Skills
+- Project skills live under `.claude/skills/`.
+- For implementation tasks tied to a GitHub Issue, use: `/implement-issue-minimal <issue-url-or-number>`
+- For research/proposal tasks (no code changes), use: `/research-propose-structured <topic-or-issue-url>`
 
 ## AI_GUIDE.md sync rule
 
