@@ -66,3 +66,49 @@ Tradeoff: manual sync is required. Accepted because the file changes rarely.
 The real MCP server requires an MCP library dependency (e.g., `mcp` or `fastmcp`).
 That dependency has not been added yet to keep the package installable without
 external requirements. The placeholder prints context length to verify the load path.
+
+## Event schema
+
+> Defined in `src/personal_mcp/core/event.py`.
+> Current status: **schema definition only** — no write logic is implemented here.
+
+### Purpose
+
+All domains (poe2, mood, general) converge to a single `Event` type so that:
+
+- Storage code (`append_jsonl`) needs no domain-specific branches.
+- History can be reconstructed from JSONL files alone, without domain knowledge.
+- Future adapters can filter or aggregate events using the common `domain` and `tags` fields.
+
+### Fields
+
+| Field     | Type              | Description                                              |
+|-----------|-------------------|----------------------------------------------------------|
+| `ts`      | `str`             | ISO 8601 timestamp (UTC recommended)                     |
+| `domain`  | `str`             | Source domain — e.g. `"poe2"`, `"mood"`, `"general"`    |
+| `payload` | `Dict[str, Any]`  | Domain-specific data; all values must be JSON-serializable |
+| `tags`    | `List[str]`       | Optional labels for filtering; use `[]` if not needed    |
+
+### JSONL example
+
+```python
+from dataclasses import asdict
+from personal_mcp.core.event import Event
+
+event = Event(
+    ts="2026-03-03T12:00:00+00:00",
+    domain="poe2",
+    payload={"text": "ボスを倒した", "kind": "note"},
+    tags=["boss", "victory"],
+)
+
+asdict(event)
+# {
+#   "ts": "2026-03-03T12:00:00+00:00",
+#   "domain": "poe2",
+#   "payload": {"text": "ボスを倒した", "kind": "note"},
+#   "tags": ["boss", "victory"]
+# }
+```
+
+`asdict(event)` の結果はそのまま `append_jsonl(path, asdict(event))` に渡せる。
