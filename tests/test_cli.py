@@ -57,7 +57,7 @@ def test_event_add_appends_incrementally(tmp_path: Path) -> None:
     lines = events_path.read_text(encoding="utf-8").splitlines()
     assert len(lines) == 1
     first_line = lines[0]
-    assert json.loads(first_line)["payload"]["text"] == "first event"
+    assert json.loads(first_line)["data"]["text"] == "first event"
 
     # 2回目
     _run("event-add", "second event", "--domain", "general", "--data-dir", str(data_dir))
@@ -65,7 +65,7 @@ def test_event_add_appends_incrementally(tmp_path: Path) -> None:
     assert len(lines) == 2
     # 既存行が書き換わっていないことを確認（追記のみ）
     assert lines[0] == first_line
-    assert json.loads(lines[1])["payload"]["text"] == "second event"
+    assert json.loads(lines[1])["data"]["text"] == "second event"
 
 
 def test_event_add_event_list_e2e(tmp_path: Path) -> None:
@@ -90,7 +90,7 @@ def test_event_add_accepts_eng_domain(tmp_path: Path) -> None:
 
     record = json.loads(events_path.read_text(encoding="utf-8").splitlines()[0])
     assert record["domain"] == "eng"
-    assert record["payload"]["text"] == "eng event"
+    assert record["data"]["text"] == "eng event"
 
 
 def test_event_add_accepts_worklog_domain(tmp_path: Path) -> None:
@@ -101,7 +101,7 @@ def test_event_add_accepts_worklog_domain(tmp_path: Path) -> None:
 
     record = json.loads(events_path.read_text(encoding="utf-8").splitlines()[0])
     assert record["domain"] == "worklog"
-    assert record["payload"]["text"] == "worklog event"
+    assert record["data"]["text"] == "worklog event"
 
 
 def test_event_add_rejects_disallowed_domain_without_creating_file(tmp_path: Path) -> None:
@@ -139,7 +139,7 @@ def test_env_var_data_dir_is_used(tmp_path: Path) -> None:
     lines = events_path.read_text(encoding="utf-8").splitlines()
     assert len(lines) == 1
     record = json.loads(lines[0])
-    assert record["payload"]["text"] == "env test"
+    assert record["data"]["text"] == "env test"
     assert record["domain"] == "general"
     assert _repo_data_jsonl_snapshot() == before
 
@@ -167,7 +167,7 @@ def test_explicit_data_dir_overrides_env_var(tmp_path: Path) -> None:
     lines = events_path.read_text(encoding="utf-8").splitlines()
     assert len(lines) == 1
     record = json.loads(lines[0])
-    assert record["payload"]["text"] == "explicit test"
+    assert record["data"]["text"] == "explicit test"
     assert not (env_dir / "events.jsonl").exists()
     assert _repo_data_jsonl_snapshot() == before
 
@@ -194,7 +194,7 @@ def test_writes_to_tmp_not_repo_data_dir(tmp_path: Path) -> None:
     lines = events_path.read_text(encoding="utf-8").splitlines()
     assert len(lines) == 1
     record = json.loads(lines[0])
-    assert record["payload"]["text"] == "repo isolation test"
+    assert record["data"]["text"] == "repo isolation test"
 
     # repo/data/ 側に新規 JSONL が作られていない
     assert _repo_data_jsonl_snapshot() == before
@@ -263,7 +263,7 @@ def test_poe2_log_add_appends_to_events_jsonl(tmp_path: Path) -> None:
     first_line = lines[0]
     record = json.loads(first_line)
     assert record["domain"] == "poe2"
-    assert record["payload"]["text"] == "farming T17 map"
+    assert record["data"]["text"] == "farming T17 map"
 
     # 2回目（追記のみ）
     _run("poe2-log-add", "boss defeated", "--data-dir", str(data_dir))
@@ -271,7 +271,7 @@ def test_poe2_log_add_appends_to_events_jsonl(tmp_path: Path) -> None:
     assert len(lines) == 2
     # 既存行が書き換わっていないことを確認
     assert lines[0] == first_line
-    assert json.loads(lines[1])["payload"]["text"] == "boss defeated"
+    assert json.loads(lines[1])["data"]["text"] == "boss defeated"
 
 
 def test_poe2_log_add_domain_is_poe2(tmp_path: Path) -> None:
@@ -283,4 +283,4 @@ def test_poe2_log_add_domain_is_poe2(tmp_path: Path) -> None:
 
     record = json.loads(events_path.read_text(encoding="utf-8").splitlines()[0])
     assert record["domain"] == "poe2"
-    assert record["payload"]["meta"]["kind"] == "note"
+    assert record["kind"] == "note"

@@ -1,12 +1,11 @@
 # src/personal_mcp/tools/event.py
 from __future__ import annotations
 
-from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from personal_mcp.core.event import ALLOWED_DOMAINS, Event
+from personal_mcp.core.event import ALLOWED_DOMAINS, build_v1_record
 from personal_mcp.storage.jsonl import append_jsonl, read_jsonl
 from personal_mcp.storage.path import resolve_data_dir
 
@@ -31,6 +30,7 @@ def _parse_since(since: Optional[str]) -> Optional[datetime]:
 def event_add(
     domain: str,
     text: str,
+    kind: Optional[str] = None,
     tags: Optional[List[str]] = None,
     meta: Optional[Dict[str, Any]] = None,
     data_dir: Optional[str] = None,
@@ -38,20 +38,23 @@ def event_add(
     if domain not in ALLOWED_DOMAINS:
         raise ValueError(f"unsupported domain: {domain}")
 
-    payload: Dict[str, Any] = {"text": text}
-    if meta:
-        payload["meta"] = meta
-
-    event = Event(
-        ts=_now_iso(),
-        domain=domain,
-        payload=payload,
-        tags=tags or [],
-    )
+    meta = meta or {}
+    source = meta.get("source")
+    ref = meta.get("ref")
+    extra_data = {k: v for k, v in meta.items() if k not in {"source", "ref"}}
 
     data_dir = resolve_data_dir(data_dir)
     path = Path(data_dir) / "events.jsonl"
-    record = asdict(event)
+    record = build_v1_record(
+        ts=_now_iso(),
+        domain=domain,
+        text=text,
+        tags=tags or [],
+        kind=kind,
+        source=source,
+        ref=ref,
+        extra_data=extra_data or None,
+    )
     append_jsonl(path, record)
     return record
 

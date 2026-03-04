@@ -54,9 +54,9 @@ def watch_client_log(
                     event_add(
                         domain="poe2",
                         text=area,
+                        kind="area_transition",
                         tags=["auto"],
                         meta={
-                            "kind": "area_transition",
                             "source": "client_txt",
                             "raw": line.rstrip("\n"),
                         },

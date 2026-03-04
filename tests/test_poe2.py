@@ -18,7 +18,7 @@ def test_poe2_log_add_writes_to_events_jsonl(data_dir: Path) -> None:
     assert len(lines) == 1
     record = json.loads(lines[0])
     assert record["domain"] == "poe2"
-    assert record["payload"]["text"] == "farming T17 map"
+    assert record["data"]["text"] == "farming T17 map"
 
 
 def test_poe2_log_add_appends_not_overwrites(data_dir: Path) -> None:
@@ -34,12 +34,12 @@ def test_poe2_log_add_appends_not_overwrites(data_dir: Path) -> None:
     assert record["domain"] == "poe2"
 
 
-def test_poe2_log_add_stores_kind_in_payload(data_dir: Path) -> None:
+def test_poe2_log_add_stores_kind_at_top_level(data_dir: Path) -> None:
     main(["poe2-log-add", "note text", "--kind", "note", "--data-dir", str(data_dir)])
 
     path = data_dir / "events.jsonl"
     record = json.loads(path.read_text(encoding="utf-8").splitlines()[0])
-    assert record["payload"]["meta"]["kind"] == "note"
+    assert record["kind"] == "note"
 
 
 def test_poe2_log_add_stores_tags(data_dir: Path) -> None:
