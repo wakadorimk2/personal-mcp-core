@@ -2,6 +2,8 @@
 
 `docs/CODEX_RUNBOOK.md` のレビュー開始前チェック部分を、Codex CLI 向けの固定テンプレとして切り出した skill。
 コマンド順序と出力見出しは runbook を正本とし、この文書ではレビュー前チェックの最小契約だけを定義する。
+人間向けの意図説明はこの文書に置き、Codex が実行するときの正は `.codex/skills/review-preflight/SKILL.md` とする。
+つまり `review-preflight` は docs だけで完結せず、Codex 実行版アダプタとセットで維持する。
 
 ## Purpose
 
