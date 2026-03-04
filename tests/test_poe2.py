@@ -70,7 +70,7 @@ def test_poe2_log_list_reads_from_events_jsonl(
     rows = json.loads(captured.out)
     assert len(rows) == 1
     assert rows[0]["domain"] == "poe2"
-    assert rows[0]["payload"]["text"] == "test entry"
+    assert rows[0]["data"]["text"] == "test entry"
 
 
 def test_poe2_log_list_filter_by_kind(data_dir: Path, capsys: pytest.CaptureFixture) -> None:
@@ -83,7 +83,7 @@ def test_poe2_log_list_filter_by_kind(data_dir: Path, capsys: pytest.CaptureFixt
     captured = capsys.readouterr()
     rows = json.loads(captured.out)
     assert len(rows) == 1
-    assert rows[0]["payload"]["text"] == "note entry"
+    assert rows[0]["data"]["text"] == "note entry"
 
 
 def test_poe2_log_list_filter_by_tag(data_dir: Path, capsys: pytest.CaptureFixture) -> None:
@@ -96,4 +96,4 @@ def test_poe2_log_list_filter_by_tag(data_dir: Path, capsys: pytest.CaptureFixtu
     captured = capsys.readouterr()
     rows = json.loads(captured.out)
     assert len(rows) == 1
-    assert rows[0]["payload"]["text"] == "tagged"
+    assert rows[0]["data"]["text"] == "tagged"

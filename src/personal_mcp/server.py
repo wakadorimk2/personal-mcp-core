@@ -26,7 +26,7 @@ def _print_event_lines(records: List[Dict[str, Any]]) -> None:
     for r in reversed(records):  # records are newest-first; display oldest-first
         t = _local_time(r)
         dom = r.get("domain", "?")
-        text = r.get("payload", {}).get("text", "")
+        text = r.get("data", {}).get("text", "")
         print(f"{t} [{dom}] {text}")
 
 
@@ -60,7 +60,7 @@ def _print_event_timeline(records: List[Dict[str, Any]]) -> None:
         for r in reversed(groups[d]):
             t = _local_time(r)
             dom = r.get("domain", "?")
-            text = r.get("payload", {}).get("text", "")
+            text = r.get("data", {}).get("text", "")
             print(f"{t} [{dom}] {text}")
 
 
@@ -211,18 +211,16 @@ def main(argv: Optional[List[str]] = None) -> int:
             data_dir=data_dir,
         )
         if args.kind:
-            rows = [
-                r for r in rows if r.get("payload", {}).get("meta", {}).get("kind") == args.kind
-            ]
+            rows = [r for r in rows if r.get("kind") == args.kind]
         if args.tag:
             rows = [r for r in rows if args.tag in (r.get("tags") or [])]
         if args.json:
             print(json.dumps(rows, ensure_ascii=False, indent=2))
         else:
             for r in rows:
-                kind = r.get("payload", {}).get("meta", {}).get("kind", "?")
+                kind = r.get("kind", "?")
                 tags_str = ",".join(r.get("tags") or [])
-                text = r.get("payload", {}).get("text", "")
+                text = r.get("data", {}).get("text", "")
                 print(f"{r.get('ts', '?')} [{kind}] ({tags_str}) {text}")
         return 0
 

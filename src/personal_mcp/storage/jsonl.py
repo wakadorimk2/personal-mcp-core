@@ -13,13 +13,25 @@ def append_jsonl(path: Path, record: Dict[str, Any]) -> None:
 
 
 def _normalize_event_record(record: Dict[str, Any]) -> Dict[str, Any]:
-    if (
-        "v" not in record
-        and "ts" in record
-        and "domain" in record
-        and ("payload" in record or "data" in record)
-    ):
-        return {**record, "v": 1}
+    if "payload" in record and "data" not in record:
+        payload = record.get("payload")
+        payload_dict = payload if isinstance(payload, dict) else {}
+        meta = payload_dict.get("meta")
+        meta_dict = meta if isinstance(meta, dict) else {}
+
+        normalized = {k: v for k, v in record.items() if k != "payload"}
+        data = {k: v for k, v in payload_dict.items() if k != "meta"}
+
+        for key in ("kind", "source", "ref"):
+            if key not in normalized and key in meta_dict:
+                normalized[key] = meta_dict[key]
+
+        for key, value in meta_dict.items():
+            if key not in {"kind", "source", "ref"} and key not in data:
+                data[key] = value
+
+        normalized["data"] = data
+        return normalized
     return record
 
 
