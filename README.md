@@ -91,6 +91,8 @@ python -m personal_mcp.server poe2-watch --client-log /path/to/Client.txt
 
 `payload.meta` ごと省略できる（`poe2-watch` による自動記録など）。新しいトップレベルフィールドは追加しない。
 
+Issue #79 では、目標契約として `v` / `kind` / `data` を持つ Event Contract v1 を別文書で定義している。現行保存形式はまだその契約に未準拠な legacy record なので、差分と対応方針は [docs/event-contract-v1.md](./docs/event-contract-v1.md) を参照。
+
 ### タイムスタンプ方針
 
 - 内部保存は UTC を原則とする（実装の `_now_iso()` は `datetime.now(timezone.utc).isoformat()` を使用）
