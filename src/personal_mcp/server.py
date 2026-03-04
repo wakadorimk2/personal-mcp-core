@@ -62,6 +62,8 @@ def _print_event_timeline(records: List[Dict[str, Any]]) -> None:
             dom = r.get("domain", "?")
             text = r.get("payload", {}).get("text", "")
             print(f"{t} [{dom}] {text}")
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(prog="personal-mcp")
     sub = parser.add_subparsers(dest="cmd", required=True)
