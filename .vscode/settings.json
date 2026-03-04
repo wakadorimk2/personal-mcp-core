@@ -1,4 +1,8 @@
 {
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true
+  },
   "terminal.integrated.profiles.linux": {
     "Claude": { "path": "bash", "env": { "TERM_ROLE": "CLAUDE" } },
     "Codex":  { "path": "bash", "env": { "TERM_ROLE": "CODEX" } }
