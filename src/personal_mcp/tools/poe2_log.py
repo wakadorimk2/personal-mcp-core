@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from personal_mcp.storage.jsonl import append_jsonl, read_jsonl
+from personal_mcp.storage.path import resolve_data_dir
 
 
 def _now_iso() -> str:
@@ -36,7 +37,7 @@ def log_add(
     kind: str = "note",
     tags: Optional[List[str]] = None,
     meta: Optional[Dict[str, Any]] = None,
-    data_dir: str = "data",
+    data_dir: Optional[str] = None,
 ) -> Poe2Log:
     record = Poe2Log(
         ts=_now_iso(),
@@ -46,6 +47,7 @@ def log_add(
         meta=meta or {},
     )
 
+    data_dir = resolve_data_dir(data_dir)
     path = Path(data_dir) / "poe2" / "logs.jsonl"
     append_jsonl(path, asdict(record))
     return record
@@ -56,8 +58,9 @@ def log_list(
     kind: Optional[str] = None,
     tag: Optional[str] = None,
     since: Optional[str] = None,
-    data_dir: str = "data",
+    data_dir: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
+    data_dir = resolve_data_dir(data_dir)
     path = Path(data_dir) / "poe2" / "logs.jsonl"
     rows = read_jsonl(path)
 

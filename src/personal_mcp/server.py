@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from personal_mcp.adapters.mcp_server import get_system_context
+from personal_mcp.storage.path import resolve_data_dir
 from personal_mcp.tools.event import event_add, event_list
 from personal_mcp.tools.poe2_client_watcher import watch_client_log
 
@@ -61,17 +62,6 @@ def _print_event_timeline(records: List[Dict[str, Any]]) -> None:
             dom = r.get("domain", "?")
             text = r.get("payload", {}).get("text", "")
             print(f"{t} [{dom}] {text}")
-
-
-def _resolve_data_dir(explicit: Optional[str]) -> str:
-    if explicit:
-        return explicit
-    env = os.environ.get("PERSONAL_MCP_DATA_DIR")
-    if env:
-        return env
-    xdg = os.environ.get("XDG_DATA_HOME")
-    base = Path(xdg) if xdg else Path.home() / ".local" / "share"
-    return str(base / "personal-mcp")
 
 
 def main(argv: Optional[List[str]] = None) -> int:
@@ -133,7 +123,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     p_list.add_argument("--json", action="store_true")
 
     args = parser.parse_args(argv)
-    data_dir = _resolve_data_dir(getattr(args, "data_dir", None))
+    data_dir = resolve_data_dir(getattr(args, "data_dir", None))
 
     if args.cmd == "event-today":
         today = datetime.now().astimezone().strftime("%Y-%m-%d")

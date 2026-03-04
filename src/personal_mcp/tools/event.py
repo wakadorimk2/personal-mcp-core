@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 
 from personal_mcp.core.event import ALLOWED_DOMAINS, Event
 from personal_mcp.storage.jsonl import append_jsonl, read_jsonl
+from personal_mcp.storage.path import resolve_data_dir
 
 
 def _now_iso() -> str:
@@ -32,7 +33,7 @@ def event_add(
     text: str,
     tags: Optional[List[str]] = None,
     meta: Optional[Dict[str, Any]] = None,
-    data_dir: str = "data",
+    data_dir: Optional[str] = None,
 ) -> Dict[str, Any]:
     if domain not in ALLOWED_DOMAINS:
         raise ValueError(f"unsupported domain: {domain}")
@@ -48,6 +49,7 @@ def event_add(
         tags=tags or [],
     )
 
+    data_dir = resolve_data_dir(data_dir)
     path = Path(data_dir) / "events.jsonl"
     record = asdict(event)
     append_jsonl(path, record)
@@ -59,7 +61,7 @@ def event_list(
     domain: Optional[str] = None,
     date: Optional[str] = None,
     since: Optional[str] = None,
-    data_dir: str = "data",
+    data_dir: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Return filtered events, newest first, limited to n records.
 
@@ -71,6 +73,7 @@ def event_list(
 
     events.jsonl が存在しない場合は空リストを返す（書き込みは一切しない）。
     """
+    data_dir = resolve_data_dir(data_dir)
     path = Path(data_dir) / "events.jsonl"
     rows = read_jsonl(path)
 

@@ -39,6 +39,19 @@ def test_event_add_creates_jsonl_with_one_line(data_dir: Path) -> None:
     assert record["payload"]["text"] == "test"
 
 
+def test_event_add_uses_env_data_dir_when_omitted(monkeypatch, tmp_path: Path) -> None:
+    data_dir = tmp_path / "env_data"
+    monkeypatch.setenv("PERSONAL_MCP_DATA_DIR", str(data_dir))
+
+    event_add(domain="poe2", text="test")
+
+    path = data_dir / "events.jsonl"
+    lines = path.read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 1
+    record = json.loads(lines[0])
+    assert record["payload"]["text"] == "test"
+
+
 def test_event_add_appends_without_overwriting(data_dir: Path) -> None:
     path = data_dir / "events.jsonl"
     path.write_text('{"dummy": true}\n', encoding="utf-8")

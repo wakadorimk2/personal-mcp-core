@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 from typing import Optional
 
+from personal_mcp.storage.path import resolve_data_dir
 from personal_mcp.tools.event import event_add
 
 _SCENE_RE = re.compile(r"\[SCENE\] Set Source \[([^\]]+)\]")
@@ -30,7 +31,7 @@ def parse_area_line(line: str) -> Optional[str]:
 
 def watch_client_log(
     path: Path,
-    data_dir: str = "data",
+    data_dir: Optional[str] = None,
     poll_interval: float = 0.2,
 ) -> None:
     """Tail Client.txt from the current end and emit poe2 events on area transitions.
@@ -38,6 +39,7 @@ def watch_client_log(
     Raises KeyboardInterrupt passthrough on Ctrl+C.
     Does NOT replay past lines — seeks to EOF before starting.
     """
+    data_dir = resolve_data_dir(data_dir)
     with open(path, encoding="utf-8", errors="replace") as f:
         print(f"poe2-watch: monitoring {path}")
         f.seek(0, os.SEEK_END)
