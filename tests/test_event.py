@@ -88,6 +88,11 @@ def test_event_add_rejects_disallowed_domain_without_writing(data_dir: Path) -> 
     assert not path.exists()
 
 
+def test_event_add_writes_v1_field(data_dir: Path) -> None:
+    record = event_add(domain="general", text="versioned", data_dir=str(data_dir))
+    assert record["v"] == 1
+
+
 def test_allowed_domains_keeps_existing_supported_domains() -> None:
     assert {"poe2", "mood", "general"}.issubset(ALLOWED_DOMAINS)
 
@@ -150,6 +155,22 @@ def test_event_list_filter_by_date_excludes_other_days(data_dir: Path) -> None:
     result = event_list(date=day1, data_dir=str(data_dir))
     assert len(result) == 1
     assert result[0]["payload"]["text"] == "day1 mood"
+
+
+def test_event_list_tolerates_legacy_records_missing_v(data_dir: Path) -> None:
+    legacy_event = {
+        "ts": _TS_DAY2_A,
+        "domain": "general",
+        "payload": {"text": "legacy"},
+        "tags": [],
+    }
+    _write_events(data_dir / "events.jsonl", [legacy_event])
+
+    result = event_list(data_dir=str(data_dir))
+
+    assert len(result) == 1
+    assert result[0]["payload"]["text"] == "legacy"
+    assert result[0]["v"] == 1
 
 
 def test_event_list_filter_by_since(data_dir: Path) -> None:
