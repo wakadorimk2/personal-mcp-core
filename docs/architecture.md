@@ -63,22 +63,33 @@ AI-specific adapters reference them from their own directories.
 
 ```
 docs/skills/                          ← Canonical skill definitions (AI-agnostic)
+├── codex-claude-bridge.md
+├── implement-only.md
 ├── minimal-safe-impl.md
-└── research-propose-structured.md
+├── research-propose-structured.md
+└── review-preflight.md
 
 .claude/skills/                       ← Claude Code adapters
 ├── minimal-safe-impl/SKILL.md
 └── research-propose-structured/SKILL.md
 
-# Future: .codex/skills/ for Codex adapters, etc.
+.codex/skills/                        ← Codex adapters
+├── codex-claude-bridge/SKILL.md
+├── minimal-safe-impl/SKILL.md
+├── research-propose-structured/SKILL.md
+└── review-preflight/SKILL.md
 ```
 
 | Kind | Canonical source | Adapter location |
 |---|---|---|
-| impl | `docs/skills/minimal-safe-impl.md` | `.claude/skills/minimal-safe-impl/` |
-| research | `docs/skills/research-propose-structured.md` | `.claude/skills/research-propose-structured/` |
+| bridge | `docs/skills/codex-claude-bridge.md` | `.codex/skills/codex-claude-bridge/` |
+| impl | `docs/skills/implement-only.md` | no Codex adapter; Claude-oriented canonical doc |
+| impl | `docs/skills/minimal-safe-impl.md` | `.claude/skills/minimal-safe-impl/`, `.codex/skills/minimal-safe-impl/` |
+| research | `docs/skills/research-propose-structured.md` | `.claude/skills/research-propose-structured/`, `.codex/skills/research-propose-structured/` |
+| preflight | `docs/skills/review-preflight.md` | `.codex/skills/review-preflight/` |
 
 **Rule**: canonical docs are AI-agnostic. Adapter files contain only tool-specific invocation syntax and constraints.
+`review-preflight` is the explicit Codex execution exception: the docs file explains intent, and `.codex/skills/review-preflight/SKILL.md` is the operational source that Codex should run.
 
 ---
 
