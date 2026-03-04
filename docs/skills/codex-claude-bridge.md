@@ -2,7 +2,7 @@
 
 **種類**: bridge
 **正本**: このファイル（`docs/skills/codex-claude-bridge.md`）
-**Codex用アダプタ**: なし（MVP段階。`.codex/skills/` への adapter 追加は v2 以降で検討）
+**Codex用アダプタ**: `.codex/skills/codex-claude-bridge/SKILL.md`
 **Claude用アダプタ**: なし（このSkillは Codex CLI が実行する）
 
 ---
