@@ -12,6 +12,17 @@ def append_jsonl(path: Path, record: Dict[str, Any]) -> None:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
+def _normalize_event_record(record: Dict[str, Any]) -> Dict[str, Any]:
+    if (
+        "v" not in record
+        and "ts" in record
+        and "domain" in record
+        and ("payload" in record or "data" in record)
+    ):
+        return {**record, "v": 1}
+    return record
+
+
 def read_jsonl(path: Path) -> List[Dict[str, Any]]:
     if not path.exists():
         return []
@@ -21,5 +32,5 @@ def read_jsonl(path: Path) -> List[Dict[str, Any]]:
             line = line.strip()
             if not line:
                 continue
-            out.append(json.loads(line))
+            out.append(_normalize_event_record(json.loads(line)))
     return out
