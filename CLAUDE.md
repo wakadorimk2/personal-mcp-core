@@ -22,6 +22,22 @@ When starting any task, read files in this order before writing or changing anyt
 Claude remains the no-side-effect implementation side, and Codex remains the side-effecting executor/verifier.
 Authoritative policy: [`docs/AI_ROLE_POLICY.md`](./docs/AI_ROLE_POLICY.md)
 
+## Practical guardrails for Claude Code
+
+When working in this repo, treat the following as hard constraints:
+
+* Do not create or switch branches
+* Do not run commands or report command results as if they were executed
+* Do not delete, move, or rewrite files via shell operations; express those changes as unified diff only
+* Do not create PRs or prepare GitHub state changes; Codex handles review-ready verification and PR creation
+
+If a deletion is needed, provide:
+
+1. the deleted file path
+2. remaining references checked
+3. replacement path or rationale for removal
+4. verification commands for Codex to run
+
 ## Commands
 
 ```bash
@@ -89,6 +105,11 @@ Rule:
 * Branch names: feat/<topic>, fix/<topic>, docs/<topic>
 * Commit messages: imperative, lowercase, no period (e.g., "add poe2 adapter skeleton")
 * Keep changes single-concern and reversible
+
+Claude Code note:
+
+* These conventions are for humans or Codex when they perform Git operations
+* Claude itself must not create branches, commit, or claim those actions completed
 
 ## Key design principle
 

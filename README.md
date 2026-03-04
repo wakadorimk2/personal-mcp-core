@@ -306,7 +306,6 @@ diff AI_GUIDE.md src/personal_mcp/AI_GUIDE.md
 src/personal_mcp/
 ├── server.py               # CLIエントリーポイント
 ├── tools/event.py          # 共通イベント記録・一覧
-├── tools/poe2_log.py       # 旧PoE2ログ互換レイヤ
 ├── tools/poe2_client_watcher.py  # PoE2 Client.txt 監視
 ├── storage/jsonl.py        # 追記型JSONLストレージ
 ├── adapters/mcp_server.py  # MCP system context adapter

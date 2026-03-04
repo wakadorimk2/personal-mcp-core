@@ -4,7 +4,6 @@ from pathlib import Path
 import pytest
 
 from personal_mcp.server import main
-from personal_mcp.tools.poe2_log import log_add, log_list
 
 
 def test_poe2_log_add_writes_to_events_jsonl(data_dir: Path) -> None:
@@ -16,18 +15,6 @@ def test_poe2_log_add_writes_to_events_jsonl(data_dir: Path) -> None:
     record = json.loads(lines[0])
     assert record["domain"] == "poe2"
     assert record["payload"]["text"] == "farming T17 map"
-
-
-def test_poe2_log_internal_functions_use_env_data_dir(monkeypatch, tmp_path: Path) -> None:
-    data_dir = tmp_path / "env_data"
-    monkeypatch.setenv("PERSONAL_MCP_DATA_DIR", str(data_dir))
-
-    log_add("farming T17 map", kind="session")
-    rows = log_list()
-
-    assert len(rows) == 1
-    assert rows[0]["kind"] == "session"
-    assert rows[0]["text"] == "farming T17 map"
 
 
 def test_poe2_log_add_appends_not_overwrites(data_dir: Path) -> None:
