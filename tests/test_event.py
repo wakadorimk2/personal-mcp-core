@@ -88,6 +88,11 @@ def test_event_add_rejects_disallowed_domain_without_writing(data_dir: Path) -> 
     assert not path.exists()
 
 
+def test_event_add_writes_v1_field(data_dir: Path) -> None:
+    record = event_add(domain="general", text="versioned", data_dir=str(data_dir))
+    assert record["v"] == 1
+
+
 def test_allowed_domains_keeps_existing_supported_domains() -> None:
     assert {"poe2", "mood", "general"}.issubset(ALLOWED_DOMAINS)
 
@@ -121,7 +126,7 @@ def test_event_list_returns_all_events(data_dir: Path) -> None:
 def test_event_list_newest_first(data_dir: Path) -> None:
     _write_events(data_dir / "events.jsonl", _EVENTS)
     result = event_list(data_dir=str(data_dir))
-    texts = [r["payload"]["text"] for r in result]
+    texts = [r["data"]["text"] for r in result]
     # newest event (day2 afternoon) should come first
     assert texts[0] == "day2 general"
     assert texts[-1] == "day1 mood"
@@ -132,7 +137,7 @@ def test_event_list_filter_by_domain(data_dir: Path) -> None:
     result = event_list(domain="poe2", data_dir=str(data_dir))
     assert len(result) == 1
     assert result[0]["domain"] == "poe2"
-    assert result[0]["payload"]["text"] == "day2 poe2"
+    assert result[0]["data"]["text"] == "day2 poe2"
 
 
 def test_event_list_filter_by_date(data_dir: Path) -> None:
@@ -140,7 +145,7 @@ def test_event_list_filter_by_date(data_dir: Path) -> None:
     day2 = _local_date(_TS_DAY2_A)
     result = event_list(date=day2, data_dir=str(data_dir))
     assert len(result) == 2
-    texts = {r["payload"]["text"] for r in result}
+    texts = {r["data"]["text"] for r in result}
     assert texts == {"day2 poe2", "day2 general"}
 
 
@@ -149,7 +154,39 @@ def test_event_list_filter_by_date_excludes_other_days(data_dir: Path) -> None:
     day1 = _local_date(_TS_DAY1_A)
     result = event_list(date=day1, data_dir=str(data_dir))
     assert len(result) == 1
-    assert result[0]["payload"]["text"] == "day1 mood"
+    assert result[0]["data"]["text"] == "day1 mood"
+
+
+def test_event_list_tolerates_legacy_records_missing_v(data_dir: Path) -> None:
+    legacy_event = {
+        "ts": _TS_DAY2_A,
+        "domain": "general",
+        "payload": {"text": "legacy"},
+        "tags": [],
+    }
+    _write_events(data_dir / "events.jsonl", [legacy_event])
+
+    result = event_list(data_dir=str(data_dir))
+
+    assert len(result) == 1
+    assert result[0]["data"]["text"] == "legacy"
+    assert "v" not in result[0]
+
+
+def test_event_list_includes_legacy_records_missing_kind(data_dir: Path) -> None:
+    legacy_event = {
+        "ts": _TS_DAY2_A,
+        "domain": "poe2",
+        "payload": {"text": "no-kind"},
+        "tags": [],
+    }
+    _write_events(data_dir / "events.jsonl", [legacy_event])
+
+    result = event_list(data_dir=str(data_dir))
+
+    assert len(result) == 1
+    assert result[0]["data"]["text"] == "no-kind"
+    assert "kind" not in result[0]
 
 
 def test_event_list_filter_by_since(data_dir: Path) -> None:
@@ -157,7 +194,7 @@ def test_event_list_filter_by_since(data_dir: Path) -> None:
     # since day2 UTC: should exclude day1 event
     result = event_list(since="2026-03-03", data_dir=str(data_dir))
     assert len(result) == 2
-    texts = {r["payload"]["text"] for r in result}
+    texts = {r["data"]["text"] for r in result}
     assert "day1 mood" not in texts
 
 
@@ -166,7 +203,7 @@ def test_event_list_limit_n(data_dir: Path) -> None:
     result = event_list(n=1, data_dir=str(data_dir))
     assert len(result) == 1
     # should be the newest
-    assert result[0]["payload"]["text"] == "day2 general"
+    assert result[0]["data"]["text"] == "day2 general"
 
 
 def test_event_list_empty_for_unmatched_domain(data_dir: Path) -> None:
@@ -341,7 +378,7 @@ def test_event_today_returns_only_today(data_dir: Path) -> None:
 
     result = _event_list(date=today, data_dir=str(data_dir))
     assert len(result) == 1
-    assert result[0]["payload"]["text"] == "today"
+    assert result[0]["data"]["text"] == "today"
 
 
 def test_event_today_excludes_yesterday(data_dir: Path) -> None:
@@ -371,6 +408,28 @@ def test_event_today_text_no_date_header(data_dir: Path, capsys: pytest.CaptureF
     captured = capsys.readouterr()
     assert "---" not in captured.out
     assert "[mood] hello" in captured.out
+
+
+def test_event_today_text_handles_legacy_record_missing_kind(
+    data_dir: Path, capsys: pytest.CaptureFixture
+) -> None:
+    events = [
+        {
+            "ts": _today_local_noon(),
+            "domain": "poe2",
+            "payload": {"text": "legacy today"},
+            "tags": [],
+        },
+    ]
+    _write_events(data_dir / "events.jsonl", events)
+
+    from personal_mcp.server import main
+
+    main(["event-today", "--data-dir", str(data_dir)])
+
+    captured = capsys.readouterr()
+    assert "[poe2] legacy today" in captured.out
+    assert "[?]" not in captured.out
 
 
 def test_event_today_text_line_format(data_dir: Path, capsys: pytest.CaptureFixture) -> None:

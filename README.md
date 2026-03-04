@@ -91,6 +91,8 @@ python -m personal_mcp.server poe2-watch --client-log /path/to/Client.txt
 
 `payload.meta` ごと省略できる（`poe2-watch` による自動記録など）。新しいトップレベルフィールドは追加しない。
 
+Issue #79 では、目標契約として `v` / `kind` / `data` を持つ Event Contract v1 を別文書で定義している。現行保存形式はまだその契約に未準拠な legacy record なので、差分と対応方針は [docs/event-contract-v1.md](./docs/event-contract-v1.md) を参照。
+
 ### タイムスタンプ方針
 
 - 内部保存は UTC を原則とする（実装の `_now_iso()` は `datetime.now(timezone.utc).isoformat()` を使用）
@@ -114,7 +116,7 @@ python -m personal_mcp.server poe2-watch --client-log /path/to/Client.txt
 - 区切りは必要時のみ `_`
 - `eng` は広いエンジニアリング活動（調査・設計・思考）、`worklog` は具体的な作業記録（セッション・進捗）として使い分ける
 
-`event-add` で受け付ける domain は上記 allowlist のみとする。追加 domain は別 issue で定義する。
+`event-add` で受け付ける domain は上記 allowlist のみとする。追加条件は [docs/domain-extension-policy.md](./docs/domain-extension-policy.md) を参照。
 
 ### eng / worklog の最小 kind セット
 

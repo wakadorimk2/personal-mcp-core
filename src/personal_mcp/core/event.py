@@ -28,3 +28,4 @@ class Event:
     domain: str
     payload: Dict[str, Any]
     tags: List[str]
+    v: int = 1

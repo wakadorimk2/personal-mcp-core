@@ -78,7 +78,7 @@ def test_event_add_event_list_e2e(tmp_path: Path) -> None:
     result = _run("event-list", "--json", "--data-dir", str(data_dir))
     records = json.loads(result.stdout)
     assert len(records) == 2
-    texts = {r["payload"]["text"] for r in records}
+    texts = {r["data"]["text"] for r in records}
     assert texts == {"alpha", "beta"}
 
 
@@ -228,7 +228,7 @@ def test_mood_add_domain_filter(tmp_path: Path) -> None:
     records = json.loads(result.stdout)
     assert len(records) == 1
     assert records[0]["domain"] == "mood"
-    assert records[0]["payload"]["text"] == "少し疲れた"
+    assert records[0]["data"]["text"] == "少し疲れた"
 
 
 def test_mood_add_append_only(tmp_path: Path) -> None:
