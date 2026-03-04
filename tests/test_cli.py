@@ -13,14 +13,36 @@ import sys
 from pathlib import Path
 
 
-def _run(*args: str, check: bool = True) -> subprocess.CompletedProcess:
+def _run(*args: str, check: bool = True, env: dict | None = None) -> subprocess.CompletedProcess:
     """personal-mcp CLI を同一インタープリタで実行する。"""
     return subprocess.run(
         [sys.executable, "-m", "personal_mcp.server", *args],
         capture_output=True,
         text=True,
         check=check,
+        env=env,
     )
+
+
+def _repo_root() -> Path:
+    """pyproject.toml の位置を起点に repo ルートを特定する。CWD 依存しない。"""
+    p = Path(__file__).resolve().parent
+    while p != p.parent:
+        if (p / "pyproject.toml").exists():
+            return p
+        p = p.parent
+    raise RuntimeError("pyproject.toml not found; repo root could not be determined")
+
+
+def _repo_data_jsonl_snapshot() -> dict[Path, str]:
+    """repo/data 配下の JSONL ファイル集合と内容を取得する。"""
+    repo_data_dir = _repo_root() / "data"
+    if not repo_data_dir.exists():
+        return {}
+    return {
+        path: path.read_text(encoding="utf-8")
+        for path in repo_data_dir.rglob("*.jsonl")
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -104,51 +126,73 @@ def test_event_add_rejects_disallowed_domain_without_creating_file(tmp_path: Pat
 
 
 def test_env_var_data_dir_is_used(tmp_path: Path) -> None:
+    """PERSONAL_MCP_DATA_DIR のみ指定した場合、その dir に書かれることを E2E で検証。"""
     env_dir = tmp_path / "env_data"
+    events_path = env_dir / "events.jsonl"
+    before = _repo_data_jsonl_snapshot()
 
-    subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "personal_mcp.server",
-            "event-add",
-            "env test",
-            "--domain",
-            "general",
-        ],
-        capture_output=True,
-        text=True,
-        check=True,
+    _run(
+        "event-add", "env test", "--domain", "general",
         env={**os.environ, "PERSONAL_MCP_DATA_DIR": str(env_dir)},
     )
 
-    assert (env_dir / "events.jsonl").exists()
+    lines = events_path.read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 1
+    record = json.loads(lines[0])
+    assert record["payload"]["text"] == "env test"
+    assert record["domain"] == "general"
+    assert _repo_data_jsonl_snapshot() == before
 
 
 def test_explicit_data_dir_overrides_env_var(tmp_path: Path) -> None:
+    """--data-dir が PERSONAL_MCP_DATA_DIR より優先されることを E2E で検証。
+    - explicit_dir に書かれる
+    - env_dir には書かれない
+    """
     env_dir = tmp_path / "env_data"
     explicit_dir = tmp_path / "explicit_data"
+    events_path = explicit_dir / "events.jsonl"
+    before = _repo_data_jsonl_snapshot()
 
-    subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "personal_mcp.server",
-            "event-add",
-            "explicit test",
-            "--domain",
-            "general",
-            "--data-dir",
-            str(explicit_dir),
-        ],
-        capture_output=True,
-        text=True,
-        check=True,
+    _run(
+        "event-add", "explicit test", "--domain", "general", "--data-dir", str(explicit_dir),
         env={**os.environ, "PERSONAL_MCP_DATA_DIR": str(env_dir)},
     )
 
-    assert (explicit_dir / "events.jsonl").exists()
+    lines = events_path.read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 1
+    record = json.loads(lines[0])
+    assert record["payload"]["text"] == "explicit test"
     assert not (env_dir / "events.jsonl").exists()
+    assert _repo_data_jsonl_snapshot() == before
+
+
+# ---------------------------------------------------------------------------
+# 4. repo内 data/ に書き込まないことの明示的検証
+# ---------------------------------------------------------------------------
+
+
+def test_writes_to_tmp_not_repo_data_dir(tmp_path: Path) -> None:
+    """CLI が tmp_path 側の events.jsonl に書き、repo内 data/ には書かないことを明示的に assert。
+
+    - CWD 依存にせず、pyproject.toml 起点で repo root を特定する。
+    - テスト前後で repo_root/data/*.jsonl のスナップショットを比較する。
+    """
+    data_dir = tmp_path / "data"
+    events_path = data_dir / "events.jsonl"
+
+    before = _repo_data_jsonl_snapshot()
+
+    _run("event-add", "repo isolation test", "--domain", "general", "--data-dir", str(data_dir))
+
+    # tmp_path 側に正しく書かれている
+    lines = events_path.read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 1
+    record = json.loads(lines[0])
+    assert record["payload"]["text"] == "repo isolation test"
+
+    # repo/data/ 側に新規 JSONL が作られていない
+    assert _repo_data_jsonl_snapshot() == before
 
 
 # ---------------------------------------------------------------------------
