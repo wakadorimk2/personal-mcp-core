@@ -71,9 +71,11 @@ python -m personal_mcp.server poe2-watch --client-log /path/to/Client.txt
 
 ### データ保存先
 
-- 優先順位は `--data-dir`、`PERSONAL_MCP_DATA_DIR`、XDG 既定の順
-- XDG 既定は `~/.local/share/personal-mcp/`
-- `repo/data/` は開発・テスト・例示用であり、実運用データの正本ではない
+- ユーザーデータ（個人ログの正本）は **repo 外の `data-dir`** に保存する
+- 保存先解決は `--data-dir` > `PERSONAL_MCP_DATA_DIR` > XDG 既定（`~/.local/share/personal-mcp/`）の順
+- `repo/data/` は **開発・テスト・サンプル用途のみ**
+- `repo/data/` に実ユーザーログ・バックアップ・復元成果物を置かない
+- 詳細な運用ルールは [`docs/data-directory.md`](./docs/data-directory.md) を参照
 
 ### 最小イベント契約
 

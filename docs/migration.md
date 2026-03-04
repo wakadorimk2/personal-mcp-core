@@ -29,4 +29,4 @@
 - 優先順位: `--data-dir` > `PERSONAL_MCP_DATA_DIR` > XDG 既定
 
 `repo/data/` は開発・テスト・例示用であり、実運用データの正本ではない。
-既存の `data/events.jsonl` を使い続ける場合は `--data-dir data` を明示指定する。
+既存の `data/events.jsonl` は移行元としてのみ扱い、実運用では repo 外の `data-dir` へ移す。
