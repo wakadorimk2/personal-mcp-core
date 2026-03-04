@@ -3,6 +3,7 @@
 **種類**: impl
 **正本**: このファイル（`docs/skills/implement-only.md`）
 **Claude用アダプタ**: なし（`docs/skills/` を正本とし、この Issue では adapter を追加しない）
+**Codex対象**: いいえ（Claude の実装提案専用 skill）
 
 ---
 
