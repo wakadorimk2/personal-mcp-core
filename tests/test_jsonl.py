@@ -86,3 +86,79 @@ def test_read_jsonl_preserves_payload_sibling_keys_during_normalization(data_dir
     assert records[0]["data"] == {"text": "legacy payload", "topic": "schema"}
     assert "payload" not in records[0]
     assert "v" not in records[0]
+
+
+def test_read_jsonl_passes_through_v1_data_record(data_dir: Path) -> None:
+    path = data_dir / "events.jsonl"
+    path.write_text(
+        json.dumps(
+            {
+                "ts": "2026-03-04T10:00:00Z",
+                "domain": "general",
+                "kind": "note",
+                "data": {"text": "v1 text"},
+                "tags": [],
+                "v": 1,
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    records = read_jsonl(path)
+
+    assert records == [
+        {
+            "ts": "2026-03-04T10:00:00Z",
+            "domain": "general",
+            "kind": "note",
+            "data": {"text": "v1 text"},
+            "tags": [],
+            "v": 1,
+        }
+    ]
+
+
+def test_read_jsonl_prefers_data_text_when_data_and_payload_coexist(data_dir: Path) -> None:
+    path = data_dir / "events.jsonl"
+    path.write_text(
+        json.dumps(
+            {
+                "ts": "2026-03-04T10:00:00Z",
+                "domain": "general",
+                "data": {"text": "data wins"},
+                "payload": {"text": "payload loses"},
+                "tags": [],
+                "v": 1,
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    records = read_jsonl(path)
+
+    assert records[0]["data"]["text"] == "data wins"
+    assert records[0]["payload"]["text"] == "payload loses"
+
+
+def test_read_jsonl_legacy_record_without_kind_keeps_kind_missing(data_dir: Path) -> None:
+    path = data_dir / "events.jsonl"
+    path.write_text(
+        json.dumps(
+            {
+                "ts": "2026-03-04T10:00:00Z",
+                "domain": "poe2",
+                "payload": {"text": "x", "meta": {"source": "client_txt"}},
+                "tags": [],
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    records = read_jsonl(path)
+
+    assert records[0]["data"]["text"] == "x"
+    assert records[0]["source"] == "client_txt"
+    assert "kind" not in records[0]

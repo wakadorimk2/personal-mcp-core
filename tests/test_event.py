@@ -173,6 +173,22 @@ def test_event_list_tolerates_legacy_records_missing_v(data_dir: Path) -> None:
     assert "v" not in result[0]
 
 
+def test_event_list_includes_legacy_records_missing_kind(data_dir: Path) -> None:
+    legacy_event = {
+        "ts": _TS_DAY2_A,
+        "domain": "poe2",
+        "payload": {"text": "no-kind"},
+        "tags": [],
+    }
+    _write_events(data_dir / "events.jsonl", [legacy_event])
+
+    result = event_list(data_dir=str(data_dir))
+
+    assert len(result) == 1
+    assert result[0]["data"]["text"] == "no-kind"
+    assert "kind" not in result[0]
+
+
 def test_event_list_filter_by_since(data_dir: Path) -> None:
     _write_events(data_dir / "events.jsonl", _EVENTS)
     # since day2 UTC: should exclude day1 event
@@ -392,6 +408,28 @@ def test_event_today_text_no_date_header(data_dir: Path, capsys: pytest.CaptureF
     captured = capsys.readouterr()
     assert "---" not in captured.out
     assert "[mood] hello" in captured.out
+
+
+def test_event_today_text_handles_legacy_record_missing_kind(
+    data_dir: Path, capsys: pytest.CaptureFixture
+) -> None:
+    events = [
+        {
+            "ts": _today_local_noon(),
+            "domain": "poe2",
+            "payload": {"text": "legacy today"},
+            "tags": [],
+        },
+    ]
+    _write_events(data_dir / "events.jsonl", events)
+
+    from personal_mcp.server import main
+
+    main(["event-today", "--data-dir", str(data_dir)])
+
+    captured = capsys.readouterr()
+    assert "[poe2] legacy today" in captured.out
+    assert "[?]" not in captured.out
 
 
 def test_event_today_text_line_format(data_dir: Path, capsys: pytest.CaptureFixture) -> None:
