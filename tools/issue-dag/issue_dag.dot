@@ -1,7 +1,7 @@
 digraph issue_dag {
-  graph [rankdir=LR, label="Issue dependency DAG", labelloc=t, fontsize=18];
-  node [shape=box, style="rounded", fontname="Helvetica"];
-  edge [fontname="Helvetica"];
+  graph [charset="UTF-8", rankdir=LR, label="Issue dependency DAG", labelloc=t, fontsize=18, fontname="Noto Sans CJK JP"];
+  node [shape=box, style="rounded", fontname="Noto Sans CJK JP"];
+  edge [fontname="Noto Sans CJK JP"];
 
   // A -> B means A blocks B.
   issue_70 [label="#70 docs: worklog domain の最小イベント契約を定義する"];

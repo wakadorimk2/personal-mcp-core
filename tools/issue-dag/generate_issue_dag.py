@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -18,6 +19,8 @@ DOT_PATH = OUTPUT_DIR / "issue_dag.dot"
 SVG_PATH = OUTPUT_DIR / "issue_dag.svg"
 PNG_PATH = OUTPUT_DIR / "issue_dag.png"
 MAX_LABEL_TITLE_LENGTH = 52
+FONT_ENV_VAR = "ISSUE_DAG_FONTNAME"
+DEFAULT_FONT_NAME = "Noto Sans CJK JP"
 
 
 def run_command(args: list[str]) -> str:
@@ -160,12 +163,47 @@ def escape_dot_label(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', '\\"')
 
 
+def resolve_font_name() -> str:
+    return os.environ.get(FONT_ENV_VAR, DEFAULT_FONT_NAME)
+
+
+def warn_if_font_missing() -> None:
+    font_name = resolve_font_name()
+    if shutil.which("fc-match") is None:
+        return
+
+    result = subprocess.run(
+        ["fc-match", font_name],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return
+
+    matched_font = result.stdout.strip()
+    if font_name not in matched_font:
+        print(
+            f"Warning: requested font '{font_name}' was not matched by fontconfig.",
+            file=sys.stderr,
+        )
+        print(
+            "Install a Japanese font such as 'fonts-noto-cjk' or override "
+            f"{FONT_ENV_VAR} to a font that is already installed.",
+            file=sys.stderr,
+        )
+
+
 def build_dot(issues: list[dict], edges: list[tuple[int, int]]) -> str:
+    font_name = escape_dot_label(resolve_font_name())
     lines = [
         "digraph issue_dag {",
-        '  graph [rankdir=LR, label="Issue dependency DAG", labelloc=t, fontsize=18];',
-        '  node [shape=box, style="rounded", fontname="Helvetica"];',
-        '  edge [fontname="Helvetica"];',
+        (
+            '  graph [charset="UTF-8", rankdir=LR, label="Issue dependency DAG", '
+            f'labelloc=t, fontsize=18, fontname="{font_name}"];'
+        ),
+        f'  node [shape=box, style="rounded", fontname="{font_name}"];',
+        f'  edge [fontname="{font_name}"];',
         "",
         "  // A -> B means A blocks B.",
     ]
@@ -196,6 +234,7 @@ def render_graph() -> bool:
 
 def main() -> int:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    warn_if_font_missing()
     payload = fetch_issue_data()
     issues = normalize_issues(payload)
     write_issues_json(issues)
@@ -219,6 +258,8 @@ def main() -> int:
         print(f"Generated {DOT_PATH}")
         print("Graphviz 'dot' is not installed; skipped SVG/PNG rendering.")
         print("Install on Ubuntu with: sudo apt-get update && sudo apt-get install -y graphviz")
+
+    print(f"Graph font: {resolve_font_name()} (override with {FONT_ENV_VAR})")
 
     return 0
 
