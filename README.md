@@ -87,7 +87,7 @@ python -m personal_mcp.server poe2-watch --client-log /path/to/Client.txt
 | `ts` | 必須 | タイムスタンプ（ISO 8601 タイムゾーン付き）。内部保存は UTC を原則とする |
 | `domain` | 必須 | ドメイン識別子（下記 MVP 許可リストを参照） |
 | `kind` | 必須 | イベント種別（`note` / `session` / `milestone` など）。[kind taxonomy](./docs/kind-taxonomy-v1.md) を参照 |
-| `data` | 必須 | ドメイン固有データ。`data.text` を本文フィールドとして使う |
+| `data` | 必須 | ドメイン固有データ。本文は原則 `data.text`（無い場合は best-effort で扱う） |
 | `tags` | 推奨 | タグリスト（省略可） |
 | `source` | 推奨 | データ取得元（`"manual"` など） |
 | `ref` | 推奨 | 参照先（Issue 番号など） |

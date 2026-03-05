@@ -120,7 +120,7 @@ All domains (poe2, mood, general, eng, worklog) converge to a single `Event` typ
 
 - Storage code (`append_jsonl`) needs no domain-specific branches.
 - History can be reconstructed from JSONL files alone, without domain knowledge.
-- Future adapters can filter or aggregate events using the common `domain` and `tags` fields.
+- Future adapters can filter or aggregate events using the common `domain` and optional `tags` fields.
 
 ### v1 record fields
 
