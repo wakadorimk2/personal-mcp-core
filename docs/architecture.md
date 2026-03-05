@@ -115,6 +115,7 @@ external requirements. The placeholder prints context length to verify the load 
 
 ## Event schema
 
+> Authoritative spec: **[docs/event-contract-v1.md](./event-contract-v1.md)**.
 > Builder: `src/personal_mcp/core/event.py` (`build_v1_record`).
 > Issue #100 で writer migration を実施し、v1 record への移行を進めた。
 
@@ -128,16 +129,20 @@ All domains (poe2, mood, general, eng, worklog) converge to a single `Event` typ
 
 ### v1 record fields
 
-| Field    | Type              | Description                                                                                      |
-|----------|-------------------|--------------------------------------------------------------------------------------------------|
-| `v`      | `int`             | Schema version. Always `1` for new records                                                       |
-| `ts`     | `str`             | ISO 8601 timestamp with timezone offset (UTC recommended)                                        |
-| `domain` | `str`             | Source domain — MVP: `"poe2"`, `"mood"`, `"general"`, `"eng"`, `"worklog"`                      |
-| `kind`   | `str`             | Event kind (`"note"`, `"session"`, `"milestone"`, etc.). Required by v1 contract |
-| `data`   | `Dict[str, Any]`  | Domain-specific data; `data.text` is the canonical text field                                    |
-| `tags`   | `List[str]`       | Optional labels for filtering                                                                    |
-| `source` | `str`             | Optional. Data origin (`"manual"`, `"watcher"`, etc.)                                            |
-| `ref`    | `str`             | Optional. Reference to issue number or external ID                                               |
+フィールドの正規定義は **[docs/event-contract-v1.md](./event-contract-v1.md)（正典）** を参照。実装上の型対応:
+
+| Field    | Python type       |
+|----------|-------------------|
+| `v`      | `int`             |
+| `ts`     | `str`             |
+| `domain` | `str`             |
+| `kind`   | `str`             |
+| `data`   | `Dict[str, Any]`  |
+| `tags`   | `List[str]`       |
+| `source` | `str`             |
+| `ref`    | `str`             |
+
+`tags` / `source` / `ref` は optional（省略可）。required keys は正典の「Required top-level keys」に従う。
 
 ### JSONL example
 

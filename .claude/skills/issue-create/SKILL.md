@@ -1,6 +1,6 @@
 ---
 name: issue-create
-description: issue-draft で確定した title/body・ラベル候補・owner/repo を受け取り、gh label list によるラベル確認・重複チェック・gh issue create コマンド生成・Projects/relationship メタデータ反映・作成結果記録の手順を標準化する。
+description: issue-draft で確定した title/body・ラベル候補・owner/repo を受け取り、gh label list によるラベル確認・重複チェック・gh issue create コマンド生成・作成結果記録の手順を標準化する。Projects/relationship メタデータ更新は issue-project-meta に委譲する。
 argument-hint: "[issue-draft-output-or-title body labels owner/repo]"
 disable-model-invocation: true
 ---

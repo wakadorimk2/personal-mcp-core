@@ -12,7 +12,6 @@
 `issue-draft` で確定した title/body・ラベル候補・repo情報を受け取り、
 `gh` コマンドで GitHub Issue を作成するための手順を標準化する。
 ラベル存在確認・重複チェックを必須とし、作成後の URL/番号記録を義務付ける。
-さらに Projects / relationship などのメタデータを可能な限り埋める。
 
 ---
 
@@ -43,7 +42,7 @@
 3. **作成後の URL/番号記録を必須とする** — `gh issue create` の出力から URL と番号を取得し、必ず記録・出力する
 4. **再実行可能なコマンド形式を維持する** — 同じ入力から同じコマンドが生成できる形式にする（body はファイル経由 `--body-file` を推奨）
 5. **実際のコマンド実行はしない** — コピペ可能なコマンド案を生成するのみ（実行は Codex 側）
-6. **メタデータは可能な限り反映する** — Projects / relationship（blocked-by / sub-issue など）の入力がある場合は、Issue 作成後に反映用コマンドを必ず出力する
+6. **Issue 作成後メタデータは別 skill に委譲する** — Projects / relationship（blocked-by / sub-issue など）の反映は `issue-project-meta` の責務とする
 
 ---
 
@@ -56,9 +55,6 @@
 | `labels` | 任意 | 適用候補ラベル名のリスト（例: `["bug", "enhancement"]`） |
 | `owner` | 必須 | GitHub リポジトリオーナー名（例: `wakadorimk2`） |
 | `repo` | 必須 | GitHub リポジトリ名（例: `personal-mcp-core`） |
-| `projects` | 任意 | 追加先 Project の識別子リスト（Project 番号や ID） |
-| `blocked_by` | 任意 | 依存元 Issue 番号のリスト（この Issue が block される側） |
-| `sub_issues` | 任意 | 子 Issue の番号リスト（親子関係を付ける場合） |
 
 ---
 
@@ -68,7 +64,7 @@
 2. **ラベル存在確認（必須）** — `gh label list` コマンドを生成し、候補ラベルの照合手順を示す
 3. **重複チェック（疑いがある場合）** — タイトル類似度が高い場合は `gh issue list --search` コマンドを生成し、結果確認を求める
 4. **`gh issue create` コマンドを生成する**（Output A）
-5. **メタデータ反映コマンドを生成する**（Output B）
+5. **issue-project-meta への引き渡し情報を示す**（Output B）
 6. **作成後の記録手順を示す**（Output C）
 
 ---
@@ -128,43 +124,22 @@ gh issue create \
 
 ---
 
-## Output B: メタデータ反映コマンド（任意だが推奨）
+## Output B: issue-project-meta への引き渡し（任意だが推奨）
 
-> Projects / relationship の入力がある場合は、以下をそのまま実行できる形式で提示する。
-> 対象入力がない項目は省略してよい。
+> Projects / relationship などのメタデータ更新は `issue-project-meta` に委譲する。
+> `issue-create` は引き渡しに必要な最小情報を出力する。
 
-### B-1: Project 追加
+```text
+## issue-project-meta への引き渡し
 
-```bash
-# 例: 作成済み Issue #<number> を Project に追加する
-gh issue edit <number> \
-  --repo <owner>/<repo> \
-  --add-project "<project>"
+- issue_url: https://github.com/<owner>/<repo>/issues/<number>
+- issue_number: <number>
+- owner: <owner>
+- repo: <repo>
+- project_number: <project-number>    # なければ「なし」
+- blocked_by: <issue-number-list>     # なければ「なし」
+- sub_issues: <issue-number-list>     # なければ「なし」
 ```
-
-### B-2: relationship 追加（blocked by）
-
-```bash
-# 例: Issue #<number> が Issue #<blocked_by_number> に block される関係を追加
-printf '{"issue_id":<blocked_by_issue_id>}' > /tmp/blocked-by.json
-gh api -X POST \
-  repos/<owner>/<repo>/issues/<number>/dependencies/blocked_by \
-  --input /tmp/blocked-by.json
-```
-
-### B-3: relationship 追加（sub-issue）
-
-```bash
-# 例: Issue #<sub_issue_number> を Issue #<number> の sub-issue として追加
-printf '{"sub_issue_id":<sub_issue_number>}' > /tmp/sub-issue.json
-gh api -X POST \
-  repos/<owner>/<repo>/issues/<number>/sub_issues \
-  --input /tmp/sub-issue.json
-```
-
-> 注意:
-> - relationship API の利用可否・payload は GitHub 側仕様/権限に依存する。実行前に利用可能性を確認すること。
-> - Issue 番号しかない場合、`<blocked_by_issue_id>` への解決手順（GraphQL / API 参照）は別途運用ルールに従う。
 
 ---
 
@@ -179,8 +154,6 @@ gh api -X POST \
 - **番号**: #<number>
 - **title**: <title>
 - **labels**: <適用されたラベル一覧（なければ「なし」）>
-- **projects**: <追加した Project 一覧（なければ「なし」）>
-- **relationship**: <追加した関係（blocked_by/sub_issue など。なければ「なし」）>
 - **作成日時**: <YYYY-MM-DD HH:MM>
 ```
 
@@ -212,15 +185,8 @@ gh issue create \
   --label "documentation" \
   --label "enhancement"
 
-# 4. メタデータ反映（例）
-gh issue edit <created-issue-number> \
-  --repo wakadorimk2/personal-mcp-core \
-  --add-project "Team Board"
-
-printf '{"sub_issue_id":103}' > /tmp/sub-issue.json
-gh api -X POST \
-  repos/wakadorimk2/personal-mcp-core/issues/<created-issue-number>/sub_issues \
-  --input /tmp/sub-issue.json
+# 4. issue-project-meta へ引き渡し
+# issue_url, issue_number, owner, repo, project_number を渡してメタ更新は issue-project-meta で実施
 ```
 
 ### 作成結果記録（例）
@@ -232,8 +198,6 @@ gh api -X POST \
 - **番号**: #105
 - **title**: add issue-create skill spec
 - **labels**: documentation, enhancement
-- **projects**: Team Board
-- **relationship**: sub_issue #103
 - **作成日時**: 2026-03-05 10:00
 ```
 
@@ -281,7 +245,7 @@ gh issue create --title "issue-create skill"
 gh issue create --title "..." --body-file body.md
 ```
 
-**修正**: 実行後に Output B のフォーマットで URL と番号を必ず記録・出力する。
+**修正**: 実行後に Output C のフォーマットで URL と番号を必ず記録・出力する。
 
 ### ダメ例 6: body をインラインで渡す
 
@@ -303,7 +267,6 @@ gh issue create --title "..." --body "## Goal\n..."
 | owner/repo が未指定 | 必須情報として owner と repo の入力を求める |
 | ラベル候補が存在しない | そのラベルを外したコマンドを生成し、ラベルなし作成を提案する |
 | 重複 Issue が見つかった | 重複候補の URL/番号を列挙し、人間に作成可否を確認する |
-| Projects / relationship の入力が不足 | Issue は作成し、記録フォーマットに `なし` を明記して追記TODOを残す |
 
 ---
 
@@ -315,4 +278,4 @@ gh issue create --title "..." --body "## Goal\n..."
 - 作成後の URL/番号記録を省略する
 - `gh issue create` を Claude 自身が実行する
 - body を `--body` フラグに直接インライン記述する
-- Projects / relationship の入力があるのに反映コマンドを省略する
+- issue-create の出力に Project / relationship 更新コマンドを混在させる

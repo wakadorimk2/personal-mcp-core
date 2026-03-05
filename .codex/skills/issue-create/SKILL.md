@@ -1,6 +1,6 @@
 ---
 name: issue-create
-description: Create a GitHub Issue from issue-draft output, following the canonical spec in docs/skills/issue-create.md. Use when Codex should execute gh label list, duplicate check, gh issue create, fill Projects/relationship metadata, and record the resulting URL/number.
+description: Create a GitHub Issue from issue-draft output, following the canonical spec in docs/skills/issue-create.md. Use when Codex should execute gh label list, duplicate check, gh issue create, and record the resulting URL/number. Projects/relationship metadata is handled by issue-project-meta.
 ---
 
 # issue-create

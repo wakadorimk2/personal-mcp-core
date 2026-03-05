@@ -79,20 +79,12 @@ python -m personal_mcp.server poe2-watch --client-log /path/to/Client.txt
 
 ### v1 record フィールド契約
 
-イベントの保存契約は [Event Contract v1](./docs/event-contract-v1.md) に従う。
+イベントの保存契約は **[Event Contract v1](./docs/event-contract-v1.md)（正典）** に従う。
 
-| フィールド | 必須/推奨 | 説明 |
-| --- | --- | --- |
-| `v` | 必須 | schema バージョン（`1` 固定） |
-| `ts` | 必須 | タイムスタンプ（ISO 8601 タイムゾーン付き）。内部保存は UTC を原則とする |
-| `domain` | 必須 | ドメイン識別子（下記 MVP 許可リストを参照） |
-| `kind` | 必須 | イベント種別（`note` / `session` / `milestone` など）。[kind taxonomy](./docs/kind-taxonomy-v1.md) を参照 |
-| `data` | 必須 | ドメイン固有データ。本文は原則 `data.text`（無い場合は best-effort で扱う） |
-| `tags` | 推奨 | タグリスト（省略可） |
-| `source` | 推奨 | データ取得元（`"manual"` など） |
-| `ref` | 推奨 | 参照先（Issue 番号など） |
+**必須フィールド**: `v`（`1` 固定）、`ts`（ISO 8601 タイムゾーン付き）、`domain`（下記 MVP 許可リスト参照）、`kind`（[kind taxonomy](./docs/kind-taxonomy-v1.md) 参照）、`data`。
+**推奨フィールド**: `tags`、`source`、`ref`（いずれも省略可）。
 
-> **注記**: 既存 JSONL に残る legacy record（`payload` 形式）との対応方針は [docs/event-contract-v1.md](./docs/event-contract-v1.md) の mapping / tolerance を参照。
+フィールド定義の詳細・legacy record（`payload` 形式）との対応方針・reader tolerance は正典を参照。
 
 ### タイムスタンプ方針
 
@@ -131,6 +123,8 @@ python -m personal_mcp.server poe2-watch --client-log /path/to/Client.txt
 
 ### イベント例
 
+代表例（詳細・追加例は [Event Contract v1](./docs/event-contract-v1.md) を参照）:
+
 #### eng / note
 
 ```json
@@ -143,53 +137,6 @@ python -m personal_mcp.server poe2-watch --client-log /path/to/Client.txt
     "text": "MCP adapterの調査メモ"
   },
   "tags": ["research"],
-  "source": "manual"
-}
-```
-
-#### worklog / session
-
-```json
-{
-  "v": 1,
-  "ts": "2026-03-04T19:00:00+09:00",
-  "domain": "worklog",
-  "kind": "session",
-  "data": {
-    "text": "Issue #23の切り分け"
-  },
-  "tags": ["debug"],
-  "ref": "#23"
-}
-```
-
-#### eng / milestone
-
-```json
-{
-  "v": 1,
-  "ts": "2026-03-04T20:00:00+09:00",
-  "domain": "eng",
-  "kind": "milestone",
-  "data": {
-    "text": "JSONL append-only方針を確認"
-  },
-  "tags": ["schema"]
-}
-```
-
-#### worklog / note
-
-```json
-{
-  "v": 1,
-  "ts": "2026-03-04T21:00:00+09:00",
-  "domain": "worklog",
-  "kind": "note",
-  "data": {
-    "text": "レビュー前に再現手順を整理"
-  },
-  "tags": ["review"],
   "source": "manual"
 }
 ```

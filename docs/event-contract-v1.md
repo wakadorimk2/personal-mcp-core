@@ -1,6 +1,9 @@
 # Event Contract v1
 
 > **Note**
+> **この文書は Event Contract v1 の authoritative spec（正典）である。**
+> README.md・docs/architecture.md はこの正典への参照を保持し、契約本文を独立複製しない。
+>
 > この文書は Event Contract v1 を定義する（Issue #94 cleanup により仕様変更はない）。
 > Issue #100 の writer migration により、新規書き込みはすべて v1 形式で保存される。
 > 既存 JSONL に残る legacy record（`payload` 形式）は reader が正規化する（Section D 参照）。
