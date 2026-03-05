@@ -339,8 +339,19 @@ python scripts/issue_dag.py issues.json
 # PNG も同時に生成（graphviz 必須）
 python scripts/issue_dag.py issues.json --png
 
+# 依存エッジ一覧を CLI に出力（コピー向け）
+python scripts/issue_dag.py issues.json --list
+
+# Makefile ターゲットで実行
+# 既定: REPO=wakadorimk2/personal-mcp-core, LIMIT=200, ISSUES_JSON=/tmp/issues.json, OUT=/tmp/issue-dag
+make issue-dag-list
+make issue-dag-list WITH_TITLE=1
+
 # 出力先を指定する場合
 python scripts/issue_dag.py issues.json --out /tmp/dag
+make issue-dag-list OUT=/tmp/dag LIMIT=100
+make issue-dag-list ISSUES_JSON=/tmp/my-issues.json
+python scripts/issue_dag.py issues.json --list-with-title
 ```
 
 出力: `dag.dot`（Graphviz）、`dag.mmd`（Mermaid）、`dag.png`（`--png` 時のみ）。
