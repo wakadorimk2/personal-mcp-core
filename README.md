@@ -339,6 +339,9 @@ python scripts/issue_dag.py issues.json
 # PNG も同時に生成（graphviz 必須）
 python scripts/issue_dag.py issues.json --png
 
+# 依存エッジ一覧を CLI に出力（コピー向け）
+python scripts/issue_dag.py issues.json --list
+
 # 出力先を指定する場合
 python scripts/issue_dag.py issues.json --out /tmp/dag
 ```

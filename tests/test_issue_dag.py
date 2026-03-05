@@ -11,6 +11,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 from issue_dag import (  # noqa: E402
     _escape_label,
+    build_edge_list,
     build_dot,
     build_mmd,
     extract_edges,
@@ -86,6 +87,12 @@ def test_build_mmd_structure() -> None:
     mmd = build_mmd(issues, extract_edges(issues))
     assert "flowchart LR" in mmd
     assert "i2 --> i1" in mmd
+
+
+def test_build_edge_list_structure() -> None:
+    edges = {(3, 1), (3, 2), (4, 3)}
+    result = build_edge_list(edges)
+    assert result.splitlines() == ["#3 -> #1", "#3 -> #2", "#4 -> #3"]
 
 
 def test_escape_label_double_quote() -> None:

@@ -67,6 +67,11 @@ def build_mmd(issues: list[dict], edges: set[tuple[int, int]]) -> str:
     return "\n".join(lines)
 
 
+def build_edge_list(edges: set[tuple[int, int]]) -> str:
+    """Build copy-friendly edge list for CLI output."""
+    return "\n".join(f"#{src} -> #{dst}" for src, dst in sorted(edges))
+
+
 def render_png(dot_path: Path, png_path: Path) -> None:
     """Render dot_path to png_path via graphviz dot.
 
@@ -109,6 +114,11 @@ def main() -> None:
         action="store_true",
         help="Also render dag.png via graphviz dot (requires graphviz installed)",
     )
+    parser.add_argument(
+        "--list",
+        action="store_true",
+        help="Print copy-friendly edge list to stdout (#src -> #dst)",
+    )
     args = parser.parse_args()
 
     if args.input:
@@ -129,6 +139,9 @@ def main() -> None:
     mmd_path = out / "dag.mmd"
     mmd_path.write_text(build_mmd(issues, edges))
     print(f"Written: {mmd_path}")
+
+    if args.list:
+        print(build_edge_list(edges))
 
     if args.png:
         render_png(dot_path, out / "dag.png")
