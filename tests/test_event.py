@@ -136,14 +136,37 @@ def test_allowed_domains_keeps_existing_supported_domains() -> None:
 # event_list tests
 # ---------------------------------------------------------------------------
 
+# writer output/event-list tests should use v1 fixtures.
+# legacy shape fixtures are allowed only in explicit compatibility tests.
 _TS_DAY1_A = "2026-03-02T12:00:00+00:00"  # day1
 _TS_DAY2_A = "2026-03-03T12:00:00+00:00"  # day2 morning
 _TS_DAY2_B = "2026-03-03T14:00:00+00:00"  # day2 afternoon
 
 _EVENTS = [
-    {"ts": _TS_DAY1_A, "domain": "mood", "payload": {"text": "day1 mood"}, "tags": []},
-    {"ts": _TS_DAY2_A, "domain": "poe2", "payload": {"text": "day2 poe2"}, "tags": ["farming"]},
-    {"ts": _TS_DAY2_B, "domain": "general", "payload": {"text": "day2 general"}, "tags": []},
+    {
+        "ts": _TS_DAY1_A,
+        "domain": "mood",
+        "kind": "note",
+        "data": {"text": "day1 mood"},
+        "tags": [],
+        "v": 1,
+    },
+    {
+        "ts": _TS_DAY2_A,
+        "domain": "poe2",
+        "kind": "session",
+        "data": {"text": "day2 poe2"},
+        "tags": ["farming"],
+        "v": 1,
+    },
+    {
+        "ts": _TS_DAY2_B,
+        "domain": "general",
+        "kind": "note",
+        "data": {"text": "day2 general"},
+        "tags": [],
+        "v": 1,
+    },
 ]
 
 
@@ -193,6 +216,7 @@ def test_event_list_filter_by_date_excludes_other_days(data_dir: Path) -> None:
 
 
 def test_event_list_tolerates_legacy_records_missing_v(data_dir: Path) -> None:
+    # Explicit legacy compatibility coverage.
     legacy_event = {
         "ts": _TS_DAY2_A,
         "domain": "general",
@@ -209,6 +233,7 @@ def test_event_list_tolerates_legacy_records_missing_v(data_dir: Path) -> None:
 
 
 def test_event_list_includes_legacy_records_missing_kind(data_dir: Path) -> None:
+    # Explicit legacy compatibility coverage.
     legacy_event = {
         "ts": _TS_DAY2_A,
         "domain": "poe2",
@@ -401,10 +426,19 @@ def test_event_today_returns_only_today(data_dir: Path) -> None:
         {
             "ts": _yesterday_local_noon(),
             "domain": "mood",
-            "payload": {"text": "yesterday"},
+            "kind": "note",
+            "data": {"text": "yesterday"},
             "tags": [],
+            "v": 1,
         },
-        {"ts": _today_local_noon(), "domain": "poe2", "payload": {"text": "today"}, "tags": []},
+        {
+            "ts": _today_local_noon(),
+            "domain": "poe2",
+            "kind": "session",
+            "data": {"text": "today"},
+            "tags": [],
+            "v": 1,
+        },
     ]
     _write_events(data_dir / "events.jsonl", events)
 
@@ -418,7 +452,14 @@ def test_event_today_returns_only_today(data_dir: Path) -> None:
 
 def test_event_today_excludes_yesterday(data_dir: Path) -> None:
     events = [
-        {"ts": _yesterday_local_noon(), "domain": "mood", "payload": {"text": "old"}, "tags": []},
+        {
+            "ts": _yesterday_local_noon(),
+            "domain": "mood",
+            "kind": "note",
+            "data": {"text": "old"},
+            "tags": [],
+            "v": 1,
+        },
     ]
     _write_events(data_dir / "events.jsonl", events)
 
@@ -432,7 +473,14 @@ def test_event_today_excludes_yesterday(data_dir: Path) -> None:
 def test_event_today_text_no_date_header(data_dir: Path, capsys: pytest.CaptureFixture) -> None:
     """event-today must not print '--- YYYY-MM-DD ---' headers."""
     events = [
-        {"ts": _today_local_noon(), "domain": "mood", "payload": {"text": "hello"}, "tags": []},
+        {
+            "ts": _today_local_noon(),
+            "domain": "mood",
+            "kind": "note",
+            "data": {"text": "hello"},
+            "tags": [],
+            "v": 1,
+        },
     ]
     _write_events(data_dir / "events.jsonl", events)
 
@@ -448,6 +496,7 @@ def test_event_today_text_no_date_header(data_dir: Path, capsys: pytest.CaptureF
 def test_event_today_text_handles_legacy_record_missing_kind(
     data_dir: Path, capsys: pytest.CaptureFixture
 ) -> None:
+    # Explicit legacy compatibility coverage.
     events = [
         {
             "ts": _today_local_noon(),
@@ -473,8 +522,10 @@ def test_event_today_text_line_format(data_dir: Path, capsys: pytest.CaptureFixt
         {
             "ts": _today_local_noon(),
             "domain": "general",
-            "payload": {"text": "line check"},
+            "kind": "note",
+            "data": {"text": "line check"},
             "tags": [],
+            "v": 1,
         },
     ]
     _write_events(data_dir / "events.jsonl", events)
@@ -506,14 +557,18 @@ def test_event_today_domain_filter(data_dir: Path, capsys: pytest.CaptureFixture
         {
             "ts": _today_local_noon(),
             "domain": "mood",
-            "payload": {"text": "mood event"},
+            "kind": "note",
+            "data": {"text": "mood event"},
             "tags": [],
+            "v": 1,
         },
         {
             "ts": _today_local_noon(),
             "domain": "poe2",
-            "payload": {"text": "poe2 event"},
+            "kind": "session",
+            "data": {"text": "poe2 event"},
             "tags": [],
+            "v": 1,
         },
     ]
     _write_events(data_dir / "events.jsonl", events)
@@ -532,8 +587,10 @@ def test_event_today_json_flag(data_dir: Path, capsys: pytest.CaptureFixture) ->
         {
             "ts": _today_local_noon(),
             "domain": "mood",
-            "payload": {"text": "json check"},
+            "kind": "note",
+            "data": {"text": "json check"},
             "tags": [],
+            "v": 1,
         },
     ]
     _write_events(data_dir / "events.jsonl", events)
