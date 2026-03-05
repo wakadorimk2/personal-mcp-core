@@ -1,0 +1,38 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		}
+	],
+	"settings": {
+		"terminal.integrated.enablePersistentSessions": true,
+		"terminal.integrated.profiles.linux": {
+			"Claude": {
+				"path": "bash",
+				"icon": "claude",
+				"color": "terminal.ansiYellow",
+				"overrideName": true,
+				"env": {
+					"TERM_ROLE": "CLAUDE"
+				},
+				"args": [
+					"-lc",
+					"cd ~/personal-mcp-core && source .venv/bin/activate && claude"
+				]
+			},
+			"Codex": {
+				"path": "bash",
+				"icon": "openai",
+				"color": "terminal.ansiWhite",
+				"overrideName": true,
+				"env": {
+					"TERM_ROLE": "CODEX"
+				},
+				"args": [
+					"-lc",
+					"cd ~/personal-mcp-core && source .venv/bin/activate && codex"
+				]
+			}
+		}
+	}
+}

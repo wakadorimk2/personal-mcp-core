@@ -3,8 +3,34 @@
     "editor.defaultFormatter": "charliermarsh.ruff",
     "editor.formatOnSave": true
   },
+  "python.terminal.activateEnvironment": false,
+  "terminal.integrated.enablePersistentSessions": true,
   "terminal.integrated.profiles.linux": {
-    "Claude": { "path": "bash", "env": { "TERM_ROLE": "CLAUDE" } },
-    "Codex":  { "path": "bash", "env": { "TERM_ROLE": "CODEX" } }
+    "Claude": {
+      "path": "bash",
+      "icon": "claude",
+      "color": "terminal.ansiYellow",
+      "overrideName": true,
+      "env": {
+        "TERM_ROLE": "CLAUDE"
+      },
+      "args": [
+        "-lc",
+        "cd ~/personal-mcp-core && source .venv/bin/activate && claude"
+      ]
+    },
+    "Codex": {
+      "path": "bash",
+      "icon": "openai",
+      "color": "terminal.ansiWhite",
+      "overrideName": true,
+      "env": {
+        "TERM_ROLE": "CODEX"
+      },
+      "args": [
+        "-lc",
+        "cd ~/personal-mcp-core && source .venv/bin/activate && codex"
+      ]
+    }
   }
 }
