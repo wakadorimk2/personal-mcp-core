@@ -322,6 +322,30 @@ src/personal_mcp/
 
 機能追加は事前にIssueで議論してください。
 
+### Issue 依存 DAG の生成
+
+Issue 間の依存関係を抽出して DOT / Mermaid 形式で可視化するスクリプトです。
+
+**依存**: Python 3.10+（標準ライブラリのみ）。PNG 出力には graphviz (`dot` コマンド) が必要です。
+
+```bash
+# stdin から実行（gh CLI 必須）
+gh issue list --json number,title,body | python scripts/issue_dag.py
+
+# JSON ファイルから実行
+gh issue list --json number,title,body > issues.json
+python scripts/issue_dag.py issues.json
+
+# PNG も同時に生成（graphviz 必須）
+python scripts/issue_dag.py issues.json --png
+
+# 出力先を指定する場合
+python scripts/issue_dag.py issues.json --out /tmp/dag
+```
+
+出力: `dag.dot`（Graphviz）、`dag.mmd`（Mermaid）、`dag.png`（`--png` 時のみ）。
+Mermaid はそのまま GitHub Markdown の Mermaid コードブロックに貼れます。
+
 ---
 
 ## ライセンス
