@@ -36,28 +36,34 @@
 ### 1.3 最小イベント例
 
 - 実際の利用を想定した JSONL 例を最低 1 件示すこと
-- 最低限 `ts` / `domain` / `payload.text` / `tags` を含むこと
+- 最低限 `v` / `ts` / `domain` / `kind` / `data` を含むこと（Event Contract v1 必須キー）
+- `tags` / `source` / `ref` は任意付与でよい
 - 新しいトップレベルフィールドを追加しないこと
 
 例:
 
 ```json
 {
+  "v": 1,
   "ts": "2026-03-04T18:00:00+09:00",
   "domain": "general",
-  "payload": {
+  "kind": "note",
+  "data": {
     "text": "新 domain 追加ポリシーを確認"
-  },
-  "tags": ["schema"]
+  }
 }
 ```
 
 ### 1.4 互換性
 
-- 共通イベント形式は `ts` / `domain` / `payload` / `tags` に閉じること
+- 新規に追加する domain のイベントは Event Contract v1 形式（`v` / `ts` / `domain` / `kind` / `data`）で記述すること
+- domain 固有情報は `data` 配下に閉じること
 - 既存レコードの解釈を壊す前提を持ち込まないこと
-- domain 固有情報は `payload` 配下に閉じること
 - 詳細な互換性方針は [`README.md`](../README.md) の「互換性ポリシー（MVP期間中）」を参照すること
+- writer/reader の tolerance 方針は [`docs/event-contract-v1.md`](./event-contract-v1.md) Section D を参照すること
+
+> **注記（legacy）**: Issue #100 以前に保存された record は `payload` キーを持つ legacy 形式である。
+> 新規 domain 契約は legacy 形式を前提としない。既存 JSONL の migration は別途検討（`event-contract-v1.md` Section E 参照）。
 
 ### 1.5 秘匿リスク
 
@@ -78,8 +84,8 @@
 - [ ] その domain の責務と境界
 - [ ] 既存 domain と重複しない理由
 - [ ] 代表イベント例
-- [ ] 必須/任意フィールドの扱い
-- [ ] 既存 schema との整合
+- [ ] 必須/任意フィールドの扱い（v1 required keys: `v` / `ts` / `domain` / `kind` / `data`）
+- [ ] Event Contract v1 との整合（[`docs/event-contract-v1.md`](./event-contract-v1.md)）
 - [ ] privacy / secret / sensitive 情報の扱い
 - [ ] allowlist 追加前提の検証項目
 - [ ] 必要なテスト観点
