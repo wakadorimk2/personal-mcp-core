@@ -36,7 +36,7 @@ def test_event_add_creates_jsonl_with_one_line(data_dir: Path) -> None:
     assert len(lines) == 1
     record = json.loads(lines[0])
     assert record["domain"] == "poe2"
-    assert record["payload"]["text"] == "test"
+    assert record["data"]["text"] == "test"
 
 
 def test_event_add_uses_env_data_dir_when_omitted(monkeypatch, tmp_path: Path) -> None:
@@ -49,7 +49,7 @@ def test_event_add_uses_env_data_dir_when_omitted(monkeypatch, tmp_path: Path) -
     lines = path.read_text(encoding="utf-8").splitlines()
     assert len(lines) == 1
     record = json.loads(lines[0])
-    assert record["payload"]["text"] == "test"
+    assert record["data"]["text"] == "test"
 
 
 def test_event_add_appends_without_overwriting(data_dir: Path) -> None:
@@ -63,7 +63,7 @@ def test_event_add_appends_without_overwriting(data_dir: Path) -> None:
     assert json.loads(lines[0]) == {"dummy": True}
     record = json.loads(lines[1])
     assert record["domain"] == "mood"
-    assert record["payload"]["text"] == "second"
+    assert record["data"]["text"] == "second"
 
 
 @pytest.mark.parametrize("domain", ["eng", "worklog"])
@@ -76,7 +76,7 @@ def test_event_add_accepts_new_allowed_domains(data_dir: Path, domain: str) -> N
     assert len(lines) == 1
     record = json.loads(lines[0])
     assert record["domain"] == domain
-    assert record["payload"]["text"] == f"{domain} entry"
+    assert record["data"]["text"] == f"{domain} entry"
 
 
 def test_event_add_rejects_disallowed_domain_without_writing(data_dir: Path) -> None:
@@ -91,6 +91,41 @@ def test_event_add_rejects_disallowed_domain_without_writing(data_dir: Path) -> 
 def test_event_add_writes_v1_field(data_dir: Path) -> None:
     record = event_add(domain="general", text="versioned", data_dir=str(data_dir))
     assert record["v"] == 1
+
+
+def test_event_add_writes_v1_shape_without_payload(data_dir: Path) -> None:
+    record = event_add(domain="general", text="shape", data_dir=str(data_dir))
+    assert "payload" not in record
+    assert record["data"]["text"] == "shape"
+
+
+def test_event_add_promotes_source_ref_and_keeps_other_meta_in_data(data_dir: Path) -> None:
+    record = event_add(
+        domain="poe2",
+        text="entered hideout",
+        kind="area_transition",
+        meta={
+            "source": "client_txt",
+            "ref": "line:1",
+            "raw": "[SCENE] Set Source [Hideout]",
+        },
+        data_dir=str(data_dir),
+    )
+    assert record["kind"] == "area_transition"
+    assert record["source"] == "client_txt"
+    assert record["ref"] == "line:1"
+    assert record["data"]["raw"] == "[SCENE] Set Source [Hideout]"
+
+
+def test_event_add_does_not_promote_meta_kind_without_kind_arg(data_dir: Path) -> None:
+    record = event_add(
+        domain="poe2",
+        text="meta kind",
+        meta={"kind": "from-meta"},
+        data_dir=str(data_dir),
+    )
+    assert "kind" not in record
+    assert record["data"]["kind"] == "from-meta"
 
 
 def test_allowed_domains_keeps_existing_supported_domains() -> None:
@@ -227,19 +262,19 @@ def test_mood_add_writes_mood_domain(data_dir: Path) -> None:
     assert len(lines) == 1
     record = json.loads(lines[0])
     assert record["domain"] == "mood"
-    assert record["payload"]["text"] == "少し疲れた"
+    assert record["data"]["text"] == "少し疲れた"
 
 
-def test_mood_add_no_numeric_score_in_payload(data_dir: Path) -> None:
+def test_mood_add_no_numeric_score_in_data(data_dir: Path) -> None:
     from personal_mcp.server import main
 
     main(["mood-add", "まあまあ", "--data-dir", str(data_dir)])
 
     path = data_dir / "events.jsonl"
     record = json.loads(path.read_text(encoding="utf-8").splitlines()[0])
-    payload = record.get("payload", {})
-    numeric_keys = [k for k, v in payload.items() if isinstance(v, (int, float))]
-    assert numeric_keys == [], f"numeric keys found in payload: {numeric_keys}"
+    data = record.get("data", {})
+    numeric_keys = [k for k, v in data.items() if isinstance(v, (int, float))]
+    assert numeric_keys == [], f"numeric keys found in data: {numeric_keys}"
 
 
 def test_mood_add_with_tags(data_dir: Path) -> None:

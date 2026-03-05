@@ -184,10 +184,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.cmd == "poe2-log-add":
         tags = [t for t in args.tags.split(",") if t]
         meta: Dict[str, Any] = json.loads(args.meta_json)
-        meta["kind"] = args.kind
         rec = event_add(
             domain="poe2",
             text=args.text,
+            kind=args.kind,
             tags=tags,
             meta=meta,
             data_dir=data_dir,
