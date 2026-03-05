@@ -63,6 +63,7 @@ AI-specific adapters reference them from their own directories.
 
 ```
 docs/skills/                          ← Canonical skill definitions (AI-agnostic)
+├── clarify-request.md
 ├── codex-claude-bridge.md
 ├── implement-only.md
 ├── minimal-safe-impl.md
@@ -70,10 +71,12 @@ docs/skills/                          ← Canonical skill definitions (AI-agnost
 └── review-preflight.md
 
 .claude/skills/                       ← Claude Code adapters
+├── clarify-request/SKILL.md
 ├── minimal-safe-impl/SKILL.md
 └── research-propose-structured/SKILL.md
 
 .codex/skills/                        ← Codex adapters
+├── clarify-request/SKILL.md
 ├── codex-claude-bridge/SKILL.md
 ├── minimal-safe-impl/SKILL.md
 ├── research-propose-structured/SKILL.md
@@ -82,6 +85,7 @@ docs/skills/                          ← Canonical skill definitions (AI-agnost
 
 | Kind | Canonical source | Adapter location |
 |---|---|---|
+| clarify | `docs/skills/clarify-request.md` | `.claude/skills/clarify-request/`, `.codex/skills/clarify-request/` |
 | bridge | `docs/skills/codex-claude-bridge.md` | `.codex/skills/codex-claude-bridge/` |
 | impl | `docs/skills/implement-only.md` | no Codex adapter; Claude-oriented canonical doc |
 | impl | `docs/skills/minimal-safe-impl.md` | `.claude/skills/minimal-safe-impl/`, `.codex/skills/minimal-safe-impl/` |
