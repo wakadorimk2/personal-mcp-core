@@ -85,6 +85,7 @@ Event model principle:
 
 ## Skills
 - Project skills live under `.claude/skills/`.
+- For unclear requirements before issue drafting, use: `/clarify-request <request-fragment-or-issue-url>`
 - For implementation tasks tied to a GitHub Issue, use: `/minimal-safe-impl <issue-url-or-number>`
 - For research/proposal tasks (no code changes), use: `/research-propose-structured <topic-or-issue-url>`
 
