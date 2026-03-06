@@ -8,7 +8,7 @@
 
 ## 目的
 
-最小の CLI モニターで「Claude Code トークン / Codex セッション / モデル別使用量」を
+最小の CLI モニターで「Claude / Codex の使用制限ステータス（直近枠 + 週次枠）」を
 5 分間隔で表示できるかを調査する。
 この文書は調査結果と提案案の記録であり、実装の開始指示ではない。
 
@@ -18,18 +18,29 @@
 
 | 表示項目 | 説明 |
 |----------|------|
-| Claude tokens today | 当日の入力・出力トークン合計 |
-| model usage | モデル別（opus / sonnet 等）のトークン内訳 |
-| Codex sessions today | 当日起動したセッション数 |
+| Claude 直近制限 | 公式表現 `session-based usage limit`（5時間枠）に達しているか |
+| Claude 週次制限 | 公式表現 `weekly and monthly caps` のうち週次枠に達しているか |
+| Codex 直近制限 | 公式表現 `every 5 hours` に達しているか |
+| Codex 週次制限 | 公式表現 `shared weekly limit` に達しているか |
 
 ### 集計境界（today の定義）
 
 - `today` は **モニター実行環境のローカルタイムゾーン** で日付判定する（例: JST 環境なら 00:00-23:59 JST）
 - UTC 固定ではないため、異なるタイムゾーン環境間では日次集計値が一致しない場合がある
 
+### 公式文言の固定（2026-03-06確認）
+
+| サービス | 直近制限ラベル（公式） | 週次制限ラベル（公式） | 参考 |
+|------|------|------|------|
+| Claude | `session-based usage limit` | `weekly and monthly caps`（週次表示では weekly 部分のみ利用） | https://support.anthropic.com/en/articles/8324991-about-claude-s-pro-plan-usage |
+| Codex | `every 5 hours` | `shared weekly limit` | https://help.openai.com/en/articles/11096431-codex-usage-limits-pricing-and-availability |
+
 ---
 
-## 依存方針（M1 反映）
+## 参考: 使用量集計の依存方針（旧要件）
+
+この節は token/session 集計要件の調査結果として保持する。
+制限ステータス（5時間枠/週次枠）の一次表示には直接使わない。
 
 モニタースクリプト本体は **Python 標準ライブラリのみ** を使用し、新規依存は追加しない。
 
@@ -46,7 +57,7 @@
 
 ---
 
-## データ取得元比較
+## 参考: 使用量データ取得元比較（旧要件）
 
 ### A. Claude Code usage
 
@@ -142,11 +153,12 @@
 ### 設計方針
 
 - Python スクリプト 1 ファイル、標準ライブラリのみ（新規依存追加なし）
-- `ccusage` は任意外部ツール: 利用可能であれば A-1 を採用し、そうでなければ A-2 に自動フォールバック
-- Codex データが取得できない場合は `N/A` を表示し、`0` で誤魔化さない（M2）
+- 表示は **Claude 2項目 + Codex 2項目** のみ（合計4項目）
+- 直近制限・週次制限のラベルは公式表現をそのまま使う（上表）
+- 制限状態が取得できない場合は `N/A` を表示し、`0` や推定値で補完しない
 - `os.system("clear")` + `print()` のみ（curses / rich 等不使用）
 - 5 分（300 秒）ごとに自動更新
-- 視認性向上のため、モデル別使用量は `■` / `□` ベースの固定幅バーで表示する
+- 視認性向上のため、状態表示は `■` / `□` を使う
 
 ### 欠測値の表示方針（M2 反映）
 
@@ -154,54 +166,51 @@
 
 | 状況 | 表示 |
 |------|------|
-| ccusage / 直接読取のどちらも失敗 | `N/A` |
-| `~/.codex/` が存在しない | `N/A` |
-| ログは存在するが解析失敗 | `N/A (parse error)` |
-| 当日レコードが 0 件（実際に使用なし） | `0`（これは正常値） |
+| 公式ソースへのアクセス失敗 | `N/A` |
+| レスポンスは取得したが parse 失敗 | `N/A (parse error)` |
+| 制限に未到達 | `□ not reached` |
+| 制限に到達 | `■ reached` |
 
-「0 件で使用なし」と「取得失敗」は区別して表示する。
+`reached/not reached` と `N/A` は必ず区別して表示する。
 
 Issue #131 で整理したエラー分類:
 
 | ソース | 状態 | 表示 | 備考 |
 |------|------|------|------|
-| ccusage | `command not found` / 実行失敗（非0） | 直接読取へフォールバック（失敗時は `N/A`） | `ccusage` 単独失敗は即 `N/A` 固定にしない |
-| ccusage | JSON parse 失敗 | `N/A (parse error)` | 直接読取へフォールバック可能なら継続 |
-| `~/.claude/projects/` | ディレクトリ不在 / 読み取り不可 | `N/A` | 欠測扱い |
-| `~/.claude/projects/` | JSONL parse 失敗 | `N/A (parse error)` | 行単位スキップ時は正常値と要区別 |
-| `~/.codex/history.jsonl` | ファイル不在 | `N/A` | Codex セッション不明 |
-| `~/.codex/history.jsonl` | parse 失敗（`session_id`/`ts` 抽出不可） | `N/A (parse error)` | ログ存在時の解析失敗 |
+| Claude official usage source | 取得不可（未認証/通信失敗） | `N/A` | 5時間・週次とも欠測 |
+| Claude official usage source | parse 失敗 | `N/A (parse error)` | 部分取得時は取得できた項目のみ表示 |
+| Codex official usage source | 取得不可（未認証/通信失敗） | `N/A` | 5時間・週次とも欠測 |
+| Codex official usage source | parse 失敗 | `N/A (parse error)` | 部分取得時は取得できた項目のみ表示 |
+| local logs (`~/.claude/projects/`, `~/.codex/history.jsonl`) | 制限状態フィールドなし | `N/A` | 制限到達判定の一次情報には使えない |
 
 ### 表示レイアウト案
 
-Codex データが取得できない場合:
+全項目を取得できた場合:
 
 ```
 AI Usage Monitor  (updated: 14:30)
 
-Claude tokens (today)  [source: ccusage]
-  total: 142,384
-  model usage:
-    claude-opus-4-6    ■■■■■■■□□□□□  69%  98,234
-    claude-sonnet-4-6  ■■■□□□□□□□  31%  44,150
+Claude limits
+  session-based usage limit (5h):   □ not reached
+  weekly and monthly caps (weekly): ■ reached
 
-Codex sessions (today): N/A
-  (log source unavailable — see ~/.codex/)
+Codex limits
+  every 5 hours:        □ not reached
+  shared weekly limit:  □ not reached
 ```
 
-Codex データが取得できた場合:
+取得失敗がある場合:
 
 ```
 AI Usage Monitor  (updated: 14:30)
 
-Claude tokens (today)  [source: direct ~/.claude/]
-  total: 142,384
-  model usage:
-    claude-opus-4-6    ■■■■■■■□□□□□  69%  98,234
-    claude-sonnet-4-6  ■■■□□□□□□□  31%  44,150
+Claude limits
+  session-based usage limit (5h):   N/A
+  weekly and monthly caps (weekly): N/A
 
-Codex sessions (today): 3
-  latest:             14:12
+Codex limits
+  every 5 hours:        N/A (parse error)
+  shared weekly limit:  N/A (parse error)
 ```
 
 ### 疑似コード構造
@@ -211,36 +220,30 @@ Codex sessions (today): 3
 
 SENTINEL = "N/A"
 
-def render_bar(ratio: float, width: int = 12) -> str:
-    # ratio (0.0-1.0) を固定幅バーへ変換する
-    filled = max(0, min(width, int(ratio * width)))
-    return ("■" * filled) + ("□" * (width - filled))
+def render_status(reached: bool | None) -> str:
+    # None は欠測
+    if reached is None:
+        return SENTINEL
+    return "■ reached" if reached else "□ not reached"
 
-def get_claude_usage() -> dict:
-    # 1. ccusage が利用可能か試みる
-    #    subprocess.run(["ccusage", ...], capture_output=True, timeout=10)
-    #    成功: JSON parse して返す、source="ccusage"
-    # 2. 失敗（FileNotFoundError / returncode != 0）:
-    #    ~/.claude/projects/*/*.jsonl を glob
-    #    当日タイムスタンプのレコードを集計して返す、source="direct"
-    # 3. どちらも失敗: {"total": SENTINEL, "by_model": {}, "source": SENTINEL}
+def get_claude_limits() -> dict:
+    # 公式ソースから `session-based usage limit` と `weekly and monthly caps` を取得
+    # 取得不可: {"short_window": None, "weekly": None}
     pass
 
-def get_codex_sessions() -> dict:
-    # ~/.codex/ が存在しなければ {"count": SENTINEL, "latest": SENTINEL} を返す
-    # 存在する場合: 当日セッションファイルを探して集計
-    # parse 失敗: {"count": SENTINEL, "latest": "N/A (parse error)"}
+def get_codex_limits() -> dict:
+    # 公式ソースから `every 5 hours` と `shared weekly limit` を取得
+    # 取得不可: {"short_window": None, "weekly": None}
     pass
 
 def render(claude: dict, codex: dict) -> None:
     # os.system("clear")
-    # model usage は `render_bar()` で可視化して print()
-    # SENTINEL 値はそのまま文字列として表示（0 に変換しない）
+    # 4項目のみ表示し、各項目は render_status() を通して描画する
     pass
 
 # メインループ
 # while True:
-#   render(get_claude_usage(), get_codex_sessions())
+#   render(get_claude_limits(), get_codex_limits())
 #   time.sleep(300)
 ```
 
@@ -262,9 +265,10 @@ def render(claude: dict, codex: dict) -> None:
 
 | ソース | 取得手段 | 必要フィールド | 既知の制約 |
 |---------|----------|----------------|------------|
-| `ccusage` | `ccusage daily --since YYYYMMDD --until YYYYMMDD --json`（または `npx ccusage@latest`） | `daily[].inputTokens`, `daily[].outputTokens`, `daily[].modelBreakdowns[].modelName`, `totals.totalTokens` など | CLI 非導入環境では利用不可。schema 変更リスクあり |
-| `~/.claude/projects/` | `~/.claude/projects/*/*.jsonl`（必要に応じて `subagents/*.jsonl`）を直接 parse | `timestamp`, `message.model`, `message.usage.input_tokens`, `message.usage.output_tokens`（必要に応じて cache 系） | 非公式ログ形式。`assistant` 以外の行が混在 |
-| `~/.codex/` | `~/.codex/history.jsonl` を直接 parse | `session_id`, `ts` | セッション数集計は可能。トークン情報は取得不可 |
+| Claude official usage source | 公式Web表示（認証後） | `session-based usage limit`, `weekly and monthly caps` の状態 | 認証が必要。取得経路を別途実装する必要あり |
+| Codex official usage source | 公式Web表示（認証後） | `every 5 hours`, `shared weekly limit` の状態 | 認証が必要。取得経路を別途実装する必要あり |
+| `~/.claude/projects/` | `~/.claude/projects/*/*.jsonl`（必要に応じて `subagents/*.jsonl`）を直接 parse | `message.usage.*`, `message.model` など | 使用量は取れるが「制限到達状態」は直接取れない |
+| `~/.codex/history.jsonl` | ローカルJSONL直接parse | `session_id`, `ts`, `text` | セッション履歴は取れるが「制限到達状態」は直接取れない |
 
 ---
 
@@ -272,6 +276,6 @@ def render(claude: dict, codex: dict) -> None:
 
 | 項目 | 内容 | 影響度 | 対応案 |
 |---------|------|--------|--------|
-| キャッシュトークン扱い | `cache_creation_input_tokens` / `cache_read_input_tokens` を表示 total に含めるか | 低 | 先に表示仕様を決める |
-| `ccusage` 実行経路 | `ccusage` 未導入時に `npx` を使うか、即 direct fallback するか | 低 | 実行時間とネットワーク依存で選択 |
-| バー表示仕様 | プログレスバーの分母（モデル合計=100% か、固定上限か）をどちらにするか | 低 | まずはモデル合計100%基準で開始 |
+| 制限状態の一次取得経路 | 公式ページ表現をそのまま使うため、認証付き取得方式が必要 | 高 | 公式API/CLIの公開状況を確認し、可能な手段を確定する |
+| 公式文言の固定運用 | 文言変更時に表示ラベルが古くなるリスク | 中 | ラベル文字列を定数化し、見直し手順を運用に追加する |
+| 週次境界のタイムゾーン | 週次リセット境界がサービス側TZに依存する可能性 | 中 | 取得元が返す次回リセット時刻を優先表示する |
