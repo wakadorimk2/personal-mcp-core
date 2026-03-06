@@ -2,7 +2,7 @@
 
 > 種別: 調査・提案（実装前）
 > 対象 Issue: #120
-> 更新日: 2026-03-06（Issue #131 調査反映）
+> 更新日: 2026-03-06（Issue #131 追加調査反映）
 
 ---
 
@@ -87,6 +87,7 @@
   - トークン: `message.usage.input_tokens`, `message.usage.output_tokens`
   - キャッシュ: `message.usage.cache_creation_input_tokens`, `message.usage.cache_read_input_tokens`
 - 1 ファイル内に複数 `type`（`user`, `assistant`, `system`, `file-history-snapshot`, `last-prompt`）が混在するため、`assistant` 行のみを集計対象にする必要あり
+- 実ファイル追補: 一部セッションでは `.../<session-id>/subagents/*.jsonl` も存在し、`isSidechain: true` のサブエージェント会話ログが別ファイルに分離される
 
 ---
 
@@ -106,6 +107,7 @@
 **検証結果（2026-03-06）:**
 - `~/.codex/` と `~/.codex/history.jsonl` の実在を確認
 - `history.jsonl` 全行で `session_id` / `ts` / `text` を確認
+- `ts` は Unix seconds（例: `1772791348 -> 2026-03-06 19:02:28 JST`）として日次判定に直接利用可能
 - 例: 2026-03-06（JST）範囲で `unique_sessions_today=7` を算出できることを確認
 - Codex 側トークン情報は `history.jsonl` には存在せず、「セッション数」用途に限定して利用するのが妥当
 
@@ -113,15 +115,25 @@
 
 | 項目 | 内容 |
 |------|------|
-| 取得元 | Codex CLI の組み込みレポートコマンド（存在する場合） |
-| 出力形式 | 未確認 |
-| 更新方法 | コマンド実行（現在セッション情報のみの可能性） |
+| 取得元 | `codex --help` / `codex resume --help` のコマンド一覧 |
+| 出力形式 | ヘルプテキスト |
+| 更新方法 | CLI ヘルプ確認 |
 | 長所 | 公式経路であれば安定性が高い |
-| 短所 | 現セッションのみで履歴集計ができない可能性あり |
+| 短所 | 日次 usage を直接返すサブコマンドは確認できず、履歴集計の代替にならない |
 
-**不確実点（高）:**
-- このようなコマンドが Codex CLI に存在するかどうか未確認
-- 存在する場合も、当日集計か現セッションのみかが不明
+**検証結果（2026-03-06）:**
+- `codex --help` のコマンド一覧（version: `0.111.0`）に `status` / `usage` / `report` 相当のサブコマンドは見当たらない
+- `codex resume` / `codex fork` はセッション再開・分岐用で、当日集計出力は提供しない
+- 現時点では B-1（`~/.codex/history.jsonl` 直接読取）を一次手段とするのが現実的
+
+### C. 実ファイル構造の追補確認（Issue #131）
+
+| 対象 | 実ファイル | 確認した形式 |
+|------|------------|--------------|
+| Claude main session | `~/.claude/projects/<project>/<session-id>.jsonl` | JSONL。top-level `type` ごとに構造が異なり、usage は assistant 行の `message.usage.*` |
+| Claude subagents | `~/.claude/projects/<project>/<session-id>/subagents/*.jsonl` | JSONL。`isSidechain: true` を含む別ストリーム |
+| Codex history | `~/.codex/history.jsonl` | JSONL。`session_id`, `ts`, `text` の3フィールド反復 |
+| Codex補助ログ | `~/.codex/log/codex-tui.log` | プレーンテキストログ（セッション集計用の主データ源には不向き） |
 
 ---
 
@@ -133,7 +145,8 @@
 - `ccusage` は任意外部ツール: 利用可能であれば A-1 を採用し、そうでなければ A-2 に自動フォールバック
 - Codex データが取得できない場合は `N/A` を表示し、`0` で誤魔化さない（M2）
 - `os.system("clear")` + `print()` のみ（curses / rich 等不使用）
-- 5 分（300 秒）ごとに自動更新、更新時刻のみ表示（カウントダウン・進捗バー等は不使用）
+- 5 分（300 秒）ごとに自動更新
+- 視認性向上のため、モデル別使用量は `■` / `□` ベースの固定幅バーで表示する
 
 ### 欠測値の表示方針（M2 反映）
 
@@ -166,11 +179,11 @@ Codex データが取得できない場合:
 ```
 AI Usage Monitor  (updated: 14:30)
 
-Claude tokens (today)
-  total:              142,384
-  claude-opus-4-6:     98,234
-  claude-sonnet-4-6:   44,150
-  source:             ccusage
+Claude tokens (today)  [source: ccusage]
+  total: 142,384
+  model usage:
+    claude-opus-4-6    ■■■■■■■□□□□□  69%  98,234
+    claude-sonnet-4-6  ■■■□□□□□□□  31%  44,150
 
 Codex sessions (today): N/A
   (log source unavailable — see ~/.codex/)
@@ -181,11 +194,11 @@ Codex データが取得できた場合:
 ```
 AI Usage Monitor  (updated: 14:30)
 
-Claude tokens (today)
-  total:              142,384
-  claude-opus-4-6:     98,234
-  claude-sonnet-4-6:   44,150
-  source:             direct (~/.claude/)
+Claude tokens (today)  [source: direct ~/.claude/]
+  total: 142,384
+  model usage:
+    claude-opus-4-6    ■■■■■■■□□□□□  69%  98,234
+    claude-sonnet-4-6  ■■■□□□□□□□  31%  44,150
 
 Codex sessions (today): 3
   latest:             14:12
@@ -197,6 +210,11 @@ Codex sessions (today): 3
 # 疑似コード（実装コードではない）
 
 SENTINEL = "N/A"
+
+def render_bar(ratio: float, width: int = 12) -> str:
+    # ratio (0.0-1.0) を固定幅バーへ変換する
+    filled = max(0, min(width, int(ratio * width)))
+    return ("■" * filled) + ("□" * (width - filled))
 
 def get_claude_usage() -> dict:
     # 1. ccusage が利用可能か試みる
@@ -216,7 +234,7 @@ def get_codex_sessions() -> dict:
 
 def render(claude: dict, codex: dict) -> None:
     # os.system("clear")
-    # 各項目を print()
+    # model usage は `render_bar()` で可視化して print()
     # SENTINEL 値はそのまま文字列として表示（0 に変換しない）
     pass
 
@@ -245,7 +263,7 @@ def render(claude: dict, codex: dict) -> None:
 | ソース | 取得手段 | 必要フィールド | 既知の制約 |
 |---------|----------|----------------|------------|
 | `ccusage` | `ccusage daily --since YYYYMMDD --until YYYYMMDD --json`（または `npx ccusage@latest`） | `daily[].inputTokens`, `daily[].outputTokens`, `daily[].modelBreakdowns[].modelName`, `totals.totalTokens` など | CLI 非導入環境では利用不可。schema 変更リスクあり |
-| `~/.claude/projects/` | `~/.claude/projects/*/*.jsonl` を直接 parse | `timestamp`, `message.model`, `message.usage.input_tokens`, `message.usage.output_tokens`（必要に応じて cache 系） | 非公式ログ形式。`assistant` 以外の行が混在 |
+| `~/.claude/projects/` | `~/.claude/projects/*/*.jsonl`（必要に応じて `subagents/*.jsonl`）を直接 parse | `timestamp`, `message.model`, `message.usage.input_tokens`, `message.usage.output_tokens`（必要に応じて cache 系） | 非公式ログ形式。`assistant` 以外の行が混在 |
 | `~/.codex/` | `~/.codex/history.jsonl` を直接 parse | `session_id`, `ts` | セッション数集計は可能。トークン情報は取得不可 |
 
 ---
@@ -256,3 +274,4 @@ def render(claude: dict, codex: dict) -> None:
 |---------|------|--------|--------|
 | キャッシュトークン扱い | `cache_creation_input_tokens` / `cache_read_input_tokens` を表示 total に含めるか | 低 | 先に表示仕様を決める |
 | `ccusage` 実行経路 | `ccusage` 未導入時に `npx` を使うか、即 direct fallback するか | 低 | 実行時間とネットワーク依存で選択 |
+| バー表示仕様 | プログレスバーの分母（モデル合計=100% か、固定上限か）をどちらにするか | 低 | まずはモデル合計100%基準で開始 |
