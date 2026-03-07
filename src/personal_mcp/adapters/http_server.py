@@ -3,8 +3,10 @@ from __future__ import annotations
 import json
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any, Dict
+from urllib.parse import parse_qs, urlparse
 
 from personal_mcp.core.event import ALLOWED_DOMAINS
+from personal_mcp.tools.daily_summary import get_latest_summary
 from personal_mcp.tools.log_form import ALLOWED_KINDS, event_add_sqlite
 
 # DOMAIN_OPTIONS / KIND_OPTIONS are replaced at render time via str.replace()
@@ -98,15 +100,27 @@ def _make_handler(data_dir: str):
             self.wfile.write(payload)
 
         def do_GET(self) -> None:
-            if self.path in ("/", "/index.html"):
+            parsed = urlparse(self.path)
+            if parsed.path in ("/", "/index.html"):
                 html = _make_html().encode("utf-8")
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
                 self.send_header("Content-Length", str(len(html)))
                 self.end_headers()
                 self.wfile.write(html)
-            elif self.path == "/health":
+            elif parsed.path == "/health":
                 self._json(200, {"status": "ok"})
+            elif parsed.path == "/summaries":
+                params = parse_qs(parsed.query)
+                date_vals = params.get("date", [])
+                if not date_vals:
+                    self._json(400, {"error": "date query param required"})
+                    return
+                rec = get_latest_summary(date_vals[0], data_dir or None)
+                if rec is None:
+                    self._json(404, {"error": "no summary for date"})
+                else:
+                    self._json(200, rec)
             else:
                 self._json(404, {"error": "not found"})
 

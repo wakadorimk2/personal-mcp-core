@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 from personal_mcp.adapters.mcp_server import get_system_context
 from personal_mcp.storage.path import resolve_data_dir
 from personal_mcp.tools.event import event_add, event_list
+from personal_mcp.tools.daily_summary import generate_daily_summary
 from personal_mcp.tools.github_sync import github_sync
 from personal_mcp.tools.poe2_client_watcher import watch_client_log
 
@@ -142,6 +143,20 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     p_ghsync.add_argument("--data-dir", default=None)
     p_ghsync.add_argument("--json", action="store_true")
+    p_summary = sub.add_parser(
+        "summary-generate",
+        help="generate daily summary for a given UTC date",
+    )
+    p_summary.add_argument(
+        "--date",
+        default=None,
+        metavar="YYYY-MM-DD",
+        help="target date in UTC (default: today UTC)",
+    )
+    p_summary.add_argument("--annotation", default=None, help="optional annotation text")
+    p_summary.add_argument("--interpretation", default=None, help="optional interpretation text")
+    p_summary.add_argument("--data-dir", default=None)
+    p_summary.add_argument("--json", action="store_true")
 
     args = parser.parse_args(argv)
     data_dir = resolve_data_dir(getattr(args, "data_dir", None))
@@ -260,6 +275,20 @@ def main(argv: Optional[List[str]] = None) -> int:
         else:
             sv, sk, fl = result["saved"], result["skipped"], result["failed"]
             print(f"saved: {sv}, skipped: {sk}, failed: {fl}")
+        return 0
+
+    if args.cmd == "summary-generate":
+        target_date = args.date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        record = generate_daily_summary(
+            target_date,
+            annotation=args.annotation,
+            interpretation=args.interpretation,
+            data_dir=data_dir,
+        )
+        if args.json:
+            print(json.dumps(record, ensure_ascii=False, indent=2))
+        else:
+            print(f"summary generated for {target_date}: {record['data']['text'][:60]}")
         return 0
 
     return 1

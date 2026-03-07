@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 _DDL = """
 CREATE TABLE IF NOT EXISTS events (
@@ -32,3 +32,14 @@ def append_sqlite(db_path: Path, record: Dict[str, Any]) -> None:
             ),
         )
         conn.commit()
+
+
+def read_sqlite(db_path: Path) -> List[Dict[str, Any]]:
+    if not db_path.exists():
+        return []
+    out: List[Dict[str, Any]] = []
+    with sqlite3.connect(str(db_path)) as conn:
+        rows = conn.execute("SELECT raw FROM events ORDER BY id ASC")
+        for (raw,) in rows:
+            out.append(json.loads(raw))
+    return out

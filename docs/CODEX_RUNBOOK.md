@@ -115,6 +115,42 @@ pytest
 
 停止条件: 仕様変更が必要、再現しない、環境依存が強く切り分け不能。
 
+補足: `web-serve` と `summary-generate` を手動検証するときは、同じ `DATA_DIR` を必ず使う。
+
+```bash
+# 共通 data directory（ここで一度だけ作る）
+# 別ターミナルで mktemp -d を再実行しないこと
+export DATA_DIR="$(mktemp -d)"
+export DATE="$(date -u +%F)"
+
+echo "DATA_DIR=$DATA_DIR"
+echo "DATE=$DATE"
+
+# start server
+python -m personal_mcp.server web-serve \
+  --data-dir "$DATA_DIR" \
+  --port 8080
+```
+
+別ターミナル:
+
+```bash
+source .venv/bin/activate
+
+curl -sS -X POST "http://localhost:8080/events" \
+  -H "Content-Type: application/json" \
+  -d '{"domain":"mood","kind":"note","text":"手動確認イベント"}'
+
+python -m personal_mcp.server summary-generate \
+  --date "$DATE" \
+  --annotation "初回" \
+  --interpretation "確認用" \
+  --data-dir "$DATA_DIR" \
+  --json
+
+curl -sS "http://localhost:8080/summaries?date=$DATE"
+```
+
 ### 5. Minimal Fix
 
 目的: 検証で確認できた失敗だけを、局所・可逆・説明可能な範囲で直す。
