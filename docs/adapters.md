@@ -16,6 +16,7 @@ or similar. Keep adapters thin — no business logic, only protocol translation.
 | Adapter | File | Status |
 |---------|------|--------|
 | MCP (base) | `adapters/mcp_server.py` | Placeholder |
+| HTTP (mobile log form) | `adapters/http_server.py` | MVP (Issue #145) |
 
 ## Adding a new adapter
 

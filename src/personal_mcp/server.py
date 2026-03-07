@@ -14,6 +14,14 @@ from personal_mcp.tools.event import event_add, event_list
 from personal_mcp.tools.poe2_client_watcher import watch_client_log
 
 
+def _cmd_web_serve(args) -> int:
+    from personal_mcp.adapters.http_server import serve
+
+    data_dir = resolve_data_dir(getattr(args, "data_dir", None))
+    serve(host=args.host, port=args.port, data_dir=data_dir)
+    return 0
+
+
 def _local_time(r: Dict[str, Any]) -> str:
     try:
         return datetime.fromisoformat(r.get("ts", "")).astimezone().strftime("%H:%M")
@@ -122,6 +130,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     p_list.add_argument("--data-dir", default=None)
     p_list.add_argument("--json", action="store_true")
 
+    p_web = sub.add_parser("web-serve", help="start mobile log form HTTP server")
+    p_web.add_argument("--host", default="0.0.0.0")
+    p_web.add_argument("--port", type=int, default=8080)
+    p_web.add_argument("--data-dir", default=None)
+
     args = parser.parse_args(argv)
     data_dir = resolve_data_dir(getattr(args, "data_dir", None))
 
@@ -194,6 +207,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         )
         print(json.dumps(rec, ensure_ascii=False, indent=2))
         return 0
+
+    if args.cmd == "web-serve":
+        return _cmd_web_serve(args)
 
     if args.cmd == "poe2-watch":
         client_log = args.client_log or os.environ.get("POE2_CLIENT_LOG")
