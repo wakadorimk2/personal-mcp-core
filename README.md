@@ -1,63 +1,19 @@
-# ふにゃ秘書たん
+# personal-mcp-core
 
-「どんな調子でも続けられる強さ」を育てる、自己コンディション観測ツール。
+## What is this
 
-爆発的な頑張りよりも、波をならして続ける力のほうが長期では強い。このツールはその基盤になることを目指している。
-
----
-
-## これは何か
-
-生産性アプリでも、自己啓発ツールでもない。
-
-あなたの状態を静かに記録して、**波をならす**ためのツール。
-
-### 3つの原則
-
-- **日次スナップショット** — 1日2〜3回の状態記録で十分。分単位の計測は不要。
-- **不可逆ログ** — 書き換えない・削除しない。ただし表示は圧縮して軽く保つ。
-- **評価しない** — スコアで赤くしない・落ち込ませない。「休んだ」も行動として記録する。
-
-### ふにゃ秘書たんとは
-
-観測者である。励まさない・評価しない・促さない。行動が起きたあとに、静かに事実を記録する。ユーザーを最適化しようとしない。ただ、横にいる。
+個人の活動をローカルに append-only で記録する、CLI ベースのセルフ観測ツール。
+ゲームセッション・気分・作業ログなどを共通の JSONL イベント形式で保存し、タイムライン表示やドメイン別フィルタリングができる。
+設計思想・哲学的背景については [`docs/design-principles.md`](./docs/design-principles.md) を参照。
 
 ---
 
-## 設計思想（Architecture North Star）
-
-personal-mcp-core は「時間の流れを状態変化として観測する」人生モデルを基盤とする **Human Observability 基盤** である。
-
-- **人生モデル**: 時間を「状態変化の記録」として捉える。変化があったときに記録する
-- **イベント設計**: イベントは観測可能な事実のみを保持し、解釈・評価を含まない
-- **3層構造**: Event（事実）/ Annotation（注釈）/ Interpretation（解釈）で論理的に分離する
-- **役割分担**: 外部サービスがログを生成し、core は統合観測レイヤとして機能する
-- **意味づけは上位層へ**: 基盤（Event 層）は観測事実に留まり、意味の付与は上位層に委ねる
-- **最終目的**: 観測 → パターン → 理解 → 知恵（人間が主体で辿るパス）
-
-詳細な設計原則: [`docs/design-principles.md`](./docs/design-principles.md)
-
----
-
-## 体験
-
-1. **観測** — アプリを開いて（または押して）、今の状態をひとこと記録する
-2. **静かな記録** — 保存される。それだけ。
-3. **事実通知（オプション）** — 行動が観測されたあとに限り、短く静かに通知する
-   > 「開発の記録を残しました」「ゲームの活動を記録しました」
-   >
-   > 促さない・褒めない・煽らない
-4. **日次振り返り** — その日のスナップショット一覧を眺める。分析ではなく、眺める。
-
----
-
-## 何ができるか
-
-### 現在（CLI、実装済み）
-
-MVP の中核はすでに実装されている。現在は共通イベント基盤で記録し、PoE2 はその上の代表ユースケースとして扱っている。
+## Quick start
 
 ```bash
+# インストール
+pip install -e .
+
 # eng / worklog など明示サポート domain のイベントを追加する
 python -m personal_mcp.server event-add "設計メモを書いた" \
   --domain=worklog --tags=design,docs
@@ -76,38 +32,58 @@ python -m personal_mcp.server poe2-log-add "アトラスの外縁でボス撃破
 python -m personal_mcp.server poe2-watch --client-log /path/to/Client.txt
 ```
 
-イベントはデータディレクトリ内の `events.jsonl` に追記されます（削除・書き換えは不可）。既定保存先は `~/.local/share/personal-mcp/` です。`poe2-log-*` は互換用の入口で、保存先も共通イベントストアです。
+動作確認:
+
+```bash
+python -m personal_mcp.server event-list --date $(date +%Y-%m-%d)
+```
 
 ---
 
-## データモデル方針
+## Data storage
 
-イベントは共通 JSONL 形式（`<data-dir>/events.jsonl`）で表現する。追記のみ。編集・削除はしない。
+イベントはデータディレクトリ内の `events.jsonl` に **追記のみ** で保存される（削除・書き換えは不可）。
 
-### データ保存先
+| 優先順 | 解決方法 |
+|---|---|
+| 1 | `--data-dir` フラグ |
+| 2 | `PERSONAL_MCP_DATA_DIR` 環境変数 |
+| 3 | XDG 既定: `~/.local/share/personal-mcp/` |
 
-- ユーザーデータ（個人ログの正本）は **repo 外の `data-dir`** に保存する
-- 保存先解決は `--data-dir` > `PERSONAL_MCP_DATA_DIR` > XDG 既定（`~/.local/share/personal-mcp/`）の順
-- `repo/data/` は **開発・テスト・サンプル用途のみ**
-- `repo/data/` に実ユーザーログ・バックアップ・復元成果物を置かない
-- 詳細な運用ルールは [`docs/data-directory.md`](./docs/data-directory.md) を参照
+`repo/data/` は開発・テスト・サンプル専用。実ユーザーデータを置かない。
 
-### v1 record フィールド契約
+詳細: [`docs/data-directory.md`](./docs/data-directory.md)
 
-イベントの保存契約は **[Event Contract v1](./docs/event-contract-v1.md)（正典）** に従う。
+---
 
-**必須フィールド**: `v`（`1` 固定）、`ts`（ISO 8601 タイムゾーン付き）、`domain`（下記 MVP 許可リスト参照）、`kind`（[kind taxonomy](./docs/kind-taxonomy-v1.md) 参照）、`data`。
-**推奨フィールド**: `tags`、`source`、`ref`（いずれも省略可）。
+## Event model
 
-フィールド定義の詳細・legacy record（`payload` 形式）との対応方針・reader tolerance は正典を参照。
+イベントの保存契約は **[Event Contract v1](./docs/event-contract-v1.md)** に従う。
 
-### タイムスタンプ方針
+**必須フィールド**: `v`（`1` 固定）、`ts`（ISO 8601 タイムゾーン付き）、`domain`、`kind`（[kind taxonomy](./docs/kind-taxonomy-v1.md)）、`data`。
+**推奨フィールド**: `tags`、`source`、`ref`（省略可）。
 
-- 内部保存は UTC を原則とする（実装の `_now_iso()` は `datetime.now(timezone.utc).isoformat()` を使用）
-- ドキュメント上のイベント例は読みやすさのため JST（`+09:00`）で表記する
-- 保存フォーマット自体はタイムゾーン付き ISO 8601 とし、既存レコードのオフセットはそのまま保持する
+タイムスタンプは UTC で保存（`datetime.now(timezone.utc).isoformat()`）。ドキュメント例は JST（`+09:00`）表記。
 
-### MVP で明示サポートする domain
+記録例:
+
+```json
+{
+  "v": 1,
+  "ts": "2026-03-04T18:00:00+09:00",
+  "domain": "eng",
+  "kind": "note",
+  "data": { "text": "MCP adapterの調査メモ" },
+  "tags": ["research"],
+  "source": "manual"
+}
+```
+
+詳細・legacy record との互換方針: [Event Contract v1](./docs/event-contract-v1.md)
+
+---
+
+## Supported domains
 
 | domain | 説明 |
 | --- | --- |
@@ -117,18 +93,9 @@ python -m personal_mcp.server poe2-watch --client-log /path/to/Client.txt
 | `eng` | エンジニアリング全般（調査・設計・学習など） |
 | `worklog` | 作業記録・進捗ログ |
 
-**domain 命名ルール：**
+`event-add` が受け付ける domain は上記 allowlist のみ。追加条件: [`docs/domain-extension-policy.md`](./docs/domain-extension-policy.md)
 
-- ASCII 小文字
-- 単数名詞または短いカテゴリ名
-- 区切りは必要時のみ `_`
-- `eng` は広いエンジニアリング活動（調査・設計・思考）、`worklog` は具体的な作業記録（セッション・進捗）として使い分ける
-
-`event-add` で受け付ける domain は上記 allowlist のみとする。追加条件は [docs/domain-extension-policy.md](./docs/domain-extension-policy.md) を参照。
-
-### eng / worklog の最小 kind セット
-
-`kind` フィールドの推奨値（`eng` / `worklog` 向け）：
+`kind` 推奨値（`eng` / `worklog`）:
 
 | kind | 用途 |
 | --- | --- |
@@ -136,110 +103,12 @@ python -m personal_mcp.server poe2-watch --client-log /path/to/Client.txt
 | `session` | 作業セッション、切り分け、実施ログ |
 | `milestone` | 方針確定、区切り、到達点 |
 
-### イベント例
-
-代表例（詳細・追加例は [Event Contract v1](./docs/event-contract-v1.md) を参照）:
-
-#### eng / note
-
-```json
-{
-  "v": 1,
-  "ts": "2026-03-04T18:00:00+09:00",
-  "domain": "eng",
-  "kind": "note",
-  "data": {
-    "text": "MCP adapterの調査メモ"
-  },
-  "tags": ["research"],
-  "source": "manual"
-}
-```
-
-### 現在の実装
-
-- 汎用 `event-add` / `event-list` / `event-today` がある
-- `mood-add` は `domain="mood"` のイベントとして保存する
-- `poe2-log-add` / `poe2-log-list` は `domain="poe2"` の専用入口として動く
-- `poe2-watch` は `Client.txt` から `area_transition` を自動記録する
-
-### 原則
-
-- 追記のみ。編集・削除はしない。
-- 既存 `poe2` / `mood` / `general` のレコード形式を壊さない。
-- 自動取得を後から足すときも、同じイベント形式で追加する。
-
 ---
 
-## Plan / Roadmap
-
-**この README での MVP 達成の定義**
-
-- 共通イベント追加 (`event-add`)
-- 日次タイムライン一覧 (`event-list` / `event-today`)
-- 気分記録 (`mood-add`)
-- 単一保存先（`<data-dir>/events.jsonl`）
-- 代表ユースケースとしての PoE2 記録 (`poe2-log-*` / `poe2-watch`)
-
-### Now
-
-- CLI ベースの観測フローは動いており、MVP の必須要素は揃っている
-- 保存形式は `events.jsonl` に統一され、PoE2 も mood も同じイベント形式で追記される
-- PoE2 では手動記録に加えて `Client.txt` 監視による自動記録も最小実装されている
-
-### Next
-
-- domain 拡張を README と CLI 例の両方で使いやすくする
-- `eng` / `worklog` / `art` / `life` など、PoE2 以外の継続観測ユースケースを具体化する
-- 表示面では複数ドメインを無理なく眺められるタイムライン整理を進める
-- モバイルホーム画面や簡易 UI など、「記録を始めるまでの摩擦」を下げる入口を検討する
-
-### Later
-
-- ゲームログ以外の自動取得（Git コミット、外部サービス、各種ログ）を共通イベント形式に載せる
-- ローカル中心のまま運用しやすくするためのインフラ化を進める
-- 週次・月次の眺め、表示圧縮、必要最小限の通知などを実データに合わせて足す
-- オプトイン前提の外部連携や集計は、ローカル運用の価値を損なわない範囲でのみ検討する
-
----
-
-## プライバシー方針
-
-- 個人の活動データはローカルに保存し、非公開。
-- 集合統計・外部送信は明示オプトインのみ。
-- 現状、外部送信機能はない。
-
----
-
-## 互換性ポリシー（MVP期間中）
-
-> 詳細・背景: [Issue #19](https://github.com/wakadorimk2/personal-mcp-core/issues/19)
-
-### 保証するもの
-
-- **JSONL イベント形式**（`<data-dir>/events.jsonl` のフィールド定義）
-  - 破壊的変更を行う場合は `schema_version` フィールドを追加し、ワンタイム移行スクリプトを同伴する
-
-### 保証しないもの
-
-- CLI コマンド名・オプション
-- 内部モジュール構造・import パス
-- MCP アダプター IF
-- 設定ファイル形式
-
-### 破壊的変更の方針
-
-- MVP 期間中はいつでも破壊的変更を行う可能性がある
-- **恒久互換レイヤは持たない**
-- データ形式を変更する場合は、ワンタイム移行スクリプトを同伴する（互換レイヤは残さない）
-- 変更時はドキュメントを更新する
-
----
-
-## 開発者向け
+## Development
 
 ```bash
-# 開発用インストール（ruff + pytest を含む）
+# 開発用インストール
 pip install -e ".[dev]"
 
 # コードチェック
@@ -254,14 +123,11 @@ ruff format .
 # テスト
 pytest
 
-# エントリーポイント動作確認
-python -m personal_mcp.server poe2-log-list --n 5
-
 # AI_GUIDE.md の同期確認
 diff AI_GUIDE.md src/personal_mcp/AI_GUIDE.md
 ```
 
-**構成：**
+**構成:**
 
 ```
 src/personal_mcp/
@@ -273,7 +139,7 @@ src/personal_mcp/
 └── core/guide.py           # AI_GUIDE.md ローダー
 ```
 
-**貢献の歓迎範囲：**
+**貢献の歓迎範囲:**
 
 - バグ修正・型エラー修正
 - テストの追加・改善
@@ -281,43 +147,30 @@ src/personal_mcp/
 
 機能追加は事前にIssueで議論してください。
 
-### Issue 依存 DAG の生成
+### 互換性ポリシー（MVP期間中）
 
-Issue 間の依存関係を抽出して DOT / Mermaid 形式で可視化するスクリプトです。
+> 詳細・背景: [Issue #19](https://github.com/wakadorimk2/personal-mcp-core/issues/19)
 
-**依存**: Python 3.10+（標準ライブラリのみ）。PNG 出力には graphviz (`dot` コマンド) が必要です。
-
-```bash
-# stdin から実行（gh CLI 必須）
-gh issue list --json number,title,body | python scripts/issue_dag.py
-
-# JSON ファイルから実行
-gh issue list --json number,title,body > issues.json
-python scripts/issue_dag.py issues.json
-
-# PNG も同時に生成（graphviz 必須）
-python scripts/issue_dag.py issues.json --png
-
-# 依存エッジ一覧を CLI に出力（コピー向け）
-python scripts/issue_dag.py issues.json --list
-
-# Makefile ターゲットで実行
-# 既定: REPO=wakadorimk2/personal-mcp-core, LIMIT=200, ISSUES_JSON=/tmp/issues.json, OUT=/tmp/issue-dag
-make issue-dag-list
-make issue-dag-list WITH_TITLE=1
-
-# 出力先を指定する場合
-python scripts/issue_dag.py issues.json --out /tmp/dag
-make issue-dag-list OUT=/tmp/dag LIMIT=100
-make issue-dag-list ISSUES_JSON=/tmp/my-issues.json
-python scripts/issue_dag.py issues.json --list-with-title
-```
-
-出力: `dag.dot`（Graphviz）、`dag.mmd`（Mermaid）、`dag.png`（`--png` 時のみ）。
-Mermaid はそのまま GitHub Markdown の Mermaid コードブロックに貼れます。
+- **保証**: JSONL イベント形式（破壊的変更時は `schema_version` フィールド追加 + ワンタイム移行スクリプト同伴）
+- **保証しない**: CLI コマンド名、内部モジュール構造、MCP アダプター IF、設定ファイル形式
 
 ---
 
-## ライセンス
+## Documentation
 
-未定。個人利用を主軸に方針検討中。決まったら更新します。
+| ドキュメント | 内容 |
+|---|---|
+| [`docs/design-principles.md`](./docs/design-principles.md) | 設計思想・Architecture North Star（哲学的背景） |
+| [`docs/event-contract-v1.md`](./docs/event-contract-v1.md) | イベント保存契約の正典 |
+| [`docs/kind-taxonomy-v1.md`](./docs/kind-taxonomy-v1.md) | `kind` フィールド分類 |
+| [`docs/data-directory.md`](./docs/data-directory.md) | データ保存先の詳細ルール |
+| [`docs/domain-extension-policy.md`](./docs/domain-extension-policy.md) | domain 拡張条件 |
+| [`docs/architecture.md`](./docs/architecture.md) | 技術的アーキテクチャ |
+
+---
+
+## Privacy / License
+
+- 個人の活動データはローカルに保存し、非公開。外部送信機能は現状ない。
+- 集合統計・外部送信は明示オプトインのみ。
+- ライセンス: 未定。個人利用を主軸に検討中。
