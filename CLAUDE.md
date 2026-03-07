@@ -20,7 +20,15 @@ When starting any task, read files in this order before writing or changing anyt
 ## AI role split
 
 Claude remains the no-side-effect implementation side, and Codex remains the side-effecting executor/verifier.
-Authoritative policy: [`docs/AI_ROLE_POLICY.md`](./docs/AI_ROLE_POLICY.md)
+Authoritative policy: [`docs/AI_ROLE_POLICY.md`](./docs/AI_ROLE_POLICY.md) (this section is a routing summary, not the source of truth).
+
+If this file, `AI_GUIDE.md`, old templates, or historical comments conflict with the policy:
+
+1. prioritize `docs/AI_ROLE_POLICY.md`
+2. pause side-effecting work
+3. escalate to the human Maintainer with the conflicting citations
+
+To avoid false stops caused by stale wording, never treat non-authoritative role notes as a blocker by themselves.
 
 ## Practical guardrails for Claude Code
 

@@ -116,7 +116,9 @@
 ## AI役割分離ポリシー
 
 - Claude は副作用を出さない実装担当、Codex は副作用を出す執行・検証担当です
-- 正本は [docs/AI_ROLE_POLICY.md](./docs/AI_ROLE_POLICY.md) を参照してください
+- 正本は [docs/AI_ROLE_POLICY.md](./docs/AI_ROLE_POLICY.md) です（この節と `CLAUDE.md` は導線です）
+- この節・`CLAUDE.md`・運用メモの記述が正本と矛盾する場合、正本を優先し、副作用を伴う作業は一旦停止して人間 Maintainer にエスカレーションしてください
+- 旧ルール参照による誤停止を避けるため、判断基準は常に正本に固定してください
 
 ---
 
