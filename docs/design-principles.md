@@ -66,7 +66,7 @@
 - Annotation 層はイベントへの文脈付与を担う。元のイベントを書き換えない
 - Interpretation 層は意味の付与・パターン認識を担う。Event 層のフォーマットに依存しない
 
-> **実装注記**: Annotation / Interpretation の実装方式はこのドキュメントのスコープ外である。この原則は方針の明文化であり、実装の確定ではない。
+> **実装注記**: MVP 向けの実装方式は Issue #148 で確定した。詳細は [`docs/mvp-contract-decisions.md`](./mvp-contract-decisions.md) を参照。
 
 ---
 
@@ -152,6 +152,6 @@
 
 ## Assumptions
 
-- Annotation / Interpretation の概念は設計思想として本ドキュメントで明文化するが、実装は現時点で存在しない。実装方式の確定は将来の別 Issue に委ねる。
+- Annotation / Interpretation の MVP 向け実装方式は Issue #148 で確定した。詳細は [`docs/mvp-contract-decisions.md`](./mvp-contract-decisions.md) を参照。
 - 「3層構造」のうち Event 層のみが現在実装されており、Annotation / Interpretation 層の実装は将来の検討事項として扱う。
 - `docs/architecture.md` は技術実装の記述、`docs/design-principles.md` は設計思想の記述として役割を分離する。両者の記述が重複する場合は、`architecture.md` は実装詳細、このドキュメントは原則の記述とする。

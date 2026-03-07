@@ -66,7 +66,7 @@ def test_event_add_appends_without_overwriting(data_dir: Path) -> None:
     assert record["data"]["text"] == "second"
 
 
-@pytest.mark.parametrize("domain", ["eng", "worklog"])
+@pytest.mark.parametrize("domain", ["eng", "worklog", "summary"])
 def test_event_add_accepts_new_allowed_domains(data_dir: Path, domain: str) -> None:
     path = data_dir / "events.jsonl"
 
@@ -129,7 +129,7 @@ def test_event_add_does_not_promote_meta_kind_without_kind_arg(data_dir: Path) -
 
 
 def test_allowed_domains_keeps_existing_supported_domains() -> None:
-    assert {"poe2", "mood", "general"}.issubset(ALLOWED_DOMAINS)
+    assert {"poe2", "mood", "general", "summary"}.issubset(ALLOWED_DOMAINS)
 
 
 # ---------------------------------------------------------------------------
