@@ -4,7 +4,13 @@ from pathlib import Path
 
 import pytest
 
-from personal_mcp.tools.log_form import ALLOWED_KINDS, event_add_sqlite
+from personal_mcp.tools.log_form import (
+    ALLOWED_KINDS,
+    DEFAULT_DOMAIN,
+    DEFAULT_KIND,
+    event_add_sqlite,
+    suggest_labels,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -25,6 +31,18 @@ def test_event_add_sqlite_returns_v1_record(data_dir: Path) -> None:
     assert rec["data"]["text"] == "hello"
     assert rec["source"] == "web-form"
     assert "ts" in rec
+
+
+def test_event_add_sqlite_defaults_domain_kind_when_omitted(data_dir: Path) -> None:
+    rec = event_add_sqlite(text="hello", data_dir=str(data_dir))
+    assert rec["domain"] == DEFAULT_DOMAIN
+    assert rec["kind"] == DEFAULT_KIND
+
+
+def test_event_add_sqlite_uses_suggested_labels(data_dir: Path) -> None:
+    rec = event_add_sqlite(text="PR 実装を完了", data_dir=str(data_dir))
+    assert rec["domain"] == "eng"
+    assert rec["kind"] == "milestone"
 
 
 def test_event_add_sqlite_rejects_invalid_domain(data_dir: Path) -> None:
@@ -56,6 +74,11 @@ def test_event_add_sqlite_accepts_empty_text(data_dir: Path) -> None:
 def test_event_add_sqlite_accepts_all_allowed_kinds(data_dir: Path, kind: str) -> None:
     rec = event_add_sqlite(domain="general", kind=kind, data_dir=str(data_dir))
     assert rec["kind"] == kind
+
+
+def test_suggest_labels_defaults_to_general_note() -> None:
+    suggested = suggest_labels("just a memo")
+    assert suggested == {"domain": DEFAULT_DOMAIN, "kind": DEFAULT_KIND}
 
 
 # ---------------------------------------------------------------------------
@@ -146,20 +169,31 @@ def test_http_post_events_returns_201_on_valid_input(data_dir: Path) -> None:
     assert body["kind"] == "note"
 
 
-def test_http_post_events_400_missing_domain(data_dir: Path) -> None:
+def test_http_post_events_missing_domain_uses_default(data_dir: Path) -> None:
     handler_cls = _make_handler_for_test(str(data_dir))
-    responses = _post_events(handler_cls, {"kind": "note"}, str(data_dir))
+    responses = _post_events(handler_cls, {"kind": "note", "text": "hi"}, str(data_dir))
     status, body = responses[0]
-    assert status == 400
-    assert "domain" in body["error"]
+    assert status == 201
+    assert body["domain"] == "general"
+    assert body["kind"] == "note"
 
 
-def test_http_post_events_400_missing_kind(data_dir: Path) -> None:
+def test_http_post_events_missing_kind_uses_default(data_dir: Path) -> None:
     handler_cls = _make_handler_for_test(str(data_dir))
-    responses = _post_events(handler_cls, {"domain": "general"}, str(data_dir))
+    responses = _post_events(handler_cls, {"domain": "general", "text": "hi"}, str(data_dir))
     status, body = responses[0]
-    assert status == 400
-    assert "kind" in body["error"]
+    assert status == 201
+    assert body["domain"] == "general"
+    assert body["kind"] == "note"
+
+
+def test_http_post_events_missing_both_uses_suggestion(data_dir: Path) -> None:
+    handler_cls = _make_handler_for_test(str(data_dir))
+    responses = _post_events(handler_cls, {"text": "PR 実装を完了"}, str(data_dir))
+    status, body = responses[0]
+    assert status == 201
+    assert body["domain"] == "eng"
+    assert body["kind"] == "milestone"
 
 
 def test_http_post_events_400_invalid_domain(data_dir: Path) -> None:
@@ -212,6 +246,15 @@ def test_http_post_empty_annotation_not_in_data(data_dir: Path) -> None:
     )
     _, body = responses[0]
     assert "annotation" not in body.get("data", {})
+
+
+def test_make_html_shows_optional_labels_and_suggestion() -> None:
+    from personal_mcp.adapters.http_server import _make_html
+
+    html = _make_html()
+    assert 'id="domain" required' not in html
+    assert 'id="kind" required' not in html
+    assert 'id="suggestion"' in html
 
 
 # ---------------------------------------------------------------------------

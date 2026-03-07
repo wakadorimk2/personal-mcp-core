@@ -23,43 +23,93 @@ _HTML = """\
 <title>ログ入力</title>
 <style>
 body { font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 1rem; }
+h2 { margin-bottom: 0.25rem; }
+p { margin-top: 0; color: #555; font-size: 0.9rem; }
 label { display: block; margin-top: 1rem; font-size: 0.9rem; color: #444; }
 select, textarea { width: 100%; padding: 0.5rem; font-size: 1rem; box-sizing: border-box; }
 textarea { height: 5rem; resize: vertical; }
-button { margin-top: 1.5rem; width: 100%; padding: 0.75rem; font-size: 1rem; cursor: pointer; }
+details { margin-top: 1rem; border-top: 1px solid #ddd; padding-top: 0.75rem; }
+summary { cursor: pointer; color: #333; font-size: 0.9rem; }
+button { margin-top: 1rem; width: 100%; padding: 0.75rem; font-size: 1rem; cursor: pointer; }
+#suggestion { margin-top: 0.5rem; color: #444; font-size: 0.9rem; }
 #msg { margin-top: 1rem; min-height: 1.5rem; }
 </style>
 </head>
 <body>
-<h2>ログ入力</h2>
+<h2>クイックログ</h2>
+<p>まずは気づきを記録。分類は後からでも大丈夫です。</p>
 <form id="f">
-  <label>テキスト<textarea id="text"></textarea></label>
-  <label>ドメイン *
-    <select id="domain" required>
-      <option value="">-- 選択 --</option>
-      DOMAIN_OPTIONS
-    </select>
-  </label>
-  <label>カインド *
-    <select id="kind" required>
-      <option value="">-- 選択 --</option>
-      KIND_OPTIONS
-    </select>
-  </label>
-  <label>アノテーション<textarea id="annotation"></textarea></label>
+  <label>気づき<textarea id="text" placeholder="いま起きたことを短く記録"></textarea></label>
+  <div id="suggestion"></div>
+  <details>
+    <summary>分類・補足を追加（任意）</summary>
+    <label>ドメイン
+      <select id="domain">
+        <option value="">(未指定) 候補を使う</option>
+        DOMAIN_OPTIONS
+      </select>
+    </label>
+    <label>カインド
+      <select id="kind">
+        <option value="">(未指定) 候補を使う</option>
+        KIND_OPTIONS
+      </select>
+    </label>
+    <label>アノテーション<textarea id="annotation"></textarea></label>
+  </details>
   <button type="submit">保存</button>
 </form>
 <div id="msg"></div>
 <script>
+function inferLabels(text) {
+  var t = (text || "").toLowerCase();
+  function hasAny(keywords) {
+    return keywords.some(function(k) {
+      return t.indexOf(k) >= 0;
+    });
+  }
+
+  var domain = "general";
+  if (hasAny(["poe", "map", "atlas", "ボス", "loot"])) {
+    domain = "poe2";
+  } else if (hasAny(["mood", "疲", "眠", "気分", "しんど"])) {
+    domain = "mood";
+  } else if (hasAny(["todo", "meeting", "進捗", "作業", "タスク"])) {
+    domain = "worklog";
+  } else if (hasAny(["issue", "pr", "実装", "設計", "docs", "コード"])) {
+    domain = "eng";
+  }
+
+  var kind = "note";
+  if (hasAny(["完了", "達成", "release", "マイルストーン"])) {
+    kind = "milestone";
+  } else if (hasAny(["作成", "更新", "artifact", "成果物"])) {
+    kind = "artifact";
+  } else if (hasAny(["調査", "検証", "対応", "実施", "session"])) {
+    kind = "session";
+  }
+  return { domain: domain, kind: kind };
+}
+
+function renderSuggestion() {
+  var text = document.getElementById("text").value;
+  var s = inferLabels(text);
+  document.getElementById("suggestion").textContent = "候補: " + s.domain + " / " + s.kind;
+}
+
+document.getElementById("text").addEventListener("input", renderSuggestion);
+renderSuggestion();
+
 document.getElementById("f").addEventListener("submit", async function(e) {
   e.preventDefault();
   var msg = document.getElementById("msg");
-  var body = {
-    text: document.getElementById("text").value,
-    domain: document.getElementById("domain").value,
-    kind: document.getElementById("kind").value,
-    annotation: document.getElementById("annotation").value
-  };
+  var body = { text: document.getElementById("text").value };
+  var domain = document.getElementById("domain").value;
+  var kind = document.getElementById("kind").value;
+  var annotation = document.getElementById("annotation").value;
+  if (domain) body.domain = domain;
+  if (kind) body.kind = kind;
+  if (annotation) body.annotation = annotation;
   try {
     var r = await fetch("/events", {
       method: "POST",
@@ -67,8 +117,10 @@ document.getElementById("f").addEventListener("submit", async function(e) {
       body: JSON.stringify(body)
     });
     if (r.ok) {
-      msg.textContent = "保存しました";
+      var saved = await r.json();
+      msg.textContent = "保存しました: " + saved.domain + " / " + saved.kind;
       document.getElementById("f").reset();
+      renderSuggestion();
     } else {
       var err = await r.json();
       msg.textContent = "エラー: " + (err.error || r.status);
@@ -220,16 +272,10 @@ def _make_handler(data_dir: str):
             text = (body.get("text") or "").strip()
             annotation = (body.get("annotation") or "").strip() or None
 
-            if not domain:
-                self._json(400, {"error": "domain is required"})
-                return
-            if not kind:
-                self._json(400, {"error": "kind is required"})
-                return
             try:
                 record = event_add_sqlite(
-                    domain=domain,
-                    kind=kind,
+                    domain=domain or None,
+                    kind=kind or None,
                     text=text,
                     annotation=annotation,
                     data_dir=data_dir or None,
