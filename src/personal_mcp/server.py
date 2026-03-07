@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 from personal_mcp.adapters.mcp_server import get_system_context
 from personal_mcp.storage.path import resolve_data_dir
 from personal_mcp.tools.event import event_add, event_list
+from personal_mcp.tools.github_sync import github_sync
 from personal_mcp.tools.poe2_client_watcher import watch_client_log
 
 
@@ -122,6 +123,14 @@ def main(argv: Optional[List[str]] = None) -> int:
     p_list.add_argument("--data-dir", default=None)
     p_list.add_argument("--json", action="store_true")
 
+    p_ghsync = sub.add_parser("github-sync", help="sync GitHub user events to events.jsonl")
+    p_ghsync.add_argument("--username", required=True, help="GitHub username")
+    p_ghsync.add_argument(
+        "--token", default=None, help="GitHub API token (or GITHUB_TOKEN env var)"
+    )
+    p_ghsync.add_argument("--data-dir", default=None)
+    p_ghsync.add_argument("--json", action="store_true")
+
     args = parser.parse_args(argv)
     data_dir = resolve_data_dir(getattr(args, "data_dir", None))
 
@@ -222,6 +231,20 @@ def main(argv: Optional[List[str]] = None) -> int:
                 tags_str = ",".join(r.get("tags") or [])
                 text = r.get("data", {}).get("text", "")
                 print(f"{r.get('ts', '?')} [{kind}] ({tags_str}) {text}")
+        return 0
+
+    if args.cmd == "github-sync":
+        token = args.token or os.environ.get("GITHUB_TOKEN")
+        result = github_sync(
+            username=args.username,
+            token=token,
+            data_dir=data_dir,
+        )
+        if args.json:
+            print(json.dumps(result, ensure_ascii=False))
+        else:
+            sv, sk, fl = result["saved"], result["skipped"], result["failed"]
+            print(f"saved: {sv}, skipped: {sk}, failed: {fl}")
         return 0
 
     return 1
