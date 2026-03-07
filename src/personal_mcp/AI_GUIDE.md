@@ -120,6 +120,13 @@
 - この節・`CLAUDE.md`・運用メモの記述が正本と矛盾する場合、正本を優先し、副作用を伴う作業は一旦停止して人間 Maintainer にエスカレーションしてください
 - 旧ルール参照による誤停止を避けるため、判断基準は常に正本に固定してください
 
+## AI作業環境運用（Git / worktree / VSCode）
+
+- AI worker を含む作業環境の運用ルール正本は [docs/AI_WORKFLOW.md](./docs/AI_WORKFLOW.md) です
+- `worktree: 長期 / 役割ベース`、`branch: 短命 / taskベース` を原則としてください
+- VSCode は worktree ごとに作業机を固定し、待機状態を `main + clean` に保ってください
+- 副作用の可否（実行権限）は運用都合よりも [docs/AI_ROLE_POLICY.md](./docs/AI_ROLE_POLICY.md) を優先してください
+
 ---
 
 ## 互換性に関するガードレール
