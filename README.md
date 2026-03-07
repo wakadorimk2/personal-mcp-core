@@ -38,6 +38,34 @@ python -m personal_mcp.server poe2-watch --client-log /path/to/Client.txt
 python -m personal_mcp.server event-list --date $(date +%Y-%m-%d)
 ```
 
+## Daily operation via Make
+
+日常運用の最小導線は `make` でも実行できる。
+
+```bash
+# 実運用データは repo 外に置く（例）
+export DATA_DIR="$HOME/.local/share/personal-mcp"
+
+# web UI 起動
+make run DATA_DIR="$DATA_DIR" PORT=8080
+
+# 最小ログ追加（TEXT は必須）
+make log DATA_DIR="$DATA_DIR" TEXT="朝会メモを記録"
+
+# 当日ログ確認
+make today DATA_DIR="$DATA_DIR"
+
+# 日次サマリー生成（UTC日付）
+make summary DATA_DIR="$DATA_DIR" DATE="$(date -u +%F)"
+
+# 上記導線の最小疎通確認
+make smoke DATA_DIR="$DATA_DIR" DATE="$(date -u +%F)"
+```
+
+`DATA_DIR` を渡さない場合は CLI の保存先解決（`--data-dir` > `PERSONAL_MCP_DATA_DIR` > XDG 既定）に従う。`repo/data/` は開発・テスト用であり、実運用の保存先には使わない。
+
+`make check` / `make test` / `make help` の拡張はこの Issue の対象外（follow-up 扱い）。
+
 ---
 
 ## Data storage
