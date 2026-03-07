@@ -90,6 +90,12 @@ ops     -> personal-mcp-core-ops
 - task 切替時は branch を切り替える前に対象 window/worktree を確認する
 - window 名に role を含める（例: `builder: personal-mcp-core-builder`）
 
+補足（ローカル運用）:
+
+- `human` 用ウィンドウ 1 つから、VSCode task で `advisor / builder / ops` 用 terminal を追加起動する運用は許容する
+- ただし、起動先ディレクトリや CLI コマンドはローカル依存が強いため、`.vscode/tasks.json` は repo で管理しない（各自ローカルで保持する）
+- repo には運用原則（worktree / branch / role 境界）のみを残し、task 定義の具体値は配布対象にしない
+
 ---
 
 ## 5. AI worker の責務境界
@@ -135,4 +141,3 @@ git fetch -p origin
 - 期待した worktree / branch で作業している
 - 意図しない差分がない
 - `main` 起点の新規 task branch を作成できる状態である
-
