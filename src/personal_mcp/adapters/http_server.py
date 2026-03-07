@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from typing import Any, Dict
+from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from personal_mcp.core.event import ALLOWED_DOMAINS
@@ -140,7 +140,7 @@ loadHeatmap();
 loadSummaries();
 </script>
 </body>
-</html>"""
+</html>"""  # noqa: E501
 
 
 def _make_html() -> str:
