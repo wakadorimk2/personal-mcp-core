@@ -27,6 +27,21 @@ Codex はこの runbook に従って、`review -> ruff -> pytest -> 最小修正
 - 最小修正が 2 サイクルを超える
 - `gh` 認証、権限、remote の問題で PR が作れない
 
+## review-preflight skill との関係
+
+`review-preflight` skill（[`docs/skills/review-preflight.md`](./skills/review-preflight.md)）は
+**検査と報告のみ** を責務とし、修正を行わない。
+
+この runbook の Standard Flow（Step 5 Minimal Fix を含む）は、`review-preflight` による
+preflight 完了後に Codex が実施する実行フローである。両者を混同しない。
+
+| 項目 | review-preflight skill | この runbook の Standard Flow |
+|---|---|---|
+| 修正 | 行わない | 局所・可逆な最小修正のみ許容 |
+| 4 観点チェック | 実施する（Contract / Scope / Migration / Docs-Impl） | 対象外 |
+| 自動修正ループ | 禁止 | 最大 2 サイクル、3 回収束しなければ停止 |
+| 出力形式 | `Summary / Preflight Checks / Failures / Next Step` | Draft PR 本文（PR Body Template） |
+
 ## Standard Flow
 
 ### 1. Safety Check
