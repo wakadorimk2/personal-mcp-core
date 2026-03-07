@@ -6,7 +6,7 @@ from typing import Any, Dict
 from urllib.parse import parse_qs, urlparse
 
 from personal_mcp.core.event import ALLOWED_DOMAINS
-from personal_mcp.tools.daily_summary import get_latest_summary
+from personal_mcp.tools.daily_summary import count_events_by_date, get_latest_summary, list_summaries
 from personal_mcp.tools.log_form import ALLOWED_KINDS, event_add_sqlite
 
 # DOMAIN_OPTIONS / KIND_OPTIONS are replaced at render time via str.replace()
@@ -77,6 +77,67 @@ document.getElementById("f").addEventListener("submit", async function(e) {
 </body>
 </html>"""
 
+_DASHBOARD_HTML = """\
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>活動</title>
+<style>
+body { font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 1rem; }
+h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
+.heatmap { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-bottom: 1.5rem; }
+.heatmap-cell { aspect-ratio: 1; border-radius: 2px; }
+.summary-card { border-top: 1px solid #ddd; padding: 0.75rem 0; }
+.summary-date { font-size: 0.85rem; color: #666; margin-bottom: 0.25rem; }
+.summary-text { font-size: 0.95rem; }
+.summary-annotation, .summary-interpretation { font-size: 0.85rem; color: #555; margin-top: 0.25rem; }
+</style>
+</head>
+<body>
+<h2>直近28日</h2>
+<div class="heatmap" id="heatmap"></div>
+<div id="summaries"></div>
+<script>
+function heatColor(n) {
+  if (n === 0) return '#eeeeee';
+  if (n <= 2) return '#ffd9b3';
+  if (n <= 5) return '#ffaa55';
+  if (n <= 10) return '#ff7700';
+  return '#cc4400';
+}
+async function loadHeatmap() {
+  var r = await fetch('/api/heatmap');
+  var data = await r.json();
+  var el = document.getElementById('heatmap');
+  data.forEach(function(item) {
+    var cell = document.createElement('div');
+    cell.className = 'heatmap-cell';
+    cell.style.background = heatColor(item.count);
+    cell.title = item.date + ': ' + item.count + '件';
+    el.appendChild(cell);
+  });
+}
+async function loadSummaries() {
+  var r = await fetch('/api/summaries/list');
+  var data = await r.json();
+  var el = document.getElementById('summaries');
+  data.forEach(function(item) {
+    var card = document.createElement('div'); card.className = 'summary-card';
+    var d = document.createElement('div'); d.className = 'summary-date'; d.textContent = item.date; card.appendChild(d);
+    var t = document.createElement('div'); t.className = 'summary-text'; t.textContent = item.text; card.appendChild(t);
+    if (item.annotation) { var a = document.createElement('div'); a.className = 'summary-annotation'; a.textContent = item.annotation; card.appendChild(a); }
+    if (item.interpretation) { var i = document.createElement('div'); i.className = 'summary-interpretation'; i.textContent = item.interpretation; card.appendChild(i); }
+    el.appendChild(card);
+  });
+}
+loadHeatmap();
+loadSummaries();
+</script>
+</body>
+</html>"""
+
 
 def _make_html() -> str:
     domain_opts = "\n      ".join(
@@ -91,7 +152,7 @@ def _make_handler(data_dir: str):
         def log_message(self, fmt: str, *args: Any) -> None:
             pass
 
-        def _json(self, status: int, body: Dict[str, Any]) -> None:
+        def _json(self, status: int, body: Any) -> None:
             payload = json.dumps(body, ensure_ascii=False).encode()
             self.send_response(status)
             self.send_header("Content-Type", "application/json")
@@ -103,6 +164,13 @@ def _make_handler(data_dir: str):
             parsed = urlparse(self.path)
             if parsed.path in ("/", "/index.html"):
                 html = _make_html().encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(html)))
+                self.end_headers()
+                self.wfile.write(html)
+            elif parsed.path == "/dashboard":
+                html = _DASHBOARD_HTML.encode("utf-8")
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
                 self.send_header("Content-Length", str(len(html)))
@@ -121,6 +189,10 @@ def _make_handler(data_dir: str):
                     self._json(404, {"error": "no summary for date"})
                 else:
                     self._json(200, rec)
+            elif parsed.path == "/api/heatmap":
+                self._json(200, count_events_by_date(28, data_dir or None))
+            elif parsed.path == "/api/summaries/list":
+                self._json(200, list_summaries(28, data_dir or None))
             else:
                 self._json(404, {"error": "not found"})
 

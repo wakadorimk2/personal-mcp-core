@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -19,6 +19,13 @@ def _utc_date(ts_str: str) -> Optional[str]:
         if ts_dt.tzinfo is None:
             ts_dt = ts_dt.replace(tzinfo=timezone.utc)
         return ts_dt.astimezone(timezone.utc).strftime("%Y-%m-%d")
+    except Exception:
+        return None
+
+
+def _parse_iso_date(date_str: str) -> Optional[date]:
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d").date()
     except Exception:
         return None
 
@@ -62,6 +69,64 @@ def get_latest_summary(date: str, data_dir: Optional[str] = None) -> Optional[Di
         if r.get("domain") == "summary" and r.get("data", {}).get("date") == date:
             latest = r
     return latest
+
+
+def count_events_by_date(
+    days: int = 28, data_dir: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    """Return [{date, count}] for the last `days` UTC days, including 0-count days."""
+    if days <= 0:
+        return []
+
+    today = datetime.now(timezone.utc).date()
+    buckets: Dict[str, int] = {}
+    for i in range(days - 1, -1, -1):
+        buckets[(today - timedelta(days=i)).isoformat()] = 0
+
+    db_path = Path(resolve_data_dir(data_dir)) / "events.db"
+    for r in read_sqlite(db_path):
+        if r.get("domain") == "summary":
+            continue
+        d = _utc_date(r.get("ts", ""))
+        if d and d in buckets:
+            buckets[d] += 1
+
+    return [{"date": d, "count": buckets[d]} for d in sorted(buckets)]
+
+
+def list_summaries(
+    days: int = 28, data_dir: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    """Return latest summary per date for the last `days` days, newest first."""
+    if days <= 0:
+        return []
+
+    today = datetime.now(timezone.utc).date()
+    cutoff = today - timedelta(days=days - 1)
+
+    db_path = Path(resolve_data_dir(data_dir)) / "events.db"
+    by_date: Dict[str, Dict[str, Any]] = {}
+    for r in read_sqlite(db_path):
+        if r.get("domain") != "summary":
+            continue
+        d_str = r.get("data", {}).get("date", "")
+        d = _parse_iso_date(d_str)
+        if d is None:
+            continue
+        if cutoff <= d <= today:
+            by_date[d_str] = r
+
+    result: List[Dict[str, Any]] = []
+    for d_str in sorted(by_date, reverse=True):
+        rec = by_date[d_str]
+        data = rec.get("data", {})
+        entry: Dict[str, Any] = {"date": d_str, "text": data.get("text", "")}
+        if "annotation" in data:
+            entry["annotation"] = data["annotation"]
+        if "interpretation" in data:
+            entry["interpretation"] = data["interpretation"]
+        result.append(entry)
+    return result
 
 
 def generate_daily_summary(
