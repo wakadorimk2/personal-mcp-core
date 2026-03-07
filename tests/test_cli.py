@@ -104,6 +104,17 @@ def test_event_add_accepts_worklog_domain(tmp_path: Path) -> None:
     assert record["data"]["text"] == "worklog event"
 
 
+def test_event_add_accepts_summary_domain(tmp_path: Path) -> None:
+    data_dir = tmp_path / "data"
+    events_path = data_dir / "events.jsonl"
+
+    _run("event-add", "daily summary", "--domain", "summary", "--data-dir", str(data_dir))
+
+    record = json.loads(events_path.read_text(encoding="utf-8").splitlines()[0])
+    assert record["domain"] == "summary"
+    assert record["data"]["text"] == "daily summary"
+
+
 def test_event_add_rejects_disallowed_domain_without_creating_file(tmp_path: Path) -> None:
     data_dir = tmp_path / "data"
     events_path = data_dir / "events.jsonl"
