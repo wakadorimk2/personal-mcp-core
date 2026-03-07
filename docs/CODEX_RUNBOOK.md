@@ -26,6 +26,24 @@ Codex はこの runbook に従って、`review -> ruff -> pytest -> 最小修正
 - 同じ失敗の再実行が 3 回で収束しない
 - 最小修正が 2 サイクルを超える
 - `gh` 認証、権限、remote の問題で PR が作れない
+- 役割境界文書の優先順位が解決できず、実行可否が判断不能
+
+## 境界変更同期チェック（policy/runbook 系 Issue）
+
+`docs/AI_ROLE_POLICY.md`・`AI_GUIDE.md`・`CLAUDE.md`・`docs/CODEX_RUNBOOK.md`・skills 配布物をまたぐ Issue では、
+Standard Flow の前に次のチェックポイントを実施する。
+
+| Checkpoint | 完了条件 | 次ステップ進行条件 | 停止条件 |
+|---|---|---|---|
+| 1. 正本 | `docs/AI_ROLE_POLICY.md`（必要時 `docs/skills/*.md` canonical）で境界変更が確定している | 差分または既存 commit で Step 1 完了を確認できる | 導線/配布物だけ先に更新され、正本が未確定 |
+| 2. 導線 | `AI_GUIDE.md` / `CLAUDE.md` が正本参照と矛盾時導線を保持している | Step 1 と矛盾しないことを確認できる | 正本と導線の矛盾が残る |
+| 3. skills/runbook | `docs/CODEX_RUNBOOK.md` / `docs/skills/*` / `.codex/skills/*` / `.claude/skills/*` が Step 1/2 と一致 | Step 1/2 の完了後に同期差分のみを反映する | Step 1/2 未完了のまま実行手順や配布物だけ更新する |
+
+矛盾発生時の暫定運用:
+
+- `正本 > 導線 > skills/runbook > 過去 Issue/コメント` の順で判断する
+- 副作用可否や停止条件に影響する矛盾は、作業を停止して Maintainer にエスカレーションする
+- 運用判断に影響しない文言差は正本基準で進め、follow-up Issue で同期漏れを解消する
 
 ## review-preflight skill との関係
 
