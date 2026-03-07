@@ -11,7 +11,11 @@ from personal_mcp.tools.daily_summary import (
     get_latest_summary,
     list_summaries,
 )
-from personal_mcp.tools.log_form import ALLOWED_KINDS, event_add_sqlite
+from personal_mcp.tools.log_form import (
+    ALLOWED_KINDS,
+    event_add_sqlite,
+    ui_event_add_sqlite,
+)
 
 # DOMAIN_OPTIONS / KIND_OPTIONS are replaced at render time via str.replace()
 _HTML = """\
@@ -31,6 +35,30 @@ textarea { height: 5rem; resize: vertical; }
 details { margin-top: 1rem; border-top: 1px solid #ddd; padding-top: 0.75rem; }
 summary { cursor: pointer; color: #333; font-size: 0.9rem; }
 button { margin-top: 1rem; width: 100%; padding: 0.75rem; font-size: 1rem; cursor: pointer; }
+.mode-switcher { display: flex; gap: 0.5rem; margin-top: 1rem; }
+.mode-btn {
+  flex: 1;
+  margin-top: 0;
+  border: 1px solid #d0d0d0;
+  border-radius: 8px;
+  background: #f8f8f8;
+  color: #333;
+}
+.mode-btn.active { border-color: #ff7700; background: #fff3e6; color: #b14b00; font-weight: 600; }
+.mode-panel { display: none; margin-top: 0.75rem; }
+.mode-panel.active { display: block; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.chip {
+  margin-top: 0;
+  width: auto;
+  padding: 0.45rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid #ddd;
+  background: #fff;
+  font-size: 0.9rem;
+}
+.chip.active { border-color: #ff7700; background: #fff3e6; color: #b14b00; }
+#tag-preview { margin-top: 0.5rem; color: #555; font-size: 0.85rem; min-height: 1.1rem; }
 #suggestion { margin-top: 0.5rem; color: #444; font-size: 0.9rem; }
 #msg { margin-top: 1rem; min-height: 1.5rem; }
 </style>
@@ -39,6 +67,33 @@ button { margin-top: 1rem; width: 100%; padding: 0.75rem; font-size: 1rem; curso
 <h2>クイックログ</h2>
 <p>まずは気づきを記録。分類は後からでも大丈夫です。</p>
 <form id="f">
+  <div class="mode-switcher" aria-label="入力モード切替">
+    <button type="button" class="mode-btn" data-mode="quick">quick</button>
+    <button type="button" class="mode-btn" data-mode="tag">tag</button>
+    <button type="button" class="mode-btn" data-mode="text">text</button>
+  </div>
+
+  <div id="panel-quick" class="mode-panel">
+    <div class="chip-row">
+      <button type="button" class="chip quick-chip" data-text="開始した">開始</button>
+      <button type="button" class="chip quick-chip" data-text="完了した">完了</button>
+      <button type="button" class="chip quick-chip" data-text="休憩する">休憩</button>
+    </div>
+  </div>
+
+  <div id="panel-tag" class="mode-panel">
+    <div class="chip-row">
+      <button type="button" class="chip tag-chip" data-tag="作業">作業</button>
+      <button type="button" class="chip tag-chip" data-tag="移動">移動</button>
+      <button type="button" class="chip tag-chip" data-tag="食事">食事</button>
+      <button type="button" class="chip tag-chip" data-tag="運動">運動</button>
+      <button type="button" class="chip tag-chip" data-tag="読書">読書</button>
+      <button type="button" class="chip tag-chip" data-tag="休憩">休憩</button>
+    </div>
+    <div id="tag-preview"></div>
+  </div>
+
+  <div id="panel-text" class="mode-panel"></div>
   <label>気づき<textarea id="text" placeholder="いま起きたことを短く記録"></textarea></label>
   <div id="suggestion"></div>
   <details>
@@ -61,6 +116,12 @@ button { margin-top: 1rem; width: 100%; padding: 0.75rem; font-size: 1rem; curso
 </form>
 <div id="msg"></div>
 <script>
+var UI_MODE_KEY = "daily_log_ui_mode";
+var VALID_UI_MODES = ["quick", "tag", "text"];
+var currentMode = "quick";
+var selectedTags = [];
+var inputStarted = false;
+
 function inferLabels(text) {
   var t = (text || "").toLowerCase();
   function hasAny(keywords) {
@@ -97,11 +158,88 @@ function renderSuggestion() {
   document.getElementById("suggestion").textContent = "候補: " + s.domain + " / " + s.kind;
 }
 
-document.getElementById("text").addEventListener("input", renderSuggestion);
-renderSuggestion();
+function isValidMode(mode) {
+  return VALID_UI_MODES.indexOf(mode) >= 0;
+}
 
-document.getElementById("f").addEventListener("submit", async function(e) {
-  e.preventDefault();
+function persistMode(mode) {
+  try { localStorage.setItem(UI_MODE_KEY, mode); } catch (e) {}
+}
+
+function readPersistedMode() {
+  try {
+    var mode = localStorage.getItem(UI_MODE_KEY);
+    return isValidMode(mode) ? mode : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function postUiEvent(eventName, extraData) {
+  var payload = {
+    event_name: eventName,
+    ui_mode: currentMode
+  };
+  if (extraData && typeof extraData === "object") {
+    payload.extra_data = extraData;
+  }
+  try {
+    await fetch("/events/ui", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(payload)
+    });
+  } catch (e) {}
+}
+
+function setMode(mode, emitChange) {
+  if (!isValidMode(mode)) return;
+  var prev = currentMode;
+  currentMode = mode;
+  persistMode(mode);
+
+  document.querySelectorAll(".mode-btn").forEach(function(btn) {
+    var active = btn.dataset.mode === mode;
+    btn.classList.toggle("active", active);
+  });
+  document.querySelectorAll(".mode-panel").forEach(function(panel) {
+    panel.classList.toggle("active", panel.id === "panel-" + mode);
+  });
+
+  if (emitChange && prev !== mode) {
+    postUiEvent("ui_mode_changed", { from_mode: prev, to_mode: mode });
+  }
+}
+
+function markInputStarted() {
+  if (inputStarted) return;
+  inputStarted = true;
+  postUiEvent("input_started", {
+    text_length: document.getElementById("text").value.length,
+    selected_tag_count: selectedTags.length
+  });
+}
+
+function updateTagPreview() {
+  var preview = document.getElementById("tag-preview");
+  if (selectedTags.length === 0) {
+    preview.textContent = "タグ未選択";
+    return;
+  }
+  preview.textContent = "選択中: " + selectedTags.join(" / ");
+  document.getElementById("text").value = selectedTags.join(" ");
+  renderSuggestion();
+}
+
+function resetTagSelection() {
+  selectedTags = [];
+  document.querySelectorAll(".tag-chip").forEach(function(btn) {
+    btn.classList.remove("active");
+  });
+  updateTagPreview();
+}
+
+async function submitLog(trigger) {
   var msg = document.getElementById("msg");
   var body = { text: document.getElementById("text").value };
   var domain = document.getElementById("domain").value;
@@ -119,7 +257,16 @@ document.getElementById("f").addEventListener("submit", async function(e) {
     if (r.ok) {
       var saved = await r.json();
       msg.textContent = "保存しました: " + saved.domain + " / " + saved.kind;
+      await postUiEvent("input_submitted", {
+        trigger: trigger,
+        text_length: body.text.length,
+        resolved_domain: saved.domain,
+        resolved_kind: saved.kind,
+        selected_tag_count: selectedTags.length
+      });
       document.getElementById("f").reset();
+      resetTagSelection();
+      inputStarted = false;
       renderSuggestion();
     } else {
       var err = await r.json();
@@ -128,7 +275,54 @@ document.getElementById("f").addEventListener("submit", async function(e) {
   } catch(ex) {
     msg.textContent = "接続エラー: " + ex.message;
   }
+}
+
+document.querySelectorAll(".mode-btn").forEach(function(btn) {
+  btn.addEventListener("click", function() {
+    setMode(btn.dataset.mode, true);
+  });
 });
+
+document.querySelectorAll(".quick-chip").forEach(function(btn) {
+  btn.addEventListener("click", async function() {
+    markInputStarted();
+    document.getElementById("text").value = btn.dataset.text || "";
+    renderSuggestion();
+    await submitLog("quick_chip");
+  });
+});
+
+document.querySelectorAll(".tag-chip").forEach(function(btn) {
+  btn.addEventListener("click", function() {
+    markInputStarted();
+    var tag = btn.dataset.tag || "";
+    var idx = selectedTags.indexOf(tag);
+    if (idx >= 0) {
+      selectedTags.splice(idx, 1);
+      btn.classList.remove("active");
+    } else {
+      selectedTags.push(tag);
+      btn.classList.add("active");
+    }
+    updateTagPreview();
+  });
+});
+
+document.getElementById("text").addEventListener("focus", markInputStarted);
+document.getElementById("text").addEventListener("input", function() {
+  markInputStarted();
+  renderSuggestion();
+});
+
+document.getElementById("f").addEventListener("submit", async function(e) {
+  e.preventDefault();
+  markInputStarted();
+  await submitLog("form_submit");
+});
+
+setMode(readPersistedMode() || "quick", false);
+updateTagPreview();
+renderSuggestion();
 </script>
 </body>
 </html>"""
@@ -216,6 +410,16 @@ def _make_handler(data_dir: str):
             self.end_headers()
             self.wfile.write(payload)
 
+        def _read_json_body(self) -> Any:
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+            except ValueError as exc:
+                raise ValueError("invalid Content-Length") from exc
+            try:
+                return json.loads(self.rfile.read(length))
+            except Exception as exc:
+                raise ValueError("invalid JSON") from exc
+
         def do_GET(self) -> None:
             parsed = urlparse(self.path)
             if parsed.path in ("/", "/index.html"):
@@ -253,18 +457,36 @@ def _make_handler(data_dir: str):
                 self._json(404, {"error": "not found"})
 
         def do_POST(self) -> None:
-            if self.path != "/events":
+            if self.path not in ("/events", "/events/ui"):
                 self._json(404, {"error": "not found"})
                 return
             try:
-                length = int(self.headers.get("Content-Length", 0))
-            except ValueError:
-                self._json(400, {"error": "invalid Content-Length"})
+                body = self._read_json_body()
+            except ValueError as exc:
+                self._json(400, {"error": str(exc)})
                 return
-            try:
-                body = json.loads(self.rfile.read(length))
-            except Exception:
+            if not isinstance(body, dict):
                 self._json(400, {"error": "invalid JSON"})
+                return
+
+            if self.path == "/events/ui":
+                event_name = (body.get("event_name") or "").strip()
+                ui_mode = (body.get("ui_mode") or "").strip()
+                extra_data = body.get("extra_data")
+                if extra_data is not None and not isinstance(extra_data, dict):
+                    self._json(400, {"error": "extra_data must be an object"})
+                    return
+                try:
+                    record = ui_event_add_sqlite(
+                        event_name=event_name,
+                        ui_mode=ui_mode,
+                        data_dir=data_dir or None,
+                        extra_data=extra_data,
+                    )
+                except ValueError as exc:
+                    self._json(400, {"error": str(exc)})
+                    return
+                self._json(201, record)
                 return
 
             domain = (body.get("domain") or "").strip()
