@@ -270,7 +270,9 @@ async function submitLog(trigger) {
       resetTagSelection();
       inputStarted = false;
       renderSuggestion();
-      setTimeout(function() { if (msg.textContent.indexOf("保存しました") === 0) msg.textContent = ""; }, 3000);
+      setTimeout(function() {
+        if (msg.textContent.indexOf("保存しました") === 0) msg.textContent = "";
+      }, 3000);
     } else {
       var err = await r.json();
       msg.textContent = "エラー: " + (err.error || r.status);
