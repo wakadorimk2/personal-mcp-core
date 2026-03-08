@@ -6,10 +6,13 @@ import pytest
 
 from personal_mcp.tools.log_form import (
     ALLOWED_KINDS,
+    ALLOWED_UI_EVENT_NAMES,
+    ALLOWED_UI_MODES,
     DEFAULT_DOMAIN,
     DEFAULT_KIND,
     event_add_sqlite,
     suggest_labels,
+    ui_event_add_sqlite,
 )
 
 
@@ -81,6 +84,40 @@ def test_suggest_labels_defaults_to_general_note() -> None:
     assert suggested == {"domain": DEFAULT_DOMAIN, "kind": DEFAULT_KIND}
 
 
+def test_ui_event_add_sqlite_returns_v1_record(data_dir: Path) -> None:
+    rec = ui_event_add_sqlite(event_name="ui_mode_changed", ui_mode="quick", data_dir=str(data_dir))
+    assert rec["v"] == 1
+    assert rec["domain"] == "general"
+    assert rec["kind"] == "interaction"
+    assert rec["source"] == "web-form-ui"
+    assert rec["data"]["event_name"] == "ui_mode_changed"
+    assert rec["data"]["ui_mode"] == "quick"
+
+
+@pytest.mark.parametrize("event_name", sorted(ALLOWED_UI_EVENT_NAMES))
+def test_ui_event_add_sqlite_accepts_all_ui_event_names(data_dir: Path, event_name: str) -> None:
+    rec = ui_event_add_sqlite(event_name=event_name, ui_mode="tag", data_dir=str(data_dir))
+    assert rec["data"]["event_name"] == event_name
+
+
+@pytest.mark.parametrize("ui_mode", sorted(ALLOWED_UI_MODES))
+def test_ui_event_add_sqlite_accepts_all_ui_modes(data_dir: Path, ui_mode: str) -> None:
+    rec = ui_event_add_sqlite(event_name="input_started", ui_mode=ui_mode, data_dir=str(data_dir))
+    assert rec["data"]["ui_mode"] == ui_mode
+
+
+def test_ui_event_add_sqlite_rejects_invalid_event_name(data_dir: Path) -> None:
+    with pytest.raises(ValueError, match="unsupported ui event"):
+        ui_event_add_sqlite(event_name="invalid_event", ui_mode="quick", data_dir=str(data_dir))
+
+
+def test_ui_event_add_sqlite_rejects_invalid_ui_mode(data_dir: Path) -> None:
+    with pytest.raises(ValueError, match="unsupported ui mode"):
+        ui_event_add_sqlite(
+            event_name="input_submitted", ui_mode="keyboard", data_dir=str(data_dir)
+        )
+
+
 # ---------------------------------------------------------------------------
 # append_sqlite / DB content
 # ---------------------------------------------------------------------------
@@ -124,7 +161,7 @@ def test_db_is_outside_repo(monkeypatch, tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _post_events(handler_cls, body: dict, data_dir: str):
+def _post_json(handler_cls, body: dict, path: str):
     """Drive do_POST directly without a real socket via io.BytesIO."""
     import io
     from unittest.mock import MagicMock
@@ -137,7 +174,7 @@ def _post_events(handler_cls, body: dict, data_dir: str):
     handler.headers = {"Content-Length": str(len(raw)), "Content-Type": "application/json"}
     handler.rfile = io.BytesIO(raw)
     handler.wfile = io.BytesIO()
-    handler.path = "/events"
+    handler.path = path
     handler.request_version = "HTTP/1.1"
 
     responses = []
@@ -158,8 +195,8 @@ def _make_handler_for_test(data_dir: str):
 
 def test_http_post_events_returns_201_on_valid_input(data_dir: Path) -> None:
     handler_cls = _make_handler_for_test(str(data_dir))
-    responses = _post_events(
-        handler_cls, {"domain": "general", "kind": "note", "text": "hi"}, str(data_dir)
+    responses = _post_json(
+        handler_cls, {"domain": "general", "kind": "note", "text": "hi"}, "/events"
     )
     assert len(responses) == 1
     status, body = responses[0]
@@ -171,7 +208,7 @@ def test_http_post_events_returns_201_on_valid_input(data_dir: Path) -> None:
 
 def test_http_post_events_missing_domain_uses_default(data_dir: Path) -> None:
     handler_cls = _make_handler_for_test(str(data_dir))
-    responses = _post_events(handler_cls, {"kind": "note", "text": "hi"}, str(data_dir))
+    responses = _post_json(handler_cls, {"kind": "note", "text": "hi"}, "/events")
     status, body = responses[0]
     assert status == 201
     assert body["domain"] == "general"
@@ -180,7 +217,7 @@ def test_http_post_events_missing_domain_uses_default(data_dir: Path) -> None:
 
 def test_http_post_events_missing_kind_uses_default(data_dir: Path) -> None:
     handler_cls = _make_handler_for_test(str(data_dir))
-    responses = _post_events(handler_cls, {"domain": "general", "text": "hi"}, str(data_dir))
+    responses = _post_json(handler_cls, {"domain": "general", "text": "hi"}, "/events")
     status, body = responses[0]
     assert status == 201
     assert body["domain"] == "general"
@@ -189,7 +226,7 @@ def test_http_post_events_missing_kind_uses_default(data_dir: Path) -> None:
 
 def test_http_post_events_missing_both_uses_suggestion(data_dir: Path) -> None:
     handler_cls = _make_handler_for_test(str(data_dir))
-    responses = _post_events(handler_cls, {"text": "PR 実装を完了"}, str(data_dir))
+    responses = _post_json(handler_cls, {"text": "PR 実装を完了"}, "/events")
     status, body = responses[0]
     assert status == 201
     assert body["domain"] == "eng"
@@ -198,7 +235,7 @@ def test_http_post_events_missing_both_uses_suggestion(data_dir: Path) -> None:
 
 def test_http_post_events_400_invalid_domain(data_dir: Path) -> None:
     handler_cls = _make_handler_for_test(str(data_dir))
-    responses = _post_events(handler_cls, {"domain": "baddom", "kind": "note"}, str(data_dir))
+    responses = _post_json(handler_cls, {"domain": "baddom", "kind": "note"}, "/events")
     status, body = responses[0]
     assert status == 400
     assert "domain" in body["error"]
@@ -206,7 +243,7 @@ def test_http_post_events_400_invalid_domain(data_dir: Path) -> None:
 
 def test_http_post_events_400_invalid_kind(data_dir: Path) -> None:
     handler_cls = _make_handler_for_test(str(data_dir))
-    responses = _post_events(handler_cls, {"domain": "general", "kind": "badkind"}, str(data_dir))
+    responses = _post_json(handler_cls, {"domain": "general", "kind": "badkind"}, "/events")
     status, body = responses[0]
     assert status == 400
     assert "kind" in body["error"]
@@ -231,7 +268,7 @@ def test_http_post_events_400_invalid_content_length(data_dir: Path) -> None:
 
 def test_http_post_events_saves_to_db(data_dir: Path) -> None:
     handler_cls = _make_handler_for_test(str(data_dir))
-    _post_events(handler_cls, {"domain": "eng", "kind": "artifact", "text": "saved"}, str(data_dir))
+    _post_json(handler_cls, {"domain": "eng", "kind": "artifact", "text": "saved"}, "/events")
     db_path = data_dir / "events.db"
     assert db_path.exists()
     with sqlite3.connect(str(db_path)) as conn:
@@ -241,11 +278,55 @@ def test_http_post_events_saves_to_db(data_dir: Path) -> None:
 
 def test_http_post_empty_annotation_not_in_data(data_dir: Path) -> None:
     handler_cls = _make_handler_for_test(str(data_dir))
-    responses = _post_events(
-        handler_cls, {"domain": "general", "kind": "note", "annotation": ""}, str(data_dir)
+    responses = _post_json(
+        handler_cls, {"domain": "general", "kind": "note", "annotation": ""}, "/events"
     )
     _, body = responses[0]
     assert "annotation" not in body.get("data", {})
+
+
+def test_http_post_ui_events_returns_201_on_valid_input(data_dir: Path) -> None:
+    handler_cls = _make_handler_for_test(str(data_dir))
+    responses = _post_json(
+        handler_cls,
+        {
+            "event_name": "ui_mode_changed",
+            "ui_mode": "quick",
+            "extra_data": {"from_mode": "text", "to_mode": "quick"},
+        },
+        "/events/ui",
+    )
+    assert len(responses) == 1
+    status, body = responses[0]
+    assert status == 201
+    assert body["kind"] == "interaction"
+    assert body["data"]["event_name"] == "ui_mode_changed"
+    assert body["data"]["ui_mode"] == "quick"
+    assert body["data"]["from_mode"] == "text"
+
+
+def test_http_post_ui_events_400_invalid_ui_mode(data_dir: Path) -> None:
+    handler_cls = _make_handler_for_test(str(data_dir))
+    responses = _post_json(
+        handler_cls,
+        {"event_name": "input_started", "ui_mode": "keyboard"},
+        "/events/ui",
+    )
+    status, body = responses[0]
+    assert status == 400
+    assert "ui mode" in body["error"]
+
+
+def test_http_post_ui_events_400_non_object_extra_data(data_dir: Path) -> None:
+    handler_cls = _make_handler_for_test(str(data_dir))
+    responses = _post_json(
+        handler_cls,
+        {"event_name": "input_started", "ui_mode": "tag", "extra_data": "bad"},
+        "/events/ui",
+    )
+    status, body = responses[0]
+    assert status == 400
+    assert "extra_data" in body["error"]
 
 
 def test_make_html_shows_optional_labels_and_suggestion() -> None:
@@ -255,6 +336,9 @@ def test_make_html_shows_optional_labels_and_suggestion() -> None:
     assert 'id="domain" required' not in html
     assert 'id="kind" required' not in html
     assert 'id="suggestion"' in html
+    assert 'data-mode="quick"' in html
+    assert 'data-mode="tag"' in html
+    assert 'data-mode="text"' in html
 
 
 # ---------------------------------------------------------------------------

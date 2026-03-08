@@ -11,6 +11,10 @@ from personal_mcp.storage.sqlite import append_sqlite
 ALLOWED_KINDS: frozenset = frozenset(
     {"note", "session", "artifact", "milestone", "interaction", "maintenance"}
 )
+ALLOWED_UI_MODES: frozenset = frozenset({"quick", "tag", "text"})
+ALLOWED_UI_EVENT_NAMES: frozenset = frozenset(
+    {"ui_mode_changed", "input_started", "input_submitted"}
+)
 DEFAULT_DOMAIN = "general"
 DEFAULT_KIND = "note"
 
@@ -78,6 +82,43 @@ def event_add_sqlite(
         kind=normalized_kind,
         source="web-form",
         extra_data=extra or None,
+    )
+    db_path = Path(resolve_data_dir(data_dir)) / "events.db"
+    append_sqlite(db_path, record)
+    return record
+
+
+def ui_event_add_sqlite(
+    *,
+    event_name: str,
+    ui_mode: str,
+    data_dir: Optional[str] = None,
+    extra_data: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Persist UI telemetry for UX experiments using Event Contract v1."""
+    normalized_event_name = (event_name or "").strip()
+    normalized_ui_mode = (ui_mode or "").strip()
+
+    if normalized_event_name not in ALLOWED_UI_EVENT_NAMES:
+        raise ValueError(f"unsupported ui event: {normalized_event_name}")
+    if normalized_ui_mode not in ALLOWED_UI_MODES:
+        raise ValueError(f"unsupported ui mode: {normalized_ui_mode}")
+
+    payload_data: Dict[str, Any] = {
+        "event_name": normalized_event_name,
+        "ui_mode": normalized_ui_mode,
+    }
+    if extra_data:
+        payload_data.update(extra_data)
+
+    record = build_v1_record(
+        ts=_now_iso(),
+        domain=DEFAULT_DOMAIN,
+        text=f"[ui] {normalized_event_name}",
+        tags=["ux", "experiment"],
+        kind="interaction",
+        source="web-form-ui",
+        extra_data=payload_data,
     )
     db_path = Path(resolve_data_dir(data_dir)) / "events.db"
     append_sqlite(db_path, record)
