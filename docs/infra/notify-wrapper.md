@@ -74,6 +74,12 @@ quoting differs.
 The wrapper exits with code `2` for wrapper-side usage/configuration errors.
 Adapter-side failures propagate as the adapter's non-zero exit code.
 
+`docs/ai-notification-contract-v1.md` で定義している `task_ref` / `run_url` /
+`next_action` / `metadata` は、現時点では channel adapter に投影していない。
+v1 の adapter は exported `NOTIFY_*` と stdin だけを入力として扱い、channel
+固有の追加 env var を ad-hoc に増やさない。これらを channel 実装で使いたい
+場合は、wrapper 契約自体を follow-up で拡張する。
+
 ## Adding a channel
 
 1. Add an executable script at `scripts/notify.d/<channel>`.

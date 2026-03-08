@@ -93,7 +93,37 @@ notify wrapper に渡す共通入力は次の JSON object とする。
 - `next_action` は `needs_input` では実質必須、`task_failed` では強く推奨
 - `metadata` は補助用途に留め、notifier の分岐を `metadata` 依存にしない
 
-## 4. JSON Example
+## 4. Current Channel Projection and Discord Minimum Scope
+
+Section 3 の JSON object は notify wrapper へ渡したい上位契約であり、
+channel adapter が現時点で直接受け取れる field とは一致しない。
+
+現状の `scripts/notify` が channel adapter に渡すのは次の正規化済み入力のみ:
+
+- `NOTIFY_MESSAGE`
+- `NOTIFY_TITLE`
+- `NOTIFY_EVENT`
+- `NOTIFY_SOURCE`
+- stdin に流す message body
+
+このため Discord webhook の最小実装（#238）は、上記 projection だけで送れる範囲に留める。
+optional metadata 候補の扱いは次の通り整理する。
+
+| candidate | contract 上の位置づけ | Discord 最小実装で送るか | 判断 |
+|---|---|---|---|
+| `body` | optional。補足説明本文 | 送る | 既存の `NOTIFY_MESSAGE` に投影できる |
+| `task_ref` | optional。issue / PR / job 参照 | 送らない | wrapper が field を adapter へ渡していない。必要なら wrapper 拡張で扱う |
+| `run_url` | optional。確認用 URL | 送らない | wrapper が field を adapter へ渡していない。必要なら wrapper 拡張で扱う |
+| `next_action` | optional。人間に求める次の行動 | 送らない | `needs_input` / `task_failed` では有用だが、現状は wrapper 拡張なしに adapter へ渡せない |
+| `metadata` | optional。channel 非依存の補助情報 | 送らない | key の正規化と adapter への受け渡し方式を別途決める必要がある |
+
+### Rules for #238
+
+- Discord adapter は既存の wrapper projection だけを入力として使う
+- `task_ref` / `run_url` / `next_action` / `metadata` のために ad-hoc な `NOTIFY_*` を増やさない
+- optional metadata が必要になったら wrapper 契約の follow-up issue として切り出す
+
+## 5. JSON Example
 
 ### `task_completed`
 
@@ -133,7 +163,7 @@ notify wrapper に渡す共通入力は次の JSON object とする。
 }
 ```
 
-## 5. Event-Type Message Guidance
+## 6. Event-Type Message Guidance
 
 | `event_type` | `title` の期待 | `body` の期待 | `next_action` |
 |---|---|---|---|
@@ -142,7 +172,7 @@ notify wrapper に渡す共通入力は次の JSON object とする。
 | `task_failed` | 失敗対象が分かる | 原因の短い要約 | 強く推奨 |
 | `long_task_finished` | 終了した長時間ジョブが分かる | 所要時間や結果の要約 | 任意 |
 
-## 6. Out of Scope for v1
+## 7. Out of Scope for v1
 
 - channel ごとのタイトル文字数制限や装飾仕様
 - retry policy、dedupe key、通知抑制ルール
@@ -150,7 +180,7 @@ notify wrapper に渡す共通入力は次の JSON object とする。
 - `task_paused` や `task_cancelled` など追加 enum
 - runtime ごとの専用 field
 
-## Current Codex CLI bridge
+## 8. Current Codex CLI bridge
 
 この repo の現状実装では、Codex CLI の `notify` hook から渡される
 `agent-turn-complete` payload を `scripts/codex_notify.py` で受け、
