@@ -16,6 +16,10 @@ The default channel is `stdout`, which keeps the initial implementation
 cross-platform and CI-safe. Future OS/Discord adapters can be added without
 changing callers.
 
+Discord webhook 向けの最小契約は
+[`docs/infra/discord-webhook-channel-contract.md`](./discord-webhook-channel-contract.md)
+で別途定義する。
+
 ## Codex CLI integration
 
 Codex CLI's `notify` setting runs an external command and passes one JSON
@@ -66,6 +70,9 @@ Expected output with the default `stdout` channel:
 Using env vars plus stdin keeps the adapter contract stable across bash, WSL,
 PowerShell bridges, CI shells, and webhook helpers where positional argument
 quoting differs.
+
+The wrapper exits with code `2` for wrapper-side usage/configuration errors.
+Adapter-side failures propagate as the adapter's non-zero exit code.
 
 ## Adding a channel
 
