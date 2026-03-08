@@ -13,12 +13,32 @@ printf 'multiline message' | notify --stdin
 ```
 
 The default channel is `stdout`, which keeps the initial implementation
-cross-platform and CI-safe. Future OS/Discord adapters can be added without
-changing callers.
+cross-platform and CI-safe. The repo also ships a `discord` adapter for
+explicit opt-in webhook delivery without changing callers.
 
 Discord webhook 向けの最小契約は
 [`docs/infra/discord-webhook-channel-contract.md`](./discord-webhook-channel-contract.md)
 で別途定義する。
+
+## Discord webhook channel
+
+Set `NOTIFY_CHANNEL=discord` or pass `--channel discord`, then provide a
+Discord incoming webhook URL through `DISCORD_WEBHOOK_URL`.
+
+```bash
+export NOTIFY_CHANNEL=discord
+export DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
+notify --event task_completed --title "issue #238" --source codex-tui "done"
+```
+
+Optional overrides:
+
+- `DISCORD_WEBHOOK_USERNAME`
+- `DISCORD_WEBHOOK_AVATAR_URL`
+
+The adapter sends plain-text webhook payloads only. Missing webhook
+configuration exits with code `2`; HTTP or transport failures exit with code
+`1`.
 
 ## Codex CLI integration
 
