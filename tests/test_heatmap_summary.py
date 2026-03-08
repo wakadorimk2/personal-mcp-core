@@ -178,6 +178,7 @@ def test_http_get_dashboard_200(data_dir: Path) -> None:
     assert "直近28日" in html
     assert 'id="heatmap"' in html
     assert 'id="refresh-btn"' in html
+    assert 'id="draft-preview"' in html
     assert "再読み込みに失敗しました。再試行してください。" in html
 
 
@@ -262,4 +263,15 @@ def test_http_get_dashboard_candidate_tap_script_exists(data_dir: Path) -> None:
     assert "var text = candidateText(item);" in html
     assert "tag.dataset.source = source;" in html
     assert "input.value = text;" in html
+    assert "renderComposerState();" in html
     assert 'await fetch("/api/candidates")' in html
+
+
+def test_http_get_dashboard_has_sticky_composer_and_enter_submit(data_dir: Path) -> None:
+    handler_cls = _make_handler_for_test(str(data_dir))
+    _, _, html = _do_get_html(handler_cls, "/dashboard")
+    assert "#log-form {" in html
+    assert "position: sticky;" in html
+    assert 'enterkeyhint="done"' in html
+    assert 'document.getElementById("log-text").addEventListener("keydown"' in html
+    assert 'btn.textContent = "保存中...";' in html
