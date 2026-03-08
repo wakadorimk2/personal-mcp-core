@@ -1,4 +1,4 @@
-.PHONY: guide-sync guide-check issue-dag-list run log today summary smoke
+.PHONY: guide-sync guide-check issue-dag-list setup lint fmt format test run log today summary smoke
 
 REPO ?= wakadorimk2/personal-mcp-core
 LIMIT ?= 200
@@ -23,6 +23,20 @@ guide-check:
 issue-dag-list:
 	gh issue list --repo "$(REPO)" --limit "$(LIMIT)" --json number,title,body > "$(ISSUES_JSON)"
 	python scripts/issue_dag.py "$(ISSUES_JSON)" --list $(if $(WITH_TITLE),--list-with-title,) --out "$(OUT)"
+
+setup:
+	$(PYTHON) -m pip install -e ".[dev]"
+
+lint:
+	$(PYTHON) -m ruff check .
+
+fmt:
+	$(PYTHON) -m ruff format .
+
+format: fmt
+
+test:
+	$(PYTHON) -m pytest
 
 run:
 	$(PYTHON) -m personal_mcp.server web-serve --port "$(PORT)" $(DATA_DIR_ARG)
