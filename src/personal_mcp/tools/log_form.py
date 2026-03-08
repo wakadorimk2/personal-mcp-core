@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any, Dict, Optional
 
 from personal_mcp.core.event import ALLOWED_DOMAINS, build_v1_record
-from personal_mcp.storage.path import resolve_data_dir
-from personal_mcp.storage.sqlite import append_sqlite
+from personal_mcp.storage.events_store import append_event
 
 ALLOWED_KINDS: frozenset = frozenset(
     {"note", "session", "artifact", "milestone", "interaction", "maintenance"}
@@ -83,8 +81,7 @@ def event_add_sqlite(
         source="web-form",
         extra_data=extra or None,
     )
-    db_path = Path(resolve_data_dir(data_dir)) / "events.db"
-    append_sqlite(db_path, record)
+    append_event(record, data_dir=data_dir)
     return record
 
 
@@ -120,6 +117,5 @@ def ui_event_add_sqlite(
         source="web-form-ui",
         extra_data=payload_data,
     )
-    db_path = Path(resolve_data_dir(data_dir)) / "events.db"
-    append_sqlite(db_path, record)
+    append_event(record, data_dir=data_dir)
     return record

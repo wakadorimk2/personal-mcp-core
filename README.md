@@ -70,14 +70,16 @@ make smoke DATA_DIR="$DATA_DIR" DATE="$(date -u +%F)"
 
 ## Data storage
 
-ストレージ統一前の現状（2026-03-08 時点）は、導線ごとに参照先が分かれている。
+ストレージ境界導入後（#189）の現状は、導線ごとの read/write を
+`src/personal_mcp/storage/events_store.py` に統一している。
 
-| 導線 | 現在の保存先 |
+| 導線 | 現在の参照先 |
 |---|---|
-| CLI (`event-add` / `event-list` / `event-today`) | `events.jsonl` |
-| Web入力 (`web-serve` の `/events` / `/events/ui`) | `events.db` |
-| summary (`summary-generate` / dashboard集計) | `events.db` |
+| CLI (`event-add` / `event-list` / `event-today`) | storage 境界（primary: `events.db`） |
+| Web入力 (`web-serve` の `/events` / `/events/ui`) | storage 境界（primary: `events.db`） |
+| summary (`summary-generate` / dashboard集計) | storage 境界（primary: `events.db`） |
 
+移行期間は `events.jsonl` を互換経路として維持する（dual-write + fallback read）。
 単一ストレージ化の方針・移行段階・障害復旧ルールは [`docs/storage-unification-plan.md`](./docs/storage-unification-plan.md) を参照。
 
 | 優先順 | 解決方法 |

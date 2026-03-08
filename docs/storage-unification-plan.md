@@ -14,13 +14,20 @@ Issue: <https://github.com/wakadorimk2/personal-mcp-core/issues/185>
 - 移行期間中の `events.jsonl`: 互換レイヤ
 - 実装順序: #189 -> #190 -> #191
 
-## Current state (2026-03-08)
+## Current state before #189 (2026-03-08)
 
 - CLI (`event-add` / `event-list` / `event-today`) は `events.jsonl` を read/write する
 - Web入力 (`web-serve` の `/events` / `/events/ui`) は `events.db` に write する
 - summary (`summary-generate` / dashboard 集計) は `events.db` を read/write する
 
-注記: 現状は「非対称参照」であり、まだ dual-write ではない。
+注記: これは #189 着手前の記録（履歴）であり、当時は「非対称参照」で dual-write ではなかった。
+
+## Phase2 implementation note (#189)
+
+- storage 境界を `src/personal_mcp/storage/events_store.py` に導入した
+- read/write の呼び出し元（CLI `event-add` / `event-list` / `event-today`、Web入力、summary）はこの境界を経由する
+- primary は `events.db`（SQLite）とし、write は `events.db` → `events.jsonl` の順で行う
+- `events.jsonl` は移行期間の互換経路として残し、read は `events.db` が空のときのみ fallback する
 
 ## Phased migration plan
 

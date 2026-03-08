@@ -6,7 +6,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
 from personal_mcp.core.event import build_v1_record
-from personal_mcp.storage.jsonl import append_jsonl, read_jsonl
+from personal_mcp.storage.events_store import append_event
+from personal_mcp.storage.jsonl import read_jsonl
 from personal_mcp.storage.path import resolve_data_dir
 
 
@@ -116,7 +117,7 @@ def github_sync(
     token: Optional[str] = None,
     data_dir: Optional[str] = None,
 ) -> Dict[str, int]:
-    """Fetch GitHub user events and append new ones to events.jsonl.
+    """Fetch GitHub user events and append new ones via storage boundary.
 
     Returns {"saved": int, "skipped": int, "failed": int}.
     """
@@ -143,7 +144,7 @@ def github_sync(
             if record is None:
                 skipped += 1
                 continue
-            append_jsonl(path, record)
+            append_event(record, data_dir=resolved)
             existing_ids.add(event_id)
             saved += 1
         except Exception:

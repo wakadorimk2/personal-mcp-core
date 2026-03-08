@@ -78,14 +78,14 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(prog="personal-mcp")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    p_event = sub.add_parser("event-add", help="append an event to <data-dir>/events.jsonl")
+    p_event = sub.add_parser("event-add", help="append an event via storage boundary")
     p_event.add_argument("text", help="event text")
     p_event.add_argument("--domain", required=True, help="event domain (e.g. poe2, mood)")
     p_event.add_argument("--tags", default="")
     p_event.add_argument("--meta-json", default=None)
     p_event.add_argument("--data-dir", default=None)
 
-    p_elist = sub.add_parser("event-list", help="list events from <data-dir>/events.jsonl")
+    p_elist = sub.add_parser("event-list", help="list events via storage boundary")
     p_elist.add_argument("--n", type=int, default=20)
     p_elist.add_argument("--domain", default=None)
     p_elist.add_argument("--date", default=None, metavar="YYYY-MM-DD")
@@ -98,7 +98,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     p_etoday.add_argument("--data-dir", default=None)
     p_etoday.add_argument("--json", action="store_true")
 
-    p_mood = sub.add_parser("mood-add", help="append a mood event to <data-dir>/events.jsonl")
+    p_mood = sub.add_parser("mood-add", help="append a mood event via storage boundary")
     p_mood.add_argument("text", help="mood text")
     p_mood.add_argument("--tags", default="")
     p_mood.add_argument("--data-dir", default=None)
@@ -136,7 +136,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     p_web.add_argument("--host", default="0.0.0.0")
     p_web.add_argument("--port", type=int, default=8080)
     p_web.add_argument("--data-dir", default=None)
-    p_ghsync = sub.add_parser("github-sync", help="sync GitHub user events to events.jsonl")
+    p_ghsync = sub.add_parser("github-sync", help="sync GitHub user events via storage boundary")
     p_ghsync.add_argument("--username", required=True, help="GitHub username")
     p_ghsync.add_argument(
         "--token", default=None, help="GitHub API token (or GITHUB_TOKEN env var)"

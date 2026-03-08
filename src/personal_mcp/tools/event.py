@@ -2,12 +2,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from personal_mcp.core.event import ALLOWED_DOMAINS, build_v1_record
-from personal_mcp.storage.jsonl import append_jsonl, read_jsonl
-from personal_mcp.storage.path import resolve_data_dir
+from personal_mcp.storage.events_store import append_event, read_events
 
 
 def _now_iso() -> str:
@@ -43,8 +41,6 @@ def event_add(
     ref = meta.get("ref")
     extra_data = {k: v for k, v in meta.items() if k not in {"source", "ref"}}
 
-    data_dir = resolve_data_dir(data_dir)
-    path = Path(data_dir) / "events.jsonl"
     record = build_v1_record(
         ts=_now_iso(),
         domain=domain,
@@ -55,7 +51,7 @@ def event_add(
         ref=ref,
         extra_data=extra_data or None,
     )
-    append_jsonl(path, record)
+    append_event(record, data_dir=data_dir)
     return record
 
 
@@ -74,11 +70,9 @@ def event_list(
               that date; ISO datetime strings are used as-is.
     --n:      after all filters, return the newest n records (newest first).
 
-    events.jsonl が存在しない場合は空リストを返す（書き込みは一切しない）。
+    primary が空の場合は互換経路を読む。どちらもなければ空配列を返す。
     """
-    data_dir = resolve_data_dir(data_dir)
-    path = Path(data_dir) / "events.jsonl"
-    rows = read_jsonl(path)
+    rows = read_events(data_dir=data_dir)
 
     since_dt = _parse_since(since)
 

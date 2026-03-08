@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from personal_mcp.core.event import build_v1_record
-from personal_mcp.storage.path import resolve_data_dir
-from personal_mcp.storage.sqlite import append_sqlite, read_sqlite
+from personal_mcp.storage.events_store import append_event, read_events
 
 
 def _now_iso() -> str:
@@ -63,9 +61,8 @@ def _build_fact_text(events: List[Dict[str, Any]]) -> str:
 
 
 def get_latest_summary(date: str, data_dir: Optional[str] = None) -> Optional[Dict[str, Any]]:
-    db_path = Path(resolve_data_dir(data_dir)) / "events.db"
     latest: Optional[Dict[str, Any]] = None
-    for r in read_sqlite(db_path):
+    for r in read_events(data_dir=data_dir):
         if r.get("domain") == "summary" and r.get("data", {}).get("date") == date:
             latest = r
     return latest
@@ -81,8 +78,7 @@ def count_events_by_date(days: int = 28, data_dir: Optional[str] = None) -> List
     for i in range(days - 1, -1, -1):
         buckets[(today - timedelta(days=i)).isoformat()] = 0
 
-    db_path = Path(resolve_data_dir(data_dir)) / "events.db"
-    for r in read_sqlite(db_path):
+    for r in read_events(data_dir=data_dir):
         if r.get("domain") == "summary":
             continue
         d = _utc_date(r.get("ts", ""))
@@ -100,9 +96,8 @@ def list_summaries(days: int = 28, data_dir: Optional[str] = None) -> List[Dict[
     today = datetime.now(timezone.utc).date()
     cutoff = today - timedelta(days=days - 1)
 
-    db_path = Path(resolve_data_dir(data_dir)) / "events.db"
     by_date: Dict[str, Dict[str, Any]] = {}
-    for r in read_sqlite(db_path):
+    for r in read_events(data_dir=data_dir):
         if r.get("domain") != "summary":
             continue
         d_str = r.get("data", {}).get("date", "")
@@ -132,8 +127,7 @@ def generate_daily_summary(
     interpretation: Optional[str] = None,
     data_dir: Optional[str] = None,
 ) -> Dict[str, Any]:
-    db_path = Path(resolve_data_dir(data_dir)) / "events.db"
-    events = _events_for_date(read_sqlite(db_path), date)
+    events = _events_for_date(read_events(data_dir=data_dir), date)
     extra: Dict[str, Any] = {"date": date}
     if annotation:
         extra["annotation"] = annotation
@@ -149,5 +143,5 @@ def generate_daily_summary(
         source="generated",
         extra_data=extra,
     )
-    append_sqlite(db_path, record)
+    append_event(record, data_dir=data_dir)
     return record
