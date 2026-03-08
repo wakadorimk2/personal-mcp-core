@@ -122,6 +122,7 @@ var VALID_UI_MODES = ["quick", "tag", "text"];
 var currentMode = "quick";
 var selectedTags = [];
 var inputStarted = false;
+var editedBeforeSubmit = false;
 
 function inferLabels(text) {
   var t = (text || "").toLowerCase();
@@ -258,8 +259,18 @@ async function submitLog(trigger) {
     if (r.ok) {
       var saved = await r.json();
       msg.textContent = "保存しました: " + saved.domain + " / " + saved.kind;
+      var saveType = currentMode === "quick" ? "instant" : "manual";
+      var resolvedTrigger = trigger;
+      if (!resolvedTrigger) {
+        if (currentMode === "quick") resolvedTrigger = "quick_chip";
+        else if (currentMode === "tag") resolvedTrigger = "candidate_tag";
+        else resolvedTrigger = "text_submit";
+      }
       await postUiEvent("input_submitted", {
-        trigger: trigger,
+        mode: currentMode,
+        save_type: saveType,
+        edited_before_submit: editedBeforeSubmit,
+        trigger: resolvedTrigger,
         text_length: body.text.length,
         resolved_domain: saved.domain,
         resolved_kind: saved.kind,
@@ -268,6 +279,7 @@ async function submitLog(trigger) {
       document.getElementById("f").reset();
       resetTagSelection();
       inputStarted = false;
+      editedBeforeSubmit = false;
       renderSuggestion();
     } else {
       var err = await r.json();
@@ -312,6 +324,7 @@ document.querySelectorAll(".tag-chip").forEach(function(btn) {
 document.getElementById("text").addEventListener("focus", markInputStarted);
 document.getElementById("text").addEventListener("input", function() {
   markInputStarted();
+  editedBeforeSubmit = true;
   renderSuggestion();
 });
 
