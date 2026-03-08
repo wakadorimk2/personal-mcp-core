@@ -249,6 +249,16 @@ def test_http_get_dashboard_layout_order(data_dir: Path) -> None:
 def test_http_get_dashboard_candidate_tap_script_exists(data_dir: Path) -> None:
     handler_cls = _make_handler_for_test(str(data_dir))
     _, _, html = _do_get_html(handler_cls, "/dashboard")
+    assert 'id="candidate-compose-mode"' in html
+    assert 'id="candidate-quick-mode"' in html
+    assert 'id="candidate-mode-hint"' in html
+    assert 'var candidateTapMode = "compose";' in html
+    assert 'if (candidateTapMode === "quick") {' in html
+    assert 'await saveCandidateQuickLog(text, source);' in html
+    assert 'setCandidateTapMode("quick");' in html
+    assert 'function setDashboardBusy(disabled) {' in html
+    assert 'tag.disabled = disabled;' in html
+    assert 'trigger: "candidate_quick_save"' in html
     assert "var text = candidateText(item);" in html
     assert "tag.dataset.source = source;" in html
     assert "input.value = text;" in html
