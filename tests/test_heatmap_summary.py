@@ -254,10 +254,10 @@ def test_http_get_dashboard_candidate_tap_script_exists(data_dir: Path) -> None:
     assert 'id="candidate-mode-hint"' in html
     assert 'var candidateTapMode = "compose";' in html
     assert 'if (candidateTapMode === "quick") {' in html
-    assert 'await saveCandidateQuickLog(text, source);' in html
+    assert "await saveCandidateQuickLog(text, source);" in html
     assert 'setCandidateTapMode("quick");' in html
-    assert 'function setDashboardBusy(disabled) {' in html
-    assert 'tag.disabled = disabled;' in html
+    assert "function setDashboardBusy(disabled) {" in html
+    assert "tag.disabled = disabled;" in html
     assert 'trigger: "candidate_quick_save"' in html
     assert "var text = candidateText(item);" in html
     assert "tag.dataset.source = source;" in html
