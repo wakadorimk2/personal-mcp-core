@@ -16,6 +16,41 @@ The default channel is `stdout`, which keeps the initial implementation
 cross-platform and CI-safe. Future OS/Discord adapters can be added without
 changing callers.
 
+## Codex CLI integration
+
+Codex CLI's `notify` setting runs an external command and passes one JSON
+payload argument. Use `scripts/codex_notify.py` as a thin bridge from that
+payload shape into this repo's `scripts/notify` wrapper.
+
+`~/.codex/config.toml` example:
+
+```toml
+notify = ["python3", "/absolute/path/to/personal-mcp-core/scripts/codex_notify.py"]
+```
+
+Current mapping for Codex task completion:
+
+- `type = "agent-turn-complete"` -> `notify --event task_completed`
+- top-level `client` -> `--source` (`codex-tui` など)
+- `input-messages` / `input_messages` の末尾 -> `--title`
+- `last-assistant-message` -> MESSAGE
+
+The bridge keeps `scripts/notify` as the single notification entrypoint, so
+channel selection still comes from `NOTIFY_CHANNEL` / `NOTIFY_CHANNEL_DIR`.
+
+Quick local check:
+
+```bash
+python3 scripts/codex_notify.py \
+  '{"type":"agent-turn-complete","client":"codex-tui","input-messages":["issue #220"],"last-assistant-message":"done"}'
+```
+
+Expected output with the default `stdout` channel:
+
+```text
+[task_completed/codex-tui] issue #220: done
+```
+
 ## Channel contract
 
 - Adapters live under `scripts/notify.d/<channel>` and must be executable.

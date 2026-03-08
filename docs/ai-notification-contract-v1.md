@@ -149,3 +149,18 @@ notify wrapper に渡す共通入力は次の JSON object とする。
 - 通知イベントの保存 schema
 - `task_paused` や `task_cancelled` など追加 enum
 - runtime ごとの専用 field
+
+## Current Codex CLI bridge
+
+この repo の現状実装では、Codex CLI の `notify` hook から渡される
+`agent-turn-complete` payload を `scripts/codex_notify.py` で受け、
+`scripts/notify` に次の形で投影する。
+
+- `event_type`: `task_completed`
+- `agent.runtime`: `codex`
+- `agent.label/source`: top-level `client` があれば利用し、なければ `codex`
+- `title`: `input-messages`（互換で `input_messages` も許容）の末尾
+- `body`: `last-assistant-message`
+
+これにより Codex 側の payload 形式を `scripts/notify` へ直接広げず、
+wrapper entrypoint を 1 つに保つ。
