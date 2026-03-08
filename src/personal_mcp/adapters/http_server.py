@@ -373,6 +373,32 @@ h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
   display: inline-flex;
   align-items: center;
 }
+.candidate-mode-switcher {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.candidate-mode-btn {
+  flex: 1;
+  margin-top: 0;
+  border: 1px solid #d0d0d0;
+  border-radius: 999px;
+  background: #f8f8f8;
+  color: #333;
+  min-height: 2.75rem;
+}
+.candidate-mode-btn.active {
+  border-color: #ff7700;
+  background: #fff3e6;
+  color: #b14b00;
+  font-weight: 600;
+}
+.candidate-mode-hint {
+  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+  color: #666;
+  min-height: 1.2rem;
+}
 #log-form { margin-bottom: 1.5rem; }
 #log-text {
   width: 100%;
@@ -404,6 +430,11 @@ h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
 <h2>直近28日</h2>
 <div class="heatmap" id="heatmap"></div>
 <button type="button" id="refresh-btn">再読み込み</button>
+<div class="candidate-mode-switcher" aria-label="候補タグ動作切替">
+  <button type="button" id="candidate-compose-mode" class="candidate-mode-btn active">入力してから保存</button>
+  <button type="button" id="candidate-quick-mode" class="candidate-mode-btn">Quickログ</button>
+</div>
+<div id="candidate-mode-hint" class="candidate-mode-hint">候補タグをタップすると入力欄に入り、内容を確認してから保存できます。</div>
 <div id="candidates"></div>
 <div id="log-form">
   <textarea id="log-text" placeholder="いま起きたことを短く記録"></textarea>
@@ -413,6 +444,7 @@ h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
 <div id="summaries"></div>
 <script>
 var DASHBOARD_FALLBACK_CANDIDATES = ["作業開始", "休憩", "移動", "食事", "作業完了"];
+var candidateTapMode = "compose";
 
 function heatColor(n) {
   if (n === 0) return '#eeeeee';
@@ -439,6 +471,30 @@ function candidateSource(item) {
   return "";
 }
 
+function renderCandidateMode() {
+  var composeActive = candidateTapMode === "compose";
+  document.getElementById("candidate-compose-mode").classList.toggle("active", composeActive);
+  document.getElementById("candidate-quick-mode").classList.toggle("active", !composeActive);
+  document.getElementById("candidate-mode-hint").textContent = composeActive
+    ? "候補タグをタップすると入力欄に入り、内容を確認してから保存できます。"
+    : "Quickログ ON: 候補タグをタップするとそのまま保存します。";
+}
+
+function setCandidateTapMode(mode) {
+  if (mode !== "compose" && mode !== "quick") return;
+  candidateTapMode = mode;
+  renderCandidateMode();
+}
+
+function setDashboardBusy(disabled) {
+  document.getElementById("log-submit").disabled = disabled;
+  document.getElementById("candidate-compose-mode").disabled = disabled;
+  document.getElementById("candidate-quick-mode").disabled = disabled;
+  document.querySelectorAll(".candidate-tag").forEach(function(tag) {
+    tag.disabled = disabled;
+  });
+}
+
 function renderCandidates(items) {
   var el = document.getElementById("candidates");
   el.innerHTML = "";
@@ -456,7 +512,11 @@ function renderCandidates(items) {
     tag.textContent = text;
     var source = candidateSource(item);
     if (source) tag.dataset.source = source;
-    tag.addEventListener("click", function() {
+    tag.addEventListener("click", async function() {
+      if (candidateTapMode === "quick") {
+        await saveCandidateQuickLog(text, source);
+        return;
+      }
       var input = document.getElementById("log-text");
       input.value = text;
       input.focus();
@@ -538,12 +598,10 @@ async function refreshDashboard(source) {
   }
 }
 
-async function submitDashboardLog() {
+async function submitDashboardLogText(text, extraUiData) {
   var msg = document.getElementById("log-msg");
-  var btn = document.getElementById("log-submit");
-  var text = document.getElementById("log-text").value.trim();
   if (!text) return;
-  btn.disabled = true;
+  setDashboardBusy(true);
   try {
     var r = await fetch("/events", {
       method: "POST",
@@ -553,8 +611,9 @@ async function submitDashboardLog() {
     if (r.ok) {
       msg.textContent = "保存しました";
       msg.className = "msg-ok";
-      document.getElementById("log-text").value = "";
-      await postUiEvent("save_success", { text_length: text.length });
+      await postUiEvent("save_success", Object.assign({
+        text_length: text.length
+      }, extraUiData || {}));
       try {
         await Promise.all([loadHeatmap(), loadCandidates(), loadSummaries()]);
       } catch (refreshEx) {
@@ -566,19 +625,44 @@ async function submitDashboardLog() {
       var err = await r.json();
       msg.textContent = "エラー: " + (err.error || r.status);
       msg.className = "msg-err";
-      await postUiEvent("save_error", { status: r.status });
+      await postUiEvent("save_error", Object.assign({
+        status: r.status
+      }, extraUiData || {}));
     }
   } catch (ex) {
     msg.textContent = "接続エラー: " + ex.message;
     msg.className = "msg-err";
-    await postUiEvent("save_error", { reason: "fetch_exception" });
+    await postUiEvent("save_error", Object.assign({
+      reason: "fetch_exception"
+    }, extraUiData || {}));
   } finally {
-    btn.disabled = false;
+    setDashboardBusy(false);
   }
 }
 
+async function submitDashboardLog() {
+  var text = document.getElementById("log-text").value.trim();
+  if (!text) return;
+  await submitDashboardLogText(text, { trigger: "dashboard_submit" });
+  document.getElementById("log-text").value = "";
+}
+
+async function saveCandidateQuickLog(text, source) {
+  await submitDashboardLogText(text, {
+    trigger: "candidate_quick_save",
+    candidate_source: source || ""
+  });
+}
+
+document.getElementById("candidate-compose-mode").addEventListener("click", function() {
+  setCandidateTapMode("compose");
+});
+document.getElementById("candidate-quick-mode").addEventListener("click", function() {
+  setCandidateTapMode("quick");
+});
 document.getElementById("log-submit").addEventListener("click", submitDashboardLog);
 document.getElementById("refresh-btn").addEventListener("click", function() { refreshDashboard("manual"); });
+renderCandidateMode();
 loadHeatmap();
 loadCandidates();
 loadSummaries();
