@@ -27,9 +27,7 @@ def test_cli_event_add_writes_primary_and_compat_storage(data_dir: Path) -> None
     assert line["data"]["text"] == "cli event"
 
 
-def test_event_today_reads_web_input_via_same_storage_boundary(
-    data_dir: Path, capsys
-) -> None:
+def test_event_today_reads_web_input_via_same_storage_boundary(data_dir: Path, capsys) -> None:
     event_add_sqlite(domain="general", kind="note", text="from web", data_dir=str(data_dir))
 
     main(["event-today", "--data-dir", str(data_dir)])
@@ -39,9 +37,7 @@ def test_event_today_reads_web_input_via_same_storage_boundary(
 
 def test_summary_reads_cli_event_via_same_storage_boundary(data_dir: Path) -> None:
     rec = event_add(domain="worklog", text="from cli", data_dir=str(data_dir))
-    target_date = (
-        datetime.fromisoformat(rec["ts"]).astimezone(timezone.utc).strftime("%Y-%m-%d")
-    )
+    target_date = datetime.fromisoformat(rec["ts"]).astimezone(timezone.utc).strftime("%Y-%m-%d")
 
     summary = generate_daily_summary(target_date, data_dir=str(data_dir))
     assert "from cli" in summary["data"]["text"]

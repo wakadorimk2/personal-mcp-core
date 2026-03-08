@@ -217,7 +217,7 @@ def test_http_get_dashboard_layout_order(data_dir: Path) -> None:
 def test_http_get_dashboard_candidate_tap_script_exists(data_dir: Path) -> None:
     handler_cls = _make_handler_for_test(str(data_dir))
     _, _, html = _do_get_html(handler_cls, "/dashboard")
-    assert 'var text = candidateText(item);' in html
-    assert 'tag.dataset.source = source;' in html
-    assert 'input.value = text;' in html
+    assert "var text = candidateText(item);" in html
+    assert "tag.dataset.source = source;" in html
+    assert "input.value = text;" in html
     assert 'await fetch("/api/candidates")' in html
