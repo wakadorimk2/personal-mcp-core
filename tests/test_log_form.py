@@ -287,9 +287,7 @@ def test_http_post_events_saves_to_db(data_dir: Path) -> None:
     assert count == 1
     jsonl_path = data_dir / "events.jsonl"
     rows = [
-        json.loads(line)
-        for line in jsonl_path.read_text(encoding="utf-8").splitlines()
-        if line
+        json.loads(line) for line in jsonl_path.read_text(encoding="utf-8").splitlines() if line
     ]
     assert len(rows) == 1
     assert rows[0]["domain"] == "eng"
