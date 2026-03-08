@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections import Counter
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -11,6 +12,8 @@ from personal_mcp.storage.sqlite import read_sqlite
 MAX_CANDIDATES = 8
 RECENT_SOURCE_LIMIT = 10
 COLD_START_THRESHOLD = 7
+MAX_CANDIDATE_LENGTH = 10
+_SHORTEN_SPLIT = re.compile(r"[\s\u3000。、・：→←「」【】（）\[\]/|]+")
 FIXED_CANDIDATES: tuple[str, ...] = (
     "作業開始",
     "作業再開",
@@ -21,6 +24,17 @@ FIXED_CANDIDATES: tuple[str, ...] = (
     "振り返り",
     "就寝準備",
 )
+
+
+def _shorten_text(text: str) -> str:
+    """Trim a log sentence to a short tag-like label for mobile display."""
+    text = text.strip()
+    if not text:
+        return text
+    parts = [p for p in _SHORTEN_SPLIT.split(text) if p.strip()]
+    if parts:
+        text = parts[0].strip()
+    return text[:MAX_CANDIDATE_LENGTH]
 
 
 def _utc_date(ts_str: str) -> Optional[date]:
@@ -83,11 +97,12 @@ def _merge_sources(sources: List[tuple[str, List[str]]], limit: int) -> List[Dic
 
     for source_name, texts in sources:
         for text in texts:
-            normalized = _normalize_text(text)
+            shortened = _shorten_text(text)
+            normalized = _normalize_text(shortened)
             if not normalized or normalized in seen:
                 continue
             seen.add(normalized)
-            merged.append({"text": text.strip(), "source": source_name})
+            merged.append({"text": shortened, "source": source_name})
             if len(merged) >= limit:
                 return merged
     return merged

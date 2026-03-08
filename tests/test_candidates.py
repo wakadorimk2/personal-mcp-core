@@ -9,7 +9,12 @@ import pytest
 
 from personal_mcp.core.event import build_v1_record
 from personal_mcp.storage.sqlite import append_sqlite
-from personal_mcp.tools.candidates import FIXED_CANDIDATES, list_candidates
+from personal_mcp.tools.candidates import (
+    FIXED_CANDIDATES,
+    MAX_CANDIDATE_LENGTH,
+    _shorten_text,
+    list_candidates,
+)
 
 
 def _ts(days_ago: int, seq: int) -> str:
@@ -152,3 +157,64 @@ def test_http_get_candidates_200(data_dir: Path) -> None:
     assert isinstance(body, list)
     assert len(body) <= 8
     assert all("text" in item and "source" in item for item in body)
+
+
+# --- _shorten_text unit tests ---
+
+
+def test_shorten_text_short_text_unchanged() -> None:
+    assert _shorten_text("作業開始") == "作業開始"
+    assert _shorten_text("休憩") == "休憩"
+    assert _shorten_text("") == ""
+
+
+def test_shorten_text_at_boundary_unchanged() -> None:
+    text = "a" * MAX_CANDIDATE_LENGTH
+    assert _shorten_text(text) == text
+
+
+def test_shorten_text_long_text_within_limit() -> None:
+    long_text = "あいうえおかきくけこさしすせそ"  # 15 chars
+    result = _shorten_text(long_text)
+    assert len(result) <= MAX_CANDIDATE_LENGTH
+
+
+def test_shorten_text_splits_on_japanese_delimiter() -> None:
+    assert _shorten_text("作業開始：朝のタスク確認") == "作業開始"
+    assert _shorten_text("コーディング 詳細な説明が続く") == "コーディング"
+    assert _shorten_text("移動。買い物をした") == "移動"
+
+
+def test_shorten_text_splits_on_arrow() -> None:
+    result = _shorten_text("作業開始→タスク管理の確認")
+    assert result == "作業開始"
+    assert len(result) <= MAX_CANDIDATE_LENGTH
+
+
+# --- integration: long-text events produce short candidates ---
+
+
+def test_list_candidates_long_events_produce_short_candidates(data_dir: Path) -> None:
+    db_path = data_dir / "events.db"
+    long_texts = [
+        "今日の作業をしっかりと開始しました",
+        "昼休みの後に作業を再開した記録",
+        "移動中にメモしておく内容です",
+        "コードレビューを実施しました",
+        "夕方の振り返りをしています",
+        "明日のタスクを整理した",
+        "会議の準備をしていた",
+        "設計について検討した",
+        "ドキュメントを更新しました",
+        "テストを書いていた",
+    ]
+    for i, text in enumerate(long_texts):
+        _add_event(db_path, text=text, seq=i)
+
+    got = list_candidates(data_dir=str(data_dir))
+    non_fixed = [item for item in got if item["source"] != "fixed"]
+
+    assert non_fixed, "long-text events should produce at least one non-fixed candidate"
+    assert all(
+        len(item["text"]) <= MAX_CANDIDATE_LENGTH for item in non_fixed
+    ), f"all non-fixed candidates must be <= {MAX_CANDIDATE_LENGTH} chars: {non_fixed}"
