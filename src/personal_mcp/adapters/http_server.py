@@ -339,6 +339,34 @@ body { font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 1rem; 
 h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
 .heatmap { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-bottom: 1.5rem; }
 .heatmap-cell { aspect-ratio: 1; border-radius: 2px; }
+#candidates { margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.candidate-tag {
+  margin-top: 0;
+  width: auto;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid #ddd;
+  background: #fff;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+#log-form { margin-bottom: 1.5rem; }
+#log-text {
+  width: 100%;
+  padding: 0.5rem;
+  font-size: 1rem;
+  box-sizing: border-box;
+  height: 4rem;
+  resize: vertical;
+}
+#log-submit {
+  margin-top: 0.5rem;
+  width: 100%;
+  padding: 0.55rem;
+  font-size: 1rem;
+  cursor: pointer;
+}
+#log-msg { margin-top: 0.5rem; min-height: 1.2rem; font-size: 0.85rem; color: #555; }
 .summary-card { border-top: 1px solid #ddd; padding: 0.75rem 0; }
 .summary-date { font-size: 0.85rem; color: #666; margin-bottom: 0.25rem; }
 .summary-text { font-size: 0.95rem; }
@@ -348,8 +376,16 @@ h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
 <body>
 <h2>直近28日</h2>
 <div class="heatmap" id="heatmap"></div>
+<div id="candidates"></div>
+<div id="log-form">
+  <textarea id="log-text" placeholder="いま起きたことを短く記録"></textarea>
+  <button type="button" id="log-submit">保存</button>
+  <div id="log-msg"></div>
+</div>
 <div id="summaries"></div>
 <script>
+var DASHBOARD_FALLBACK_CANDIDATES = ["作業開始", "休憩", "移動", "食事", "作業完了"];
+
 function heatColor(n) {
   if (n === 0) return '#eeeeee';
   if (n <= 2) return '#ffd9b3';
@@ -357,6 +393,53 @@ function heatColor(n) {
   if (n <= 10) return '#ff7700';
   return '#cc4400';
 }
+
+function candidateText(item) {
+  if (item && typeof item === "object") {
+    return (item.text || "").trim();
+  }
+  if (typeof item === "string") {
+    return item.trim();
+  }
+  return "";
+}
+
+function candidateSource(item) {
+  if (item && typeof item === "object") {
+    return (item.source || "").trim();
+  }
+  return "";
+}
+
+function renderCandidates(items) {
+  var el = document.getElementById("candidates");
+  el.innerHTML = "";
+  if (!Array.isArray(items) || items.length === 0) {
+    el.style.display = "none";
+    return;
+  }
+  el.style.display = "";
+  items.forEach(function(item) {
+    var text = candidateText(item);
+    if (!text) return;
+    var tag = document.createElement("button");
+    tag.type = "button";
+    tag.className = "candidate-tag";
+    tag.textContent = text;
+    var source = candidateSource(item);
+    if (source) tag.dataset.source = source;
+    tag.addEventListener("click", function() {
+      var input = document.getElementById("log-text");
+      input.value = text;
+      input.focus();
+    });
+    el.appendChild(tag);
+  });
+  if (el.childElementCount === 0) {
+    el.style.display = "none";
+  }
+}
+
 async function loadHeatmap() {
   var r = await fetch('/api/heatmap');
   var data = await r.json();
@@ -369,6 +452,18 @@ async function loadHeatmap() {
     el.appendChild(cell);
   });
 }
+
+async function loadCandidates() {
+  try {
+    var r = await fetch("/api/candidates");
+    if (!r.ok) throw new Error("http " + r.status);
+    var data = await r.json();
+    renderCandidates(data);
+  } catch (e) {
+    renderCandidates(DASHBOARD_FALLBACK_CANDIDATES);
+  }
+}
+
 async function loadSummaries() {
   var r = await fetch('/api/summaries/list');
   var data = await r.json();
@@ -382,7 +477,33 @@ async function loadSummaries() {
     el.appendChild(card);
   });
 }
+
+async function submitDashboardLog() {
+  var msg = document.getElementById("log-msg");
+  var text = document.getElementById("log-text").value.trim();
+  if (!text) return;
+  try {
+    var r = await fetch("/events", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({text: text})
+    });
+    if (r.ok) {
+      msg.textContent = "保存しました";
+      document.getElementById("log-text").value = "";
+      setTimeout(function() { msg.textContent = ""; }, 2000);
+    } else {
+      var err = await r.json();
+      msg.textContent = "エラー: " + (err.error || r.status);
+    }
+  } catch (ex) {
+    msg.textContent = "接続エラー: " + ex.message;
+  }
+}
+
+document.getElementById("log-submit").addEventListener("click", submitDashboardLog);
 loadHeatmap();
+loadCandidates();
 loadSummaries();
 </script>
 </body>

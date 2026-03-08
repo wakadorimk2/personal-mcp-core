@@ -200,3 +200,24 @@ def test_http_get_summaries_list_200_with_record(data_dir: Path) -> None:
     assert status == 200
     assert len(body) == 1
     assert body[0]["date"] == today
+
+
+def test_http_get_dashboard_layout_order(data_dir: Path) -> None:
+    handler_cls = _make_handler_for_test(str(data_dir))
+    _, _, html = _do_get_html(handler_cls, "/dashboard")
+    heatmap_pos = html.find('id="heatmap"')
+    candidates_pos = html.find('id="candidates"')
+    log_text_pos = html.find('id="log-text"')
+    assert heatmap_pos != -1
+    assert candidates_pos != -1
+    assert log_text_pos != -1
+    assert heatmap_pos < candidates_pos < log_text_pos
+
+
+def test_http_get_dashboard_candidate_tap_script_exists(data_dir: Path) -> None:
+    handler_cls = _make_handler_for_test(str(data_dir))
+    _, _, html = _do_get_html(handler_cls, "/dashboard")
+    assert 'var text = candidateText(item);' in html
+    assert 'tag.dataset.source = source;' in html
+    assert 'input.value = text;' in html
+    assert 'await fetch("/api/candidates")' in html
