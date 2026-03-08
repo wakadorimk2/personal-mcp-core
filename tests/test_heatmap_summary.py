@@ -175,6 +175,32 @@ def test_http_get_dashboard_200(data_dir: Path) -> None:
     assert 'id="heatmap"' in html
 
 
+def test_http_get_root_returns_dashboard_html(data_dir: Path) -> None:
+    handler_cls = _make_handler_for_test(str(data_dir))
+    _, _, root_html = _do_get_html(handler_cls, "/")
+    _, _, dashboard_html = _do_get_html(handler_cls, "/dashboard")
+    assert root_html == dashboard_html
+    assert 'id="heatmap"' in root_html
+
+
+def test_http_get_index_html_returns_dashboard_html(data_dir: Path) -> None:
+    handler_cls = _make_handler_for_test(str(data_dir))
+    _, _, index_html = _do_get_html(handler_cls, "/index.html")
+    _, _, dashboard_html = _do_get_html(handler_cls, "/dashboard")
+    assert index_html == dashboard_html
+    assert 'id="heatmap"' in index_html
+
+
+def test_http_get_input_returns_legacy_log_form_html(data_dir: Path) -> None:
+    handler_cls = _make_handler_for_test(str(data_dir))
+    statuses, headers, html = _do_get_html(handler_cls, "/input")
+    assert statuses == [200]
+    assert headers["Content-Type"] == "text/html; charset=utf-8"
+    assert 'data-mode="quick"' in html
+    assert 'id="suggestion"' in html
+    assert 'id="heatmap"' not in html
+
+
 def test_http_get_heatmap_200(data_dir: Path) -> None:
     handler_cls = _make_handler_for_test(str(data_dir))
     resp = _do_get_json(handler_cls, "/api/heatmap")
