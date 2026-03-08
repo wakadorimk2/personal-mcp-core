@@ -70,7 +70,15 @@ make smoke DATA_DIR="$DATA_DIR" DATE="$(date -u +%F)"
 
 ## Data storage
 
-イベントはデータディレクトリ内の `events.jsonl` に **追記のみ** で保存される（削除・書き換えは不可）。
+ストレージ統一前の現状（2026-03-08 時点）は、導線ごとに参照先が分かれている。
+
+| 導線 | 現在の保存先 |
+|---|---|
+| CLI (`event-add` / `event-list` / `event-today`) | `events.jsonl` |
+| Web入力 (`web-serve` の `/events` / `/events/ui`) | `events.db` |
+| summary (`summary-generate` / dashboard集計) | `events.db` |
+
+単一ストレージ化の方針・移行段階・障害復旧ルールは [`docs/storage-unification-plan.md`](./docs/storage-unification-plan.md) を参照。
 
 | 優先順 | 解決方法 |
 |---|---|
@@ -193,6 +201,7 @@ src/personal_mcp/
 | [`docs/daily-input-ux-mvp.md`](./docs/daily-input-ux-mvp.md) | daily use UI 主導線（ヒートマップ直下入力）のMVP方針 |
 | [`docs/kind-taxonomy-v1.md`](./docs/kind-taxonomy-v1.md) | `kind` フィールド分類 |
 | [`docs/data-directory.md`](./docs/data-directory.md) | データ保存先の詳細ルール |
+| [`docs/storage-unification-plan.md`](./docs/storage-unification-plan.md) | `events.db` / `events.jsonl` 単一化方針（#185） |
 | [`docs/domain-extension-policy.md`](./docs/domain-extension-policy.md) | domain 拡張条件 |
 | [`docs/architecture.md`](./docs/architecture.md) | 技術的アーキテクチャ |
 
