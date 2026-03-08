@@ -206,6 +206,7 @@ src/personal_mcp/
 | [`docs/storage-unification-plan.md`](./docs/storage-unification-plan.md) | `events.db` / `events.jsonl` 単一化方針（#185） |
 | [`docs/domain-extension-policy.md`](./docs/domain-extension-policy.md) | domain 拡張条件 |
 | [`docs/architecture.md`](./docs/architecture.md) | 技術的アーキテクチャ |
+| [`docs/infra/notify-wrapper.md`](./docs/infra/notify-wrapper.md) | `notify` wrapper の使い方と通知チャネル追加契約 |
 
 ---
 
