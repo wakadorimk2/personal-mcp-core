@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from personal_mcp.adapters.mcp_server import get_system_context
+from personal_mcp.storage.events_store import rebuild_db_from_jsonl, rebuild_jsonl_from_db
 from personal_mcp.storage.path import resolve_data_dir
 from personal_mcp.tools.event import event_add, event_list
 from personal_mcp.tools.daily_summary import generate_daily_summary
@@ -157,6 +158,20 @@ def main(argv: Optional[List[str]] = None) -> int:
     p_summary.add_argument("--interpretation", default=None, help="optional interpretation text")
     p_summary.add_argument("--data-dir", default=None)
     p_summary.add_argument("--json", action="store_true")
+    p_db_to_jsonl = sub.add_parser(
+        "storage-db-to-jsonl",
+        help="regenerate events.jsonl from events.db",
+    )
+    p_db_to_jsonl.add_argument("--data-dir", default=None)
+    p_db_to_jsonl.add_argument("--dry-run", action="store_true")
+    p_db_to_jsonl.add_argument("--json", action="store_true")
+    p_jsonl_to_db = sub.add_parser(
+        "storage-jsonl-to-db",
+        help="regenerate events.db from events.jsonl",
+    )
+    p_jsonl_to_db.add_argument("--data-dir", default=None)
+    p_jsonl_to_db.add_argument("--dry-run", action="store_true")
+    p_jsonl_to_db.add_argument("--json", action="store_true")
 
     args = parser.parse_args(argv)
     data_dir = resolve_data_dir(getattr(args, "data_dir", None))
@@ -289,6 +304,44 @@ def main(argv: Optional[List[str]] = None) -> int:
             print(json.dumps(record, ensure_ascii=False, indent=2))
         else:
             print(f"summary generated for {target_date}: {record['data']['text'][:60]}")
+        return 0
+
+    if args.cmd == "storage-db-to-jsonl":
+        try:
+            result = rebuild_jsonl_from_db(data_dir=data_dir, dry_run=args.dry_run)
+        except FileNotFoundError as exc:
+            print(f"error: {exc}", flush=True)
+            return 1
+
+        if args.json:
+            print(json.dumps(result, ensure_ascii=False))
+        else:
+            print(
+                "db->jsonl "
+                f"source={result['source_count']} "
+                f"target={result['target_count']} "
+                f"diff={result['count_diff']} "
+                f"dry_run={result['dry_run']}"
+            )
+        return 0
+
+    if args.cmd == "storage-jsonl-to-db":
+        try:
+            result = rebuild_db_from_jsonl(data_dir=data_dir, dry_run=args.dry_run)
+        except FileNotFoundError as exc:
+            print(f"error: {exc}", flush=True)
+            return 1
+
+        if args.json:
+            print(json.dumps(result, ensure_ascii=False))
+        else:
+            print(
+                "jsonl->db "
+                f"source={result['source_count']} "
+                f"target={result['target_count']} "
+                f"diff={result['count_diff']} "
+                f"dry_run={result['dry_run']}"
+            )
         return 0
 
     return 1
