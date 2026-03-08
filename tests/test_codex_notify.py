@@ -52,8 +52,5 @@ def test_codex_notify_accepts_legacy_snake_case_input_messages() -> None:
         }
     )
 
-    assert (
-        result.stdout
-        == "[task_completed/codex] run the smoke test: Smoke test completed.\n"
-    )
+    assert result.stdout == "[task_completed/codex] run the smoke test: Smoke test completed.\n"
     assert result.stderr == ""
