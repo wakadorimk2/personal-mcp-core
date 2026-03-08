@@ -13,6 +13,16 @@ ALLOWED_UI_MODES: frozenset = frozenset({"quick", "tag", "text"})
 ALLOWED_UI_EVENT_NAMES: frozenset = frozenset(
     {"ui_mode_changed", "input_started", "input_submitted"}
 )
+INPUT_SUBMITTED_SAVE_TYPE_BY_MODE: Dict[str, str] = {
+    "quick": "instant",
+    "tag": "manual",
+    "text": "manual",
+}
+INPUT_SUBMITTED_TRIGGER_BY_MODE: Dict[str, str] = {
+    "quick": "quick_chip",
+    "tag": "candidate_tag",
+    "text": "text_submit",
+}
 DEFAULT_DOMAIN = "general"
 DEFAULT_KIND = "note"
 
@@ -44,6 +54,31 @@ def suggest_labels(text: str) -> Dict[str, str]:
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _normalize_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "1", "yes", "y", "on"}:
+            return True
+        if normalized in {"false", "0", "no", "n", "off", ""}:
+            return False
+    return bool(value)
+
+
+def _input_submitted_contract_payload(ui_mode: str, extra_data: Dict[str, Any]) -> Dict[str, Any]:
+    mode = ui_mode
+    trigger = str(extra_data.get("trigger") or "").strip()
+    if not trigger:
+        trigger = INPUT_SUBMITTED_TRIGGER_BY_MODE[mode]
+    return {
+        "mode": mode,
+        "save_type": INPUT_SUBMITTED_SAVE_TYPE_BY_MODE[mode],
+        "edited_before_submit": _normalize_bool(extra_data.get("edited_before_submit", False)),
+        "trigger": trigger,
+    }
 
 
 def event_add_sqlite(
@@ -107,6 +142,10 @@ def ui_event_add_sqlite(
     }
     if extra_data:
         payload_data.update(extra_data)
+    if normalized_event_name == "input_submitted":
+        payload_data.update(
+            _input_submitted_contract_payload(normalized_ui_mode, extra_data or {})
+        )
 
     record = build_v1_record(
         ts=_now_iso(),

@@ -118,6 +118,45 @@ def test_ui_event_add_sqlite_rejects_invalid_ui_mode(data_dir: Path) -> None:
         )
 
 
+def test_ui_event_add_sqlite_input_submitted_enriches_min_contract(data_dir: Path) -> None:
+    rec = ui_event_add_sqlite(
+        event_name="input_submitted",
+        ui_mode="quick",
+        data_dir=str(data_dir),
+        extra_data={"edited_before_submit": "true", "trigger": "quick_chip"},
+    )
+    assert rec["data"]["mode"] == "quick"
+    assert rec["data"]["save_type"] == "instant"
+    assert rec["data"]["edited_before_submit"] is True
+    assert rec["data"]["trigger"] == "quick_chip"
+
+
+@pytest.mark.parametrize(
+    ("ui_mode", "expected_save_type", "expected_trigger"),
+    [
+        ("quick", "instant", "quick_chip"),
+        ("tag", "manual", "candidate_tag"),
+        ("text", "manual", "text_submit"),
+    ],
+)
+def test_ui_event_add_sqlite_input_submitted_applies_mode_defaults(
+    data_dir: Path,
+    ui_mode: str,
+    expected_save_type: str,
+    expected_trigger: str,
+) -> None:
+    rec = ui_event_add_sqlite(
+        event_name="input_submitted",
+        ui_mode=ui_mode,
+        data_dir=str(data_dir),
+        extra_data={},
+    )
+    assert rec["data"]["mode"] == ui_mode
+    assert rec["data"]["save_type"] == expected_save_type
+    assert rec["data"]["edited_before_submit"] is False
+    assert rec["data"]["trigger"] == expected_trigger
+
+
 # ---------------------------------------------------------------------------
 # append_sqlite / DB content
 # ---------------------------------------------------------------------------
@@ -327,6 +366,25 @@ def test_http_post_ui_events_400_non_object_extra_data(data_dir: Path) -> None:
     status, body = responses[0]
     assert status == 400
     assert "extra_data" in body["error"]
+
+
+def test_http_post_ui_events_input_submitted_fills_contract_defaults(data_dir: Path) -> None:
+    handler_cls = _make_handler_for_test(str(data_dir))
+    responses = _post_json(
+        handler_cls,
+        {
+            "event_name": "input_submitted",
+            "ui_mode": "tag",
+            "extra_data": {"edited_before_submit": "1"},
+        },
+        "/events/ui",
+    )
+    status, body = responses[0]
+    assert status == 201
+    assert body["data"]["mode"] == "tag"
+    assert body["data"]["save_type"] == "manual"
+    assert body["data"]["edited_before_submit"] is True
+    assert body["data"]["trigger"] == "candidate_tag"
 
 
 def test_make_html_shows_optional_labels_and_suggestion() -> None:
