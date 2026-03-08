@@ -344,12 +344,15 @@ h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
 .candidate-tag {
   margin-top: 0;
   width: auto;
-  padding: 0.35rem 0.75rem;
+  padding: 0.55rem 0.9rem;
   border-radius: 999px;
   border: 1px solid #ddd;
   background: #fff;
-  font-size: 0.9rem;
+  font-size: 1rem;
   cursor: pointer;
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
 }
 #log-form { margin-bottom: 1.5rem; }
 #log-text {
@@ -363,9 +366,10 @@ h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
 #log-submit {
   margin-top: 0.5rem;
   width: 100%;
-  padding: 0.55rem;
+  padding: 0.75rem;
   font-size: 1rem;
   cursor: pointer;
+  min-height: 2.75rem;
 }
 #log-msg { margin-top: 0.5rem; min-height: 1.2rem; font-size: 0.85rem; color: #555; }
 .summary-card { border-top: 1px solid #ddd; padding: 0.75rem 0; }
@@ -544,15 +548,15 @@ def _make_handler(data_dir: str):
 
         def do_GET(self) -> None:
             parsed = urlparse(self.path)
-            if parsed.path in ("/", "/index.html"):
-                html = _make_html().encode("utf-8")
+            if parsed.path in ("/", "/index.html", "/dashboard"):
+                html = _DASHBOARD_HTML.encode("utf-8")
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
                 self.send_header("Content-Length", str(len(html)))
                 self.end_headers()
                 self.wfile.write(html)
-            elif parsed.path == "/dashboard":
-                html = _DASHBOARD_HTML.encode("utf-8")
+            elif parsed.path == "/input":
+                html = _make_html().encode("utf-8")
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
                 self.send_header("Content-Length", str(len(html)))
