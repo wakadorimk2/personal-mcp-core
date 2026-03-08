@@ -215,6 +215,6 @@ def test_list_candidates_long_events_produce_short_candidates(data_dir: Path) ->
     non_fixed = [item for item in got if item["source"] != "fixed"]
 
     assert non_fixed, "long-text events should produce at least one non-fixed candidate"
-    assert all(
-        len(item["text"]) <= MAX_CANDIDATE_LENGTH for item in non_fixed
-    ), f"all non-fixed candidates must be <= {MAX_CANDIDATE_LENGTH} chars: {non_fixed}"
+    assert all(len(item["text"]) <= MAX_CANDIDATE_LENGTH for item in non_fixed), (
+        f"all non-fixed candidates must be <= {MAX_CANDIDATE_LENGTH} chars: {non_fixed}"
+    )
