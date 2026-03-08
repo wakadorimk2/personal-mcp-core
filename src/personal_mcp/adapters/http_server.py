@@ -399,7 +399,16 @@ h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
   color: #666;
   min-height: 1.2rem;
 }
-#log-form { margin-bottom: 1.5rem; }
+#log-form {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  margin: 0 -1rem 1.5rem;
+  padding: 0.75rem 1rem calc(0.85rem + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(180deg, rgba(255,255,255,0.96), #ffffff 28%);
+  border-top: 1px solid #eee;
+}
+#composer-hint { margin-bottom: 0.5rem; font-size: 0.85rem; color: #666; }
 #log-text {
   width: 100%;
   padding: 0.5rem;
@@ -408,9 +417,25 @@ h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
   height: 4rem;
   resize: vertical;
 }
-#log-submit {
+#composer-meta {
   margin-top: 0.5rem;
-  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+#draft-preview {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.85rem;
+  color: #666;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#log-submit {
+  margin-top: 0;
+  width: auto;
   padding: 0.75rem;
   font-size: 1rem;
   cursor: pointer;
@@ -437,14 +462,19 @@ h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
 <div id="candidate-mode-hint" class="candidate-mode-hint">候補タグをタップすると入力欄に入り、内容を確認してから保存できます。</div>
 <div id="candidates"></div>
 <div id="log-form">
-  <textarea id="log-text" placeholder="いま起きたことを短く記録"></textarea>
-  <button type="button" id="log-submit">保存</button>
-  <div id="log-msg"></div>
+  <div id="composer-hint">候補をタップするか短文を入力して、そのまま保存します。</div>
+  <textarea id="log-text" placeholder="いま起きたことを短く記録" enterkeyhint="done"></textarea>
+  <div id="composer-meta">
+    <div id="draft-preview" aria-live="polite">候補をタップするか短文を入力</div>
+    <button type="button" id="log-submit" disabled>保存</button>
+  </div>
+  <div id="log-msg" aria-live="polite"></div>
 </div>
 <div id="summaries"></div>
 <script>
 var DASHBOARD_FALLBACK_CANDIDATES = ["作業開始", "休憩", "移動", "食事", "作業完了"];
 var candidateTapMode = "compose";
+var dashboardBusy = false;
 
 function heatColor(n) {
   if (n === 0) return '#eeeeee';
@@ -480,6 +510,36 @@ function renderCandidateMode() {
     : "Quickログ ON: 候補タグをタップするとそのまま保存します。";
 }
 
+function currentDraftText() {
+  return document.getElementById("log-text").value.trim();
+}
+
+function summarizeDraft(text) {
+  if (text.length <= 18) return text;
+  return text.slice(0, 18) + "...";
+}
+
+function renderComposerState() {
+  var draft = currentDraftText();
+  var preview = document.getElementById("draft-preview");
+  var btn = document.getElementById("log-submit");
+  if (dashboardBusy) {
+    btn.textContent = "保存中...";
+    btn.disabled = true;
+    if (!draft) preview.textContent = "候補をタップするか短文を入力";
+    return;
+  }
+  if (!draft) {
+    preview.textContent = "候補をタップするか短文を入力";
+    btn.textContent = "保存";
+    btn.disabled = true;
+    return;
+  }
+  preview.textContent = "保存対象: " + draft;
+  btn.textContent = "「" + summarizeDraft(draft) + "」を保存";
+  btn.disabled = false;
+}
+
 function setCandidateTapMode(mode) {
   if (mode !== "compose" && mode !== "quick") return;
   candidateTapMode = mode;
@@ -487,12 +547,13 @@ function setCandidateTapMode(mode) {
 }
 
 function setDashboardBusy(disabled) {
-  document.getElementById("log-submit").disabled = disabled;
+  dashboardBusy = disabled;
   document.getElementById("candidate-compose-mode").disabled = disabled;
   document.getElementById("candidate-quick-mode").disabled = disabled;
   document.querySelectorAll(".candidate-tag").forEach(function(tag) {
     tag.disabled = disabled;
   });
+  renderComposerState();
 }
 
 function renderCandidates(items) {
@@ -519,7 +580,11 @@ function renderCandidates(items) {
       }
       var input = document.getElementById("log-text");
       input.value = text;
+      if (typeof input.setSelectionRange === "function") {
+        input.setSelectionRange(text.length, text.length);
+      }
       input.focus();
+      renderComposerState();
     });
     el.appendChild(tag);
   });
@@ -600,8 +665,11 @@ async function refreshDashboard(source) {
 
 async function submitDashboardLogText(text, extraUiData) {
   var msg = document.getElementById("log-msg");
-  if (!text) return;
+  if (!text || dashboardBusy) return false;
   setDashboardBusy(true);
+  msg.textContent = "保存しています...";
+  msg.className = "";
+  var saved = false;
   try {
     var r = await fetch("/events", {
       method: "POST",
@@ -609,7 +677,8 @@ async function submitDashboardLogText(text, extraUiData) {
       body: JSON.stringify({text: text})
     });
     if (r.ok) {
-      msg.textContent = "保存しました";
+      saved = true;
+      msg.textContent = "保存しました: " + text;
       msg.className = "msg-ok";
       await postUiEvent("save_success", Object.assign({
         text_length: text.length
@@ -638,13 +707,22 @@ async function submitDashboardLogText(text, extraUiData) {
   } finally {
     setDashboardBusy(false);
   }
+  return saved;
 }
 
 async function submitDashboardLog() {
-  var text = document.getElementById("log-text").value.trim();
-  if (!text) return;
-  await submitDashboardLogText(text, { trigger: "dashboard_submit" });
-  document.getElementById("log-text").value = "";
+  var input = document.getElementById("log-text");
+  var text = input.value.trim();
+  if (!text) {
+    renderComposerState();
+    return;
+  }
+  var saved = await submitDashboardLogText(text, { trigger: "dashboard_submit" });
+  if (saved) {
+    input.value = "";
+    input.blur();
+    renderComposerState();
+  }
 }
 
 async function saveCandidateQuickLog(text, source) {
@@ -662,6 +740,19 @@ document.getElementById("candidate-quick-mode").addEventListener("click", functi
 });
 document.getElementById("log-submit").addEventListener("click", submitDashboardLog);
 document.getElementById("refresh-btn").addEventListener("click", function() { refreshDashboard("manual"); });
+document.getElementById("log-text").addEventListener("input", renderComposerState);
+document.getElementById("log-text").addEventListener("focus", function() {
+  setTimeout(function() {
+    document.getElementById("log-form").scrollIntoView({ block: "nearest" });
+  }, 120);
+});
+document.getElementById("log-text").addEventListener("keydown", function(event) {
+  if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+    event.preventDefault();
+    submitDashboardLog();
+  }
+});
+renderComposerState();
 renderCandidateMode();
 loadHeatmap();
 loadCandidates();
