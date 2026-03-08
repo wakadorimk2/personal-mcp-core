@@ -186,3 +186,4 @@ recent > today_frequent > 7d_frequent > fixed
 - [`docs/design-principles.md`](./design-principles.md) — 設計原則（Human Observability・append-only・非評価設計）
 - [`docs/event-contract-v1.md`](./event-contract-v1.md) — Event Contract v1（`data.text` フィールド定義）
 - [`docs/mvp-contract-decisions.md`](./mvp-contract-decisions.md) — MVP 期間中の契約決定事項
+- [`docs/daily-input-mode-contract-v1.md`](./daily-input-mode-contract-v1.md) — quick/tag/text の責務境界と比較前提（Issue #188）
