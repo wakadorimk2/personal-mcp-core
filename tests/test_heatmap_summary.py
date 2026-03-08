@@ -173,6 +173,8 @@ def test_http_get_dashboard_200(data_dir: Path) -> None:
     assert headers["Content-Type"] == "text/html; charset=utf-8"
     assert "直近28日" in html
     assert 'id="heatmap"' in html
+    assert 'id="refresh-btn"' in html
+    assert "再読み込みに失敗しました。再試行してください。" in html
 
 
 def test_http_get_root_returns_dashboard_html(data_dir: Path) -> None:

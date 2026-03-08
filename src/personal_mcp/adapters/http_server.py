@@ -276,17 +276,23 @@ async function submitLog(trigger) {
         resolved_kind: saved.kind,
         selected_tag_count: selectedTags.length
       });
+      await postUiEvent("save_success", { trigger: trigger });
       document.getElementById("f").reset();
       resetTagSelection();
       inputStarted = false;
       editedBeforeSubmit = false;
       renderSuggestion();
+      setTimeout(function() {
+        if (msg.textContent.indexOf("保存しました") === 0) msg.textContent = "";
+      }, 3000);
     } else {
       var err = await r.json();
       msg.textContent = "エラー: " + (err.error || r.status);
+      await postUiEvent("save_error", { trigger: trigger, status: r.status });
     }
   } catch(ex) {
     msg.textContent = "接続エラー: " + ex.message;
+    await postUiEvent("save_error", { trigger: trigger, reason: "fetch_exception" });
   }
 }
 
@@ -384,7 +390,10 @@ h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
   cursor: pointer;
   min-height: 2.75rem;
 }
-#log-msg { margin-top: 0.5rem; min-height: 1.2rem; font-size: 0.85rem; color: #555; }
+#log-msg { margin-top: 0.5rem; min-height: 1.2rem; font-size: 0.85rem; }
+.msg-ok { color: #2a7a2a; }
+.msg-err { color: #c0392b; }
+#refresh-btn { width: 100%; padding: 0.5rem; font-size: 0.9rem; margin-bottom: 0.5rem; cursor: pointer; border: 1px solid #ddd; background: #f8f8f8; border-radius: 6px; }
 .summary-card { border-top: 1px solid #ddd; padding: 0.75rem 0; }
 .summary-date { font-size: 0.85rem; color: #666; margin-bottom: 0.25rem; }
 .summary-text { font-size: 0.95rem; }
@@ -394,6 +403,7 @@ h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
 <body>
 <h2>直近28日</h2>
 <div class="heatmap" id="heatmap"></div>
+<button type="button" id="refresh-btn">再読み込み</button>
 <div id="candidates"></div>
 <div id="log-form">
   <textarea id="log-text" placeholder="いま起きたことを短く記録"></textarea>
@@ -460,8 +470,10 @@ function renderCandidates(items) {
 
 async function loadHeatmap() {
   var r = await fetch('/api/heatmap');
+  if (!r.ok) throw new Error("http " + r.status);
   var data = await r.json();
   var el = document.getElementById('heatmap');
+  el.innerHTML = '';
   data.forEach(function(item) {
     var cell = document.createElement('div');
     cell.className = 'heatmap-cell';
@@ -484,8 +496,10 @@ async function loadCandidates() {
 
 async function loadSummaries() {
   var r = await fetch('/api/summaries/list');
+  if (!r.ok) throw new Error("http " + r.status);
   var data = await r.json();
   var el = document.getElementById('summaries');
+  el.innerHTML = '';
   data.forEach(function(item) {
     var card = document.createElement('div'); card.className = 'summary-card';
     var d = document.createElement('div'); d.className = 'summary-date'; d.textContent = item.date; card.appendChild(d);
@@ -496,10 +510,40 @@ async function loadSummaries() {
   });
 }
 
+async function postUiEvent(eventName, extraData) {
+  var payload = { event_name: eventName, ui_mode: "dashboard" };
+  if (extraData) payload.extra_data = extraData;
+  try {
+    await fetch("/events/ui", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(payload)
+    });
+  } catch (e) {}
+}
+
+async function refreshDashboard(source) {
+  var msg = document.getElementById("log-msg");
+  await postUiEvent("refresh_triggered", { source: source || "manual" });
+  try {
+    await Promise.all([loadHeatmap(), loadCandidates(), loadSummaries()]);
+    if (source === "manual") {
+      msg.textContent = "最新状態を再取得しました";
+      msg.className = "msg-ok";
+      setTimeout(function() { if (msg.className === "msg-ok") { msg.textContent = ""; msg.className = ""; } }, 3000);
+    }
+  } catch (ex) {
+    msg.textContent = "再読み込みに失敗しました。再試行してください。";
+    msg.className = "msg-err";
+  }
+}
+
 async function submitDashboardLog() {
   var msg = document.getElementById("log-msg");
+  var btn = document.getElementById("log-submit");
   var text = document.getElementById("log-text").value.trim();
   if (!text) return;
+  btn.disabled = true;
   try {
     var r = await fetch("/events", {
       method: "POST",
@@ -508,18 +552,33 @@ async function submitDashboardLog() {
     });
     if (r.ok) {
       msg.textContent = "保存しました";
+      msg.className = "msg-ok";
       document.getElementById("log-text").value = "";
-      setTimeout(function() { msg.textContent = ""; }, 2000);
+      await postUiEvent("save_success", { text_length: text.length });
+      try {
+        await Promise.all([loadHeatmap(), loadCandidates(), loadSummaries()]);
+      } catch (refreshEx) {
+        msg.textContent = "保存済み。再取得に失敗しました。再試行してください。";
+        msg.className = "msg-err";
+      }
+      setTimeout(function() { if (msg.className === "msg-ok") { msg.textContent = ""; msg.className = ""; } }, 3000);
     } else {
       var err = await r.json();
       msg.textContent = "エラー: " + (err.error || r.status);
+      msg.className = "msg-err";
+      await postUiEvent("save_error", { status: r.status });
     }
   } catch (ex) {
     msg.textContent = "接続エラー: " + ex.message;
+    msg.className = "msg-err";
+    await postUiEvent("save_error", { reason: "fetch_exception" });
+  } finally {
+    btn.disabled = false;
   }
 }
 
 document.getElementById("log-submit").addEventListener("click", submitDashboardLog);
+document.getElementById("refresh-btn").addEventListener("click", function() { refreshDashboard("manual"); });
 loadHeatmap();
 loadCandidates();
 loadSummaries();

@@ -344,6 +344,24 @@ def test_http_post_ui_events_returns_201_on_valid_input(data_dir: Path) -> None:
     assert body["data"]["from_mode"] == "text"
 
 
+def test_http_post_ui_events_returns_201_on_dashboard_refresh_event(data_dir: Path) -> None:
+    handler_cls = _make_handler_for_test(str(data_dir))
+    responses = _post_json(
+        handler_cls,
+        {
+            "event_name": "refresh_triggered",
+            "ui_mode": "dashboard",
+            "extra_data": {"source": "manual"},
+        },
+        "/events/ui",
+    )
+    status, body = responses[0]
+    assert status == 201
+    assert body["data"]["event_name"] == "refresh_triggered"
+    assert body["data"]["ui_mode"] == "dashboard"
+    assert body["data"]["source"] == "manual"
+
+
 def test_http_post_ui_events_400_invalid_ui_mode(data_dir: Path) -> None:
     handler_cls = _make_handler_for_test(str(data_dir))
     responses = _post_json(

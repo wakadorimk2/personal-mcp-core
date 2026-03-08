@@ -9,9 +9,16 @@ from personal_mcp.storage.events_store import append_event
 ALLOWED_KINDS: frozenset = frozenset(
     {"note", "session", "artifact", "milestone", "interaction", "maintenance"}
 )
-ALLOWED_UI_MODES: frozenset = frozenset({"quick", "tag", "text"})
+ALLOWED_UI_MODES: frozenset = frozenset({"quick", "tag", "text", "dashboard"})
 ALLOWED_UI_EVENT_NAMES: frozenset = frozenset(
-    {"ui_mode_changed", "input_started", "input_submitted"}
+    {
+        "ui_mode_changed",
+        "input_started",
+        "input_submitted",
+        "save_success",
+        "save_error",
+        "refresh_triggered",
+    }
 )
 INPUT_SUBMITTED_SAVE_TYPE_BY_MODE: Dict[str, str] = {
     "quick": "instant",
