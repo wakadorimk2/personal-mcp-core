@@ -141,3 +141,76 @@ git fetch -p origin
 - 期待した worktree / branch で作業している
 - 意図しない差分がない
 - `main` 起点の新規 task branch を作成できる状態である
+
+---
+
+## 7. GitHub Project Active管理ルール（試行）
+
+この節は、Project を「TODO 一覧」ではなく「active management の作業面」にするための最小ルールを定義する。
+試行期間は **2026-03-09 から 2026-03-22（2週間）** とし、期間後に閾値と運用を見直す。
+
+### 7.1 基本原則
+
+- Project は `active management 用` として使う
+- `Project外デフォルト` とし、backlog は基本的に Project に載せない
+- Priority を付与する対象は `Project内かつ active/ready` の Issue のみ
+- Priority は backlog 全体には付与しない（情報価値を落とさないため）
+
+### 7.2 14日ルール
+
+- 次の条件を満たす Issue は Project から外す
+  - 最終更新または運用ログ更新から 14 日以上経過
+  - 直近の次アクションが定義されていない
+- 外す際は Issue 本文またはコメントに `戻し条件` を 1 行残す
+  - 例: `再投入条件: blocker解除後に active 化`
+
+### 7.3 Epic の扱い
+
+- Epic は active child が 1 件以上ある間、Project に残す
+- Epic は実装実体ではなく、`観測ログ` と `意思決定履歴` の集約先として運用する
+- child がすべて backlog/out になったら Epic も 14 日ルールの対象にする
+
+### 7.4 依存メタデータの使い分け
+
+- `parent-child`: 実行順序を持つ分割タスクの束を表す（Epic と子 Issue）
+- `blocked-by`: 直接の着手阻害要因を表す（解除されるまで active にしない）
+- `refs`: 文脈参照のみを表す（依存関係として扱わない）
+
+### 7.5 WIP 上限
+
+- Implementation: 2
+- Decision-design: 1
+- Ops-workflow: 1
+- 合計上限: 4
+
+上限超過時は `新規投入` ではなく `既存 active の完了/棚卸し` を先に行う。
+
+### 7.6 代表 Issue のサンプル判定（2026-03-09 時点）
+
+| Issue | 判定 | Project扱い | Priority |
+|---|---|---|---|
+| #174 Epic: 日常ログ UX 探索 | 残す | `active child あり` の間は保持。観測/意思決定ログの親として運用 | 付与しない |
+| #180 daily input UX 最小導線 | 残す | active/ready 候補（Implementation） | 付与対象 |
+| #185 dual-write 方針整理 | 残す | active/ready 候補（Decision-design） | 付与対象 |
+| #189 storage abstraction | 残す | active/ready 候補（Implementation） | 付与対象 |
+| #190 migration tool | 外す（backlog） | #189 完了まで待機。必要時に再投入 | 付与しない |
+| #191 dual-write 撤去 | 外す（backlog） | #190 以降で再評価 | 付与しない |
+| #177 Makefile 日常運用整備 | 残す | active/ready 候補（Ops-workflow） | 付与対象 |
+| #150 外部保存戦略（GCP候補） | 外す（backlog） | 参照情報として保持。着手条件成立時に再投入 | 付与しない |
+
+### 7.7 週次20分トリアージ（最小チェック）
+
+- 1. Project 内 Issue が WIP 上限（Implementation 2 / Decision-design 1 / Ops-workflow 1 / 合計 4）を超えていないか
+- 2. `active/ready` 以外に Priority が付いていないか
+- 3. 14 日以上更新がない Issue に `残す理由` または `外す判断` があるか
+- 4. Epic が child 状態と整合しているか（child なしなのに残置していないか）
+- 5. `blocked-by` と `refs` が混在して依存解釈を誤らない状態か
+
+### 7.8 試行運用ログの残し方（2026-03-09〜2026-03-22）
+
+- 毎週 1 回、20 分で 7.7 を実施する
+- 変更時は Issue コメントに `判定（残す/外す/再投入）` と `理由` を 1-2 行で記録する
+- 試行期間終了時に次を見直す
+  - WIP 上限の妥当性
+  - 14 日閾値の妥当性
+  - Priority 対象範囲（active/ready 限定）の維持可否
