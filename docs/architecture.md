@@ -28,6 +28,10 @@ personal-mcp-core
 | Core | `core/guide.py` | Loads and caches the AI guide text |
 | Data | `AI_GUIDE.md` | The guide content itself |
 
+Runtime module の import / layering / dependency 制約は
+[`docs/import-layering-dependency-constraints.md`](./import-layering-dependency-constraints.md)
+で別管理する。enforcement 実装はそちらを正本として follow-up へ接続する。
+
 ## Extension points
 
 ### Adding a new adapter
