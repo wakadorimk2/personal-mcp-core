@@ -46,11 +46,52 @@ Codex CLI's `notify` setting runs an external command and passes one JSON
 payload argument. Use `scripts/codex_notify.py` as a thin bridge from that
 payload shape into this repo's `scripts/notify` wrapper.
 
+### Required setup
+
+1. Add a `notify` entry to `~/.codex/config.toml` with an absolute path to this
+   repo's bridge script.
+2. Export Discord delivery variables in the shell environment that launches
+   Codex.
+3. Run a dry-run locally through `scripts/codex_notify.py` before attempting a
+   real Discord delivery.
+
 `~/.codex/config.toml` example:
 
 ```toml
 notify = ["python3", "/absolute/path/to/personal-mcp-core/scripts/codex_notify.py"]
 ```
+
+Discord delivery environment:
+
+```bash
+export NOTIFY_CHANNEL=discord
+export DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
+```
+
+Optional overrides:
+
+```bash
+export DISCORD_WEBHOOK_USERNAME="Codex"
+export DISCORD_WEBHOOK_AVATAR_URL="https://example.com/codex.png"
+```
+
+Where to configure them:
+
+- Put `notify = [...]` in `~/.codex/config.toml`
+- Put `NOTIFY_CHANNEL` and `DISCORD_WEBHOOK_URL` in the shell startup file or
+  wrapper script that launches Codex
+- If you use WSL, configure them inside the WSL environment where `codex` and
+  `python3` actually run; Windows-side env vars are not assumed to propagate
+  automatically
+
+Path and shell assumptions:
+
+- The `notify` command uses `python3`, so that executable must exist in the
+  environment where Codex runs
+- The path in `~/.codex/config.toml` must be an absolute path to
+  `scripts/codex_notify.py`; do not rely on the current working directory
+- `scripts/codex_notify.py` resolves the repo root from its own file location,
+  so calling it through an absolute path is sufficient
 
 Current mapping for Codex task completion:
 
@@ -62,18 +103,29 @@ Current mapping for Codex task completion:
 The bridge keeps `scripts/notify` as the single notification entrypoint, so
 channel selection still comes from `NOTIFY_CHANNEL` / `NOTIFY_CHANNEL_DIR`.
 
-Quick local check:
+### Dry-run verification
+
+Run the bridge directly before enabling real Discord delivery:
 
 ```bash
-python3 scripts/codex_notify.py \
+python3 /absolute/path/to/personal-mcp-core/scripts/codex_notify.py \
   '{"type":"agent-turn-complete","client":"codex-tui","input-messages":["issue #220"],"last-assistant-message":"done"}'
 ```
 
-Expected output with the default `stdout` channel:
+Expected result with the default `stdout` channel:
 
 ```text
 [task_completed/codex-tui] issue #220: done
 ```
+
+If you want to verify the Discord path without editing `~/.codex/config.toml`
+yet, export `NOTIFY_CHANNEL=discord` and `DISCORD_WEBHOOK_URL` in the same
+shell, then rerun the command above. A successful Discord webhook send produces
+no stdout output and exits with code `0`.
+
+Real Discord smoke-test evidence is tracked separately in issue #268 so this
+documented setup can stay reproducible without requiring a live webhook during
+issue #267.
 
 ## Channel contract
 
