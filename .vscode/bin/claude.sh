@@ -8,4 +8,4 @@ if [ -f .venv/bin/activate ]; then
   source .venv/bin/activate
 fi
 
-exec claude
+exec "$repo_root/scripts/claude-notify" "$@"

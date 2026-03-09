@@ -108,7 +108,29 @@ wc -l <data-dir>/events.jsonl
 tail -n 5 <data-dir>/events.jsonl
 ```
 
-### 3. `event-list` で読み取れることを確認する
+### 3. 片方向欠損時は migration tool で再生成する
+
+`events.db` / `events.jsonl` どちらかが欠損した場合は、まず dry-run で件数差分を確認する。
+
+```sh
+# events.db -> events.jsonl 再生成（dry-run）
+personal-mcp storage-db-to-jsonl --dry-run --json --data-dir <data-dir>
+
+# events.jsonl -> events.db 再生成（dry-run）
+personal-mcp storage-jsonl-to-db --dry-run --json --data-dir <data-dir>
+```
+
+dry-run の結果が想定どおりであれば、実際に再生成する。
+
+```sh
+# events.db を正として events.jsonl を再生成
+personal-mcp storage-db-to-jsonl --data-dir <data-dir>
+
+# events.jsonl を元に events.db を再生成
+personal-mcp storage-jsonl-to-db --data-dir <data-dir>
+```
+
+### 4. `event-list` で読み取れることを確認する
 
 ```sh
 personal-mcp event-list --n 10 --data-dir <data-dir>

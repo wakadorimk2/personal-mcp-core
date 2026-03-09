@@ -122,6 +122,7 @@ var VALID_UI_MODES = ["quick", "tag", "text"];
 var currentMode = "quick";
 var selectedTags = [];
 var inputStarted = false;
+var editedBeforeSubmit = false;
 
 function inferLabels(text) {
   var t = (text || "").toLowerCase();
@@ -258,23 +259,40 @@ async function submitLog(trigger) {
     if (r.ok) {
       var saved = await r.json();
       msg.textContent = "保存しました: " + saved.domain + " / " + saved.kind;
+      var saveType = currentMode === "quick" ? "instant" : "manual";
+      var resolvedTrigger = trigger;
+      if (!resolvedTrigger) {
+        if (currentMode === "quick") resolvedTrigger = "quick_chip";
+        else if (currentMode === "tag") resolvedTrigger = "candidate_tag";
+        else resolvedTrigger = "text_submit";
+      }
       await postUiEvent("input_submitted", {
-        trigger: trigger,
+        mode: currentMode,
+        save_type: saveType,
+        edited_before_submit: editedBeforeSubmit,
+        trigger: resolvedTrigger,
         text_length: body.text.length,
         resolved_domain: saved.domain,
         resolved_kind: saved.kind,
         selected_tag_count: selectedTags.length
       });
+      await postUiEvent("save_success", { trigger: trigger });
       document.getElementById("f").reset();
       resetTagSelection();
       inputStarted = false;
+      editedBeforeSubmit = false;
       renderSuggestion();
+      setTimeout(function() {
+        if (msg.textContent.indexOf("保存しました") === 0) msg.textContent = "";
+      }, 3000);
     } else {
       var err = await r.json();
       msg.textContent = "エラー: " + (err.error || r.status);
+      await postUiEvent("save_error", { trigger: trigger, status: r.status });
     }
   } catch(ex) {
     msg.textContent = "接続エラー: " + ex.message;
+    await postUiEvent("save_error", { trigger: trigger, reason: "fetch_exception" });
   }
 }
 
@@ -312,6 +330,7 @@ document.querySelectorAll(".tag-chip").forEach(function(btn) {
 document.getElementById("text").addEventListener("focus", markInputStarted);
 document.getElementById("text").addEventListener("input", function() {
   markInputStarted();
+  editedBeforeSubmit = true;
   renderSuggestion();
 });
 
@@ -354,7 +373,42 @@ h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
   display: inline-flex;
   align-items: center;
 }
-#log-form { margin-bottom: 1.5rem; }
+.candidate-mode-switcher {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.candidate-mode-btn {
+  flex: 1;
+  margin-top: 0;
+  border: 1px solid #d0d0d0;
+  border-radius: 999px;
+  background: #f8f8f8;
+  color: #333;
+  min-height: 2.75rem;
+}
+.candidate-mode-btn.active {
+  border-color: #ff7700;
+  background: #fff3e6;
+  color: #b14b00;
+  font-weight: 600;
+}
+.candidate-mode-hint {
+  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+  color: #666;
+  min-height: 1.2rem;
+}
+#log-form {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  margin: 0 -1rem 1.5rem;
+  padding: 0.75rem 1rem calc(0.85rem + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(180deg, rgba(255,255,255,0.96), #ffffff 28%);
+  border-top: 1px solid #eee;
+}
+#composer-hint { margin-bottom: 0.5rem; font-size: 0.85rem; color: #666; }
 #log-text {
   width: 100%;
   padding: 0.5rem;
@@ -363,15 +417,34 @@ h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
   height: 4rem;
   resize: vertical;
 }
-#log-submit {
+#composer-meta {
   margin-top: 0.5rem;
-  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+#draft-preview {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.85rem;
+  color: #666;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#log-submit {
+  margin-top: 0;
+  width: auto;
   padding: 0.75rem;
   font-size: 1rem;
   cursor: pointer;
   min-height: 2.75rem;
 }
-#log-msg { margin-top: 0.5rem; min-height: 1.2rem; font-size: 0.85rem; color: #555; }
+#log-msg { margin-top: 0.5rem; min-height: 1.2rem; font-size: 0.85rem; }
+.msg-ok { color: #2a7a2a; }
+.msg-err { color: #c0392b; }
+#refresh-btn { width: 100%; padding: 0.5rem; font-size: 0.9rem; margin-bottom: 0.5rem; cursor: pointer; border: 1px solid #ddd; background: #f8f8f8; border-radius: 6px; }
 .summary-card { border-top: 1px solid #ddd; padding: 0.75rem 0; }
 .summary-date { font-size: 0.85rem; color: #666; margin-bottom: 0.25rem; }
 .summary-text { font-size: 0.95rem; }
@@ -381,15 +454,27 @@ h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
 <body>
 <h2>直近28日</h2>
 <div class="heatmap" id="heatmap"></div>
+<button type="button" id="refresh-btn">再読み込み</button>
+<div class="candidate-mode-switcher" aria-label="候補タグ動作切替">
+  <button type="button" id="candidate-compose-mode" class="candidate-mode-btn active">入力してから保存</button>
+  <button type="button" id="candidate-quick-mode" class="candidate-mode-btn">Quickログ</button>
+</div>
+<div id="candidate-mode-hint" class="candidate-mode-hint">候補タグをタップすると入力欄に入り、内容を確認してから保存できます。</div>
 <div id="candidates"></div>
 <div id="log-form">
-  <textarea id="log-text" placeholder="いま起きたことを短く記録"></textarea>
-  <button type="button" id="log-submit">保存</button>
-  <div id="log-msg"></div>
+  <div id="composer-hint">候補をタップするか短文を入力して、そのまま保存します。</div>
+  <textarea id="log-text" placeholder="いま起きたことを短く記録" enterkeyhint="done"></textarea>
+  <div id="composer-meta">
+    <div id="draft-preview" aria-live="polite">候補をタップするか短文を入力</div>
+    <button type="button" id="log-submit" disabled>保存</button>
+  </div>
+  <div id="log-msg" aria-live="polite"></div>
 </div>
 <div id="summaries"></div>
 <script>
 var DASHBOARD_FALLBACK_CANDIDATES = ["作業開始", "休憩", "移動", "食事", "作業完了"];
+var candidateTapMode = "compose";
+var dashboardBusy = false;
 
 function heatColor(n) {
   if (n === 0) return '#eeeeee';
@@ -416,6 +501,61 @@ function candidateSource(item) {
   return "";
 }
 
+function renderCandidateMode() {
+  var composeActive = candidateTapMode === "compose";
+  document.getElementById("candidate-compose-mode").classList.toggle("active", composeActive);
+  document.getElementById("candidate-quick-mode").classList.toggle("active", !composeActive);
+  document.getElementById("candidate-mode-hint").textContent = composeActive
+    ? "候補タグをタップすると入力欄に入り、内容を確認してから保存できます。"
+    : "Quickログ ON: 候補タグをタップするとそのまま保存します。";
+}
+
+function currentDraftText() {
+  return document.getElementById("log-text").value.trim();
+}
+
+function summarizeDraft(text) {
+  if (text.length <= 18) return text;
+  return text.slice(0, 18) + "...";
+}
+
+function renderComposerState() {
+  var draft = currentDraftText();
+  var preview = document.getElementById("draft-preview");
+  var btn = document.getElementById("log-submit");
+  if (dashboardBusy) {
+    btn.textContent = "保存中...";
+    btn.disabled = true;
+    if (!draft) preview.textContent = "候補をタップするか短文を入力";
+    return;
+  }
+  if (!draft) {
+    preview.textContent = "候補をタップするか短文を入力";
+    btn.textContent = "保存";
+    btn.disabled = true;
+    return;
+  }
+  preview.textContent = "保存対象: " + draft;
+  btn.textContent = "「" + summarizeDraft(draft) + "」を保存";
+  btn.disabled = false;
+}
+
+function setCandidateTapMode(mode) {
+  if (mode !== "compose" && mode !== "quick") return;
+  candidateTapMode = mode;
+  renderCandidateMode();
+}
+
+function setDashboardBusy(disabled) {
+  dashboardBusy = disabled;
+  document.getElementById("candidate-compose-mode").disabled = disabled;
+  document.getElementById("candidate-quick-mode").disabled = disabled;
+  document.querySelectorAll(".candidate-tag").forEach(function(tag) {
+    tag.disabled = disabled;
+  });
+  renderComposerState();
+}
+
 function renderCandidates(items) {
   var el = document.getElementById("candidates");
   el.innerHTML = "";
@@ -433,10 +573,18 @@ function renderCandidates(items) {
     tag.textContent = text;
     var source = candidateSource(item);
     if (source) tag.dataset.source = source;
-    tag.addEventListener("click", function() {
+    tag.addEventListener("click", async function() {
+      if (candidateTapMode === "quick") {
+        await saveCandidateQuickLog(text, source);
+        return;
+      }
       var input = document.getElementById("log-text");
       input.value = text;
+      if (typeof input.setSelectionRange === "function") {
+        input.setSelectionRange(text.length, text.length);
+      }
       input.focus();
+      renderComposerState();
     });
     el.appendChild(tag);
   });
@@ -447,8 +595,10 @@ function renderCandidates(items) {
 
 async function loadHeatmap() {
   var r = await fetch('/api/heatmap');
+  if (!r.ok) throw new Error("http " + r.status);
   var data = await r.json();
   var el = document.getElementById('heatmap');
+  el.innerHTML = '';
   data.forEach(function(item) {
     var cell = document.createElement('div');
     cell.className = 'heatmap-cell';
@@ -471,8 +621,10 @@ async function loadCandidates() {
 
 async function loadSummaries() {
   var r = await fetch('/api/summaries/list');
+  if (!r.ok) throw new Error("http " + r.status);
   var data = await r.json();
   var el = document.getElementById('summaries');
+  el.innerHTML = '';
   data.forEach(function(item) {
     var card = document.createElement('div'); card.className = 'summary-card';
     var d = document.createElement('div'); d.className = 'summary-date'; d.textContent = item.date; card.appendChild(d);
@@ -483,10 +635,41 @@ async function loadSummaries() {
   });
 }
 
-async function submitDashboardLog() {
+async function postUiEvent(eventName, extraData) {
+  var payload = { event_name: eventName, ui_mode: "dashboard" };
+  if (extraData) payload.extra_data = extraData;
+  try {
+    await fetch("/events/ui", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(payload)
+    });
+  } catch (e) {}
+}
+
+async function refreshDashboard(source) {
   var msg = document.getElementById("log-msg");
-  var text = document.getElementById("log-text").value.trim();
-  if (!text) return;
+  await postUiEvent("refresh_triggered", { source: source || "manual" });
+  try {
+    await Promise.all([loadHeatmap(), loadCandidates(), loadSummaries()]);
+    if (source === "manual") {
+      msg.textContent = "最新状態を再取得しました";
+      msg.className = "msg-ok";
+      setTimeout(function() { if (msg.className === "msg-ok") { msg.textContent = ""; msg.className = ""; } }, 3000);
+    }
+  } catch (ex) {
+    msg.textContent = "再読み込みに失敗しました。再試行してください。";
+    msg.className = "msg-err";
+  }
+}
+
+async function submitDashboardLogText(text, extraUiData) {
+  var msg = document.getElementById("log-msg");
+  if (!text || dashboardBusy) return false;
+  setDashboardBusy(true);
+  msg.textContent = "保存しています...";
+  msg.className = "";
+  var saved = false;
   try {
     var r = await fetch("/events", {
       method: "POST",
@@ -494,19 +677,83 @@ async function submitDashboardLog() {
       body: JSON.stringify({text: text})
     });
     if (r.ok) {
-      msg.textContent = "保存しました";
-      document.getElementById("log-text").value = "";
-      setTimeout(function() { msg.textContent = ""; }, 2000);
+      saved = true;
+      msg.textContent = "保存しました: " + text;
+      msg.className = "msg-ok";
+      await postUiEvent("save_success", Object.assign({
+        text_length: text.length
+      }, extraUiData || {}));
+      try {
+        await Promise.all([loadHeatmap(), loadCandidates(), loadSummaries()]);
+      } catch (refreshEx) {
+        msg.textContent = "保存済み。再取得に失敗しました。再試行してください。";
+        msg.className = "msg-err";
+      }
+      setTimeout(function() { if (msg.className === "msg-ok") { msg.textContent = ""; msg.className = ""; } }, 3000);
     } else {
       var err = await r.json();
       msg.textContent = "エラー: " + (err.error || r.status);
+      msg.className = "msg-err";
+      await postUiEvent("save_error", Object.assign({
+        status: r.status
+      }, extraUiData || {}));
     }
   } catch (ex) {
     msg.textContent = "接続エラー: " + ex.message;
+    msg.className = "msg-err";
+    await postUiEvent("save_error", Object.assign({
+      reason: "fetch_exception"
+    }, extraUiData || {}));
+  } finally {
+    setDashboardBusy(false);
+  }
+  return saved;
+}
+
+async function submitDashboardLog() {
+  var input = document.getElementById("log-text");
+  var text = input.value.trim();
+  if (!text) {
+    renderComposerState();
+    return;
+  }
+  var saved = await submitDashboardLogText(text, { trigger: "dashboard_submit" });
+  if (saved) {
+    input.value = "";
+    input.blur();
+    renderComposerState();
   }
 }
 
+async function saveCandidateQuickLog(text, source) {
+  await submitDashboardLogText(text, {
+    trigger: "candidate_quick_save",
+    candidate_source: source || ""
+  });
+}
+
+document.getElementById("candidate-compose-mode").addEventListener("click", function() {
+  setCandidateTapMode("compose");
+});
+document.getElementById("candidate-quick-mode").addEventListener("click", function() {
+  setCandidateTapMode("quick");
+});
 document.getElementById("log-submit").addEventListener("click", submitDashboardLog);
+document.getElementById("refresh-btn").addEventListener("click", function() { refreshDashboard("manual"); });
+document.getElementById("log-text").addEventListener("input", renderComposerState);
+document.getElementById("log-text").addEventListener("focus", function() {
+  setTimeout(function() {
+    document.getElementById("log-form").scrollIntoView({ block: "nearest" });
+  }, 120);
+});
+document.getElementById("log-text").addEventListener("keydown", function(event) {
+  if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+    event.preventDefault();
+    submitDashboardLog();
+  }
+});
+renderComposerState();
+renderCandidateMode();
 loadHeatmap();
 loadCandidates();
 loadSummaries();

@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+message="${NOTIFY_MESSAGE:-}"
+if [[ -z "$message" ]]; then
+  message="$(cat)"
+fi
+
+event="${NOTIFY_EVENT:-generic}"
+title="${NOTIFY_TITLE:-}"
+source="${NOTIFY_SOURCE:-}"
+
+label="$event"
+if [[ -n "$source" ]]; then
+  label="$label/$source"
+fi
+
+if [[ -n "$title" ]]; then
+  printf '[%s] %s: %s\n' "$label" "$title" "$message"
+else
+  printf '[%s] %s\n' "$label" "$message"
+fi

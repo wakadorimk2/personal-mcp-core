@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+webhook_url="${DISCORD_WEBHOOK_URL:-}"
+if [[ -z "$webhook_url" ]]; then
+  echo "discord notify: DISCORD_WEBHOOK_URL is required" >&2
+  exit 2
+fi
+
+message="${NOTIFY_MESSAGE:-}"
+if [[ -z "$message" ]]; then
+  message="$(cat)"
+fi
+
+title="${NOTIFY_TITLE:-}"
+event="${NOTIFY_EVENT:-generic}"
+source="${NOTIFY_SOURCE:-}"
+username="${DISCORD_WEBHOOK_USERNAME:-}"
+avatar_url="${DISCORD_WEBHOOK_AVATAR_URL:-}"
+
+provenance='[`'"$event"'`]'
+if [[ -n "$source" ]]; then
+  provenance='[`'"$event"'` from `'"$source"'`]'
+fi
+
+content="$message"$'\n'"$provenance"
+if [[ -n "$title" ]]; then
+  content="**$title**"$'\n'"$content"
+fi
+
+payload="$(
+  CONTENT="$content" \
+  USERNAME="$username" \
+  AVATAR_URL="$avatar_url" \
+  python3 -c 'import json, os; payload = {"content": os.environ["CONTENT"]}; username = os.environ.get("USERNAME"); avatar_url = os.environ.get("AVATAR_URL");  # noqa: E702
+if username: payload["username"] = username
+if avatar_url: payload["avatar_url"] = avatar_url
+print(json.dumps(payload, ensure_ascii=False))'
+)"
+
+if ! http_code="$(
+  curl \
+    --silent \
+    --show-error \
+    --output /dev/null \
+    --write-out '%{http_code}' \
+    --header 'Content-Type: application/json' \
+    --data "$payload" \
+    "$webhook_url"
+)"; then
+  echo "discord notify: webhook POST failed" >&2
+  exit 1
+fi
+
+if [[ ! "$http_code" =~ ^2[0-9][0-9]$ ]]; then
+  echo "discord notify: webhook POST failed with HTTP $http_code" >&2
+  exit 1
+fi

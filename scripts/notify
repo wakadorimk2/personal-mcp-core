@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CHANNEL_DIR="${NOTIFY_CHANNEL_DIR:-$SCRIPT_DIR/notify.d}"
+CHANNEL="${NOTIFY_CHANNEL:-stdout}"
+TITLE="${NOTIFY_TITLE:-}"
+EVENT="${NOTIFY_EVENT:-generic}"
+SOURCE="${NOTIFY_SOURCE:-}"
+READ_STDIN="0"
+
+usage() {
+  cat <<'EOF'
+usage: notify [--channel NAME] [--title TEXT] [--event NAME] [--source NAME] [--stdin] MESSAGE
+
+Common notification wrapper for CLI tools.
+
+Examples:
+  notify "build finished"
+  notify --event input-required --title "Codex" "Need approval"
+  printf 'long message' | notify --stdin --channel stdout
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --channel)
+      CHANNEL="$2"
+      shift 2
+      ;;
+    --title)
+      TITLE="$2"
+      shift 2
+      ;;
+    --event)
+      EVENT="$2"
+      shift 2
+      ;;
+    --source)
+      SOURCE="$2"
+      shift 2
+      ;;
+    --stdin)
+      READ_STDIN="1"
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      echo "unknown option: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+if [[ "$READ_STDIN" == "1" ]]; then
+  if [[ $# -ne 0 ]]; then
+    echo "notify: --stdin cannot be combined with MESSAGE arguments" >&2
+    exit 2
+  fi
+  MESSAGE="$(cat)"
+else
+  if [[ $# -lt 1 ]]; then
+    echo "notify: MESSAGE is required" >&2
+    usage >&2
+    exit 2
+  fi
+  MESSAGE="$*"
+fi
+
+if [[ -z "$MESSAGE" ]]; then
+  echo "notify: empty message is not allowed" >&2
+  exit 2
+fi
+
+ADAPTER_PATH="$CHANNEL_DIR/$CHANNEL"
+if [[ ! -f "$ADAPTER_PATH" ]]; then
+  echo "notify: channel adapter not found: $CHANNEL ($ADAPTER_PATH)" >&2
+  exit 2
+fi
+
+if [[ ! -x "$ADAPTER_PATH" ]]; then
+  echo "notify: channel adapter is not executable: $ADAPTER_PATH" >&2
+  exit 2
+fi
+
+export NOTIFY_CHANNEL_NAME="$CHANNEL"
+export NOTIFY_MESSAGE="$MESSAGE"
+export NOTIFY_TITLE="$TITLE"
+export NOTIFY_EVENT="$EVENT"
+export NOTIFY_SOURCE="$SOURCE"
+
+# Send the normalized message over stdin as well as env vars so adapters can
+# choose the mechanism that fits the target platform best.
+printf '%s' "$MESSAGE" | "$ADAPTER_PATH"

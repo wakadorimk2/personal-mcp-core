@@ -21,6 +21,16 @@ def _utc_date(ts_str: str) -> Optional[str]:
         return None
 
 
+def _local_date(ts_str: str) -> Optional[str]:
+    try:
+        ts_dt = datetime.fromisoformat(ts_str)
+        if ts_dt.tzinfo is None:
+            ts_dt = ts_dt.replace(tzinfo=timezone.utc)
+        return ts_dt.astimezone().strftime("%Y-%m-%d")
+    except Exception:
+        return None
+
+
 def _parse_iso_date(date_str: str) -> Optional[date]:
     try:
         return datetime.strptime(date_str, "%Y-%m-%d").date()
@@ -69,11 +79,11 @@ def get_latest_summary(date: str, data_dir: Optional[str] = None) -> Optional[Di
 
 
 def count_events_by_date(days: int = 28, data_dir: Optional[str] = None) -> List[Dict[str, Any]]:
-    """Return [{date, count}] for the last `days` UTC days, including 0-count days."""
+    """Return [{date, count}] for the last `days` local days, including 0-count days."""
     if days <= 0:
         return []
 
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now().astimezone().date()
     buckets: Dict[str, int] = {}
     for i in range(days - 1, -1, -1):
         buckets[(today - timedelta(days=i)).isoformat()] = 0
@@ -81,7 +91,7 @@ def count_events_by_date(days: int = 28, data_dir: Optional[str] = None) -> List
     for r in read_events(data_dir=data_dir):
         if r.get("domain") == "summary":
             continue
-        d = _utc_date(r.get("ts", ""))
+        d = _local_date(r.get("ts", ""))
         if d and d in buckets:
             buckets[d] += 1
 

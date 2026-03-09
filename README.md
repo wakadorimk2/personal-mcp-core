@@ -64,7 +64,7 @@ make smoke DATA_DIR="$DATA_DIR" DATE="$(date -u +%F)"
 
 `DATA_DIR` を渡さない場合は CLI の保存先解決（`--data-dir` > `PERSONAL_MCP_DATA_DIR` > XDG 既定）に従う。`repo/data/` は開発・テスト用であり、実運用の保存先には使わない。
 
-`make check` / `make test` / `make help` の拡張はこの Issue の対象外（follow-up 扱い）。
+`make lint` / `make fmt` / `make test` は開発用導線として扱い、ここでは日常運用ターゲットだけを示している。`make check` / `make help` の拡張は引き続き follow-up 扱いとする。
 
 ---
 
@@ -145,21 +145,33 @@ make smoke DATA_DIR="$DATA_DIR" DATE="$(date -u +%F)"
 
 ## Development
 
+最短の開発開始手順:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+make setup
+make lint
+make test
+```
+
+`make setup` は `python -m pip install -e ".[dev]"` の薄いラッパーなので、optional dependency の `dev` を毎回思い出さなくてよい。
+
 ```bash
 # 開発用インストール
-pip install -e ".[dev]"
+make setup
 
 # コードチェック
-ruff check .
+make lint
 
 # 自動修正
 ruff check . --fix
 
 # フォーマット
-ruff format .
+make fmt
 
 # テスト
-pytest
+make test
 
 # AI_GUIDE.md の同期確認
 diff AI_GUIDE.md src/personal_mcp/AI_GUIDE.md
@@ -206,11 +218,12 @@ src/personal_mcp/
 | [`docs/storage-unification-plan.md`](./docs/storage-unification-plan.md) | `events.db` / `events.jsonl` 単一化方針（#185） |
 | [`docs/domain-extension-policy.md`](./docs/domain-extension-policy.md) | domain 拡張条件 |
 | [`docs/architecture.md`](./docs/architecture.md) | 技術的アーキテクチャ |
+| [`docs/infra/notify-wrapper.md`](./docs/infra/notify-wrapper.md) | `notify` wrapper の使い方と通知チャネル追加契約 |
 
 ---
 
 ## Privacy / License
 
-- 個人の活動データはローカルに保存し、非公開。外部送信機能は現状ない。
+- 個人の活動データはローカルに保存し、非公開。通知は既定でローカル `stdout` に出力し、Discord webhook などの外部送信は明示オプトイン時のみ有効。
 - 集合統計・外部送信は明示オプトインのみ。
 - ライセンス: 未定。個人利用を主軸に検討中。

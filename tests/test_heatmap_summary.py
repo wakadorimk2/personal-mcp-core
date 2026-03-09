@@ -18,6 +18,10 @@ def _today_utc() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
 
+def _today_local() -> str:
+    return datetime.now().astimezone().strftime("%Y-%m-%d")
+
+
 def _date_days_ago(days: int) -> str:
     return (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
 
@@ -107,7 +111,7 @@ def test_count_events_by_date_counts_today_events(data_dir: Path) -> None:
     _add_event(db_path, domain="mood")
     _add_event(db_path, domain="eng")
     result = count_events_by_date(28, data_dir=str(data_dir))
-    today_entry = next(r for r in result if r["date"] == _today_utc())
+    today_entry = next(r for r in result if r["date"] == _today_local())
     assert today_entry["count"] == 2
 
 
@@ -115,7 +119,7 @@ def test_count_events_by_date_excludes_summary_domain(data_dir: Path) -> None:
     db_path = data_dir / "events.db"
     _append_summary(db_path, _today_utc())
     result = count_events_by_date(28, data_dir=str(data_dir))
-    today_entry = next(r for r in result if r["date"] == _today_utc())
+    today_entry = next(r for r in result if r["date"] == _today_local())
     assert today_entry["count"] == 0
 
 
@@ -184,6 +188,9 @@ def test_http_get_dashboard_200(data_dir: Path) -> None:
     assert headers["Content-Type"] == "text/html; charset=utf-8"
     assert "直近28日" in html
     assert 'id="heatmap"' in html
+    assert 'id="refresh-btn"' in html
+    assert 'id="draft-preview"' in html
+    assert "再読み込みに失敗しました。再試行してください。" in html
 
 
 def test_http_get_root_returns_dashboard_html(data_dir: Path) -> None:
@@ -254,11 +261,21 @@ def test_http_get_dashboard_layout_order(data_dir: Path) -> None:
 def test_http_get_dashboard_candidate_tap_script_exists(data_dir: Path) -> None:
     handler_cls = _make_handler_for_test(str(data_dir))
     _, _, html = _do_get_html(handler_cls, "/dashboard")
+    assert 'id="candidate-compose-mode"' in html
+    assert 'id="candidate-quick-mode"' in html
+    assert 'id="candidate-mode-hint"' in html
+    assert 'var candidateTapMode = "compose";' in html
+    assert 'if (candidateTapMode === "quick") {' in html
+    assert "await saveCandidateQuickLog(text, source);" in html
+    assert 'setCandidateTapMode("quick");' in html
+    assert "function setDashboardBusy(disabled) {" in html
+    assert "tag.disabled = disabled;" in html
+    assert 'trigger: "candidate_quick_save"' in html
     assert "var text = candidateText(item);" in html
     assert "tag.dataset.source = source;" in html
     assert "input.value = text;" in html
+    assert "renderComposerState();" in html
     assert 'await fetch("/api/candidates")' in html
-
 
 def test_http_get_dashboard_ignores_broken_pipe_from_client_disconnect(data_dir: Path) -> None:
     handler_cls = _make_handler_for_test(str(data_dir))
@@ -272,3 +289,13 @@ def test_http_get_health_ignores_connection_reset_from_client_disconnect(data_di
     handler = _new_handler(handler_cls, "/health")
     handler.wfile = _ConnectionResetWriter()
     handler.do_GET()
+
+
+def test_http_get_dashboard_has_sticky_composer_and_enter_submit(data_dir: Path) -> None:
+    handler_cls = _make_handler_for_test(str(data_dir))
+    _, _, html = _do_get_html(handler_cls, "/dashboard")
+    assert "#log-form {" in html
+    assert "position: sticky;" in html
+    assert 'enterkeyhint="done"' in html
+    assert 'document.getElementById("log-text").addEventListener("keydown"' in html
+    assert 'btn.textContent = "保存中...";' in html
