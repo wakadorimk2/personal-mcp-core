@@ -62,6 +62,7 @@ def _new_handler(handler_cls, path: str):
     handler.rfile = io.BytesIO(b"")
     handler.wfile = io.BytesIO()
     handler.path = path
+    handler.requestline = f"GET {path} HTTP/1.1"
     handler.request_version = "HTTP/1.1"
     return handler
 
@@ -83,6 +84,16 @@ def _do_get_html(handler_cls, path: str) -> Tuple[List[int], Dict[str, str], str
     handler.end_headers = lambda: None
     handler.do_GET()
     return statuses, headers, handler.wfile.getvalue().decode("utf-8")
+
+
+class _BrokenPipeWriter:
+    def write(self, _payload: bytes) -> int:
+        raise BrokenPipeError(32, "Broken pipe")
+
+
+class _ConnectionResetWriter:
+    def write(self, _payload: bytes) -> int:
+        raise ConnectionResetError(104, "Connection reset by peer")
 
 
 def test_count_events_by_date_returns_28_entries(data_dir: Path) -> None:
@@ -265,6 +276,19 @@ def test_http_get_dashboard_candidate_tap_script_exists(data_dir: Path) -> None:
     assert "input.value = text;" in html
     assert "renderComposerState();" in html
     assert 'await fetch("/api/candidates")' in html
+
+def test_http_get_dashboard_ignores_broken_pipe_from_client_disconnect(data_dir: Path) -> None:
+    handler_cls = _make_handler_for_test(str(data_dir))
+    handler = _new_handler(handler_cls, "/dashboard")
+    handler.wfile = _BrokenPipeWriter()
+    handler.do_GET()
+
+
+def test_http_get_health_ignores_connection_reset_from_client_disconnect(data_dir: Path) -> None:
+    handler_cls = _make_handler_for_test(str(data_dir))
+    handler = _new_handler(handler_cls, "/health")
+    handler.wfile = _ConnectionResetWriter()
+    handler.do_GET()
 
 
 def test_http_get_dashboard_has_sticky_composer_and_enter_submit(data_dir: Path) -> None:
