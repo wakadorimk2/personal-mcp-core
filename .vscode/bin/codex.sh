@@ -8,4 +8,4 @@ if [ -f .venv/bin/activate ]; then
   source .venv/bin/activate
 fi
 
-exec codex
+exec python3 "$repo_root/scripts/codex_launch.py" -- codex "$@"

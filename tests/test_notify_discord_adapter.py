@@ -33,10 +33,10 @@ def _write_fake_curl(tmp_path: Path) -> tuple[Path, Path]:
     curl.write_text(
         "#!/usr/bin/env bash\n"
         "set -euo pipefail\n"
-        "printf '%s\\n' \"$@\" > \"$FAKE_CURL_ARGS_FILE\"\n"
+        'printf \'%s\\n\' "$@" > "$FAKE_CURL_ARGS_FILE"\n'
         "printf '%s' \"${FAKE_CURL_STDERR:-}\" >&2\n"
         "printf '%s' \"${FAKE_CURL_STDOUT:-204}\"\n"
-        "exit \"${FAKE_CURL_EXIT_CODE:-0}\"\n",
+        'exit "${FAKE_CURL_EXIT_CODE:-0}"\n',
         encoding="utf-8",
     )
     curl.chmod(curl.stat().st_mode | stat.S_IXUSR)

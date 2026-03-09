@@ -26,11 +26,13 @@
 				"color": "terminal.ansiWhite",
 				"overrideName": true,
 				"env": {
-					"TERM_ROLE": "CODEX"
+					"TERM_ROLE": "CODEX",
+					"CODEX_EXPECT_WORKTREE": "${workspaceFolder}",
+					"CODEX_EXPECT_BRANCH_PATTERN": "^(?!main$).+"
 				},
 				"args": [
 					"-lc",
-					"cd ${workspaceFolder} && source .venv/bin/activate && codex"
+					"cd ${workspaceFolder} && source .venv/bin/activate && .vscode/bin/codex.sh"
 				]
 			}
 		}
