@@ -40,6 +40,13 @@ daily input UX MVP 方針（`docs/daily-input-ux-mvp.md`）の候補生成ルー
 - `7d_frequent`: 過去 7 日（当日含む）のイベント `data.text` の頻度順
 - `fixed`: API 内定義の固定候補
 
+各 `data.text` からの抽出ルール:
+
+- 1 文あたり最大 2 候補まで返す
+- 候補順は文中の自然順を優先する
+- 同一文内での重複候補は 1 件に統合する
+- 人名・敬称付き候補は除外しつつ、後続の安全な候補は残す
+
 ## Notes
 
 - 候補対象は `domain != summary` かつ `kind != interaction` のイベントに限定する。

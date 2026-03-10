@@ -15,6 +15,7 @@ from personal_mcp.tools.candidates import (
     FIXED_CANDIDATES,
     MAX_CANDIDATE_LENGTH,
     _extract_candidate_text,
+    _extract_candidate_texts,
     _shorten_text,
     list_candidates,
 )
@@ -344,6 +345,39 @@ def test_extract_candidate_text_prefers_tokenized_noun_chunk(
     assert _extract_candidate_text("コードレビューを実施しました") == "コードレビュー"
 
 
+def test_extract_candidate_texts_returns_multiple_candidates_in_natural_order(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    mapping = {
+        "CodexとClaude Codeでレビューした": [
+            _FakeWord("Codex", "名詞", "普通名詞"),
+            _FakeWord("と", "助詞", "格助詞"),
+            _FakeWord("Claude", "名詞", "普通名詞"),
+            _FakeWord("Code", "名詞", "普通名詞"),
+            _FakeWord("で", "助詞", "格助詞"),
+            _FakeWord("レビュー", "名詞", "普通名詞"),
+        ],
+        "設計レビューと実装を進めた": [
+            _FakeWord("設計", "名詞", "普通名詞"),
+            _FakeWord("レビュー", "名詞", "普通名詞"),
+            _FakeWord("と", "助詞", "格助詞"),
+            _FakeWord("実装", "名詞", "普通名詞"),
+            _FakeWord("を", "助詞", "格助詞"),
+            _FakeWord("進め", "動詞", "一般"),
+        ],
+    }
+    monkeypatch.setattr(candidates_mod, "_get_tagger", lambda: _FakeTagger(mapping))
+
+    assert _extract_candidate_texts("CodexとClaude Codeでレビューした") == [
+        "Codex",
+        "Claude",
+    ]
+    assert _extract_candidate_texts("設計レビューと実装を進めた") == [
+        "設計レビュー",
+        "実装",
+    ]
+
+
 def test_extract_candidate_text_skips_name_with_honorific(monkeypatch: pytest.MonkeyPatch) -> None:
     mapping = {
         "久しぶりに沙耶ちゃんに会う": [
@@ -356,6 +390,25 @@ def test_extract_candidate_text_skips_name_with_honorific(monkeypatch: pytest.Mo
     monkeypatch.setattr(candidates_mod, "_get_tagger", lambda: _FakeTagger(mapping))
 
     assert _extract_candidate_text("久しぶりに沙耶ちゃんに会う") == ""
+
+
+def test_extract_candidate_texts_keep_safe_candidate_after_sensitive_name(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    mapping = {
+        "山田さんと1on1した": [
+            _FakeWord("山田", "名詞", "固有名詞"),
+            _FakeWord("さん", "接尾辞", "名詞的"),
+            _FakeWord("と", "助詞", "格助詞"),
+            _FakeWord("1", "名詞", "数詞"),
+            _FakeWord("on", "名詞", "普通名詞"),
+            _FakeWord("1", "名詞", "数詞"),
+            _FakeWord("し", "動詞", "非自立可能"),
+        ]
+    }
+    monkeypatch.setattr(candidates_mod, "_get_tagger", lambda: _FakeTagger(mapping))
+
+    assert _extract_candidate_texts("山田さんと1on1した") == ["1on1"]
 
 
 def test_extract_candidate_text_fallback_skips_sensitive_label(
@@ -411,6 +464,82 @@ def test_list_candidates_filters_sensitive_name_when_tagger_available(
     assert all("沙耶" not in label for label in labels)
 
 
+def test_list_candidates_caps_at_8_even_when_text_yields_multiple_candidates(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    mapping = {
+        "CodexとClaude Codeでレビューした": [
+            _FakeWord("Codex", "名詞", "普通名詞"),
+            _FakeWord("と", "助詞", "格助詞"),
+            _FakeWord("Claude", "名詞", "普通名詞"),
+            _FakeWord("Code", "名詞", "普通名詞"),
+            _FakeWord("で", "助詞", "格助詞"),
+            _FakeWord("レビュー", "名詞", "普通名詞"),
+        ],
+        "設計レビューと実装を進めた": [
+            _FakeWord("設計", "名詞", "普通名詞"),
+            _FakeWord("レビュー", "名詞", "普通名詞"),
+            _FakeWord("と", "助詞", "格助詞"),
+            _FakeWord("実装", "名詞", "普通名詞"),
+            _FakeWord("を", "助詞", "格助詞"),
+            _FakeWord("進め", "動詞", "一般"),
+        ],
+        "GitHub issue triageとコードレビューを進めた": [
+            _FakeWord("GitHub", "名詞", "普通名詞"),
+            _FakeWord("issue", "名詞", "普通名詞"),
+            _FakeWord("triage", "名詞", "普通名詞"),
+            _FakeWord("と", "助詞", "格助詞"),
+            _FakeWord("コード", "名詞", "普通名詞"),
+            _FakeWord("レビュー", "名詞", "普通名詞"),
+        ],
+        "VS CodeとCodexで調査した": [
+            _FakeWord("VS", "名詞", "普通名詞"),
+            _FakeWord("Code", "名詞", "普通名詞"),
+            _FakeWord("と", "助詞", "格助詞"),
+            _FakeWord("Codex", "名詞", "普通名詞"),
+            _FakeWord("で", "助詞", "格助詞"),
+            _FakeWord("調査", "名詞", "普通名詞"),
+        ],
+        "1on1と振り返りを進めた": [
+            _FakeWord("1", "名詞", "数詞"),
+            _FakeWord("on", "名詞", "普通名詞"),
+            _FakeWord("1", "名詞", "数詞"),
+            _FakeWord("と", "助詞", "格助詞"),
+            _FakeWord("振り返り", "名詞", "普通名詞"),
+            _FakeWord("を", "助詞", "格助詞"),
+            _FakeWord("進め", "動詞", "一般"),
+        ],
+    }
+    monkeypatch.setattr(candidates_mod, "_get_tagger", lambda: _FakeTagger(mapping))
+
+    db_path = data_dir / "events.db"
+    texts = [
+        "CodexとClaude Codeでレビューした",
+        "設計レビューと実装を進めた",
+        "GitHub issue triageとコードレビューを進めた",
+        "VS CodeとCodexで調査した",
+        "1on1と振り返りを進めた",
+        "移動",
+        "休憩",
+    ]
+    for i, text in enumerate(texts):
+        _add_event(db_path, text=text, seq=i)
+
+    got = list_candidates(data_dir=str(data_dir))
+    assert len(got) == 8
+    assert _sources(got) == ["recent"] * 8
+    assert [item["text"] for item in got] == [
+        "休憩",
+        "移動",
+        "1on1",
+        "振り返り",
+        "VS Code",
+        "Codex",
+        "GitHub",
+        "コードレビュー",
+    ]
+
+
 @pytest.mark.skipif(candidates_mod.Tagger is None, reason="fugashi not installed")
 @pytest.mark.parametrize(
     ("text", "legacy", "current"),
@@ -428,6 +557,28 @@ def test_extract_candidate_text_real_tagger_comparison_samples(
 ) -> None:
     assert _legacy_extract_candidate_text(text) == legacy
     assert _extract_candidate_text(text) == current
+
+
+@pytest.mark.skipif(candidates_mod.Tagger is None, reason="fugashi not installed")
+@pytest.mark.parametrize(
+    ("text", "legacy", "current"),
+    [
+        ("CodexとClaude Codeでレビューした", "Codex", ["Codex", "Claude"]),
+        ("設計レビューと実装を進めた", "設計レビュー", ["設計レビュー", "実装"]),
+        ("山田さんと1on1した", "", ["1on1"]),
+        (
+            "GitHub issue triageとコードレビューを進めた",
+            "GitHub",
+            ["GitHub", "コードレビュー"],
+        ),
+        ("VS CodeとCodexで調査した", "VS Code", ["VS Code", "Codex"]),
+    ],
+)
+def test_extract_candidate_texts_real_tagger_comparison_samples(
+    text: str, legacy: str, current: List[str]
+) -> None:
+    assert _legacy_extract_candidate_text(text) == legacy
+    assert _extract_candidate_texts(text) == current
 
 
 @pytest.mark.skipif(candidates_mod.Tagger is None, reason="fugashi not installed")
