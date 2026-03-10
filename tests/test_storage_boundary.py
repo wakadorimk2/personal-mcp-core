@@ -1,7 +1,9 @@
+import json
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
+from personal_mcp.storage.events_store import read_events
 from personal_mcp.server import main
 from personal_mcp.tools.daily_summary import generate_daily_summary
 from personal_mcp.tools.event import event_add
@@ -37,3 +39,22 @@ def test_summary_reads_cli_event_via_same_storage_boundary(data_dir: Path) -> No
 
     summary = generate_daily_summary(target_date, data_dir=str(data_dir))
     assert "from cli" in summary["data"]["text"]
+
+
+def test_read_events_ignores_jsonl_when_db_absent(data_dir: Path) -> None:
+    jsonl_path = data_dir / "events.jsonl"
+    jsonl_path.write_text(
+        json.dumps(
+            {
+                "ts": "2026-01-01T00:00:00+00:00",
+                "domain": "general",
+                "data": {"text": "jsonl-only"},
+                "tags": [],
+                "v": 1,
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    assert read_events(data_dir=str(data_dir)) == []
