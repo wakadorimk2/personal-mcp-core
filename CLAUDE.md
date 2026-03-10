@@ -50,10 +50,14 @@ If a deletion is needed, provide:
 
 ```bash
 # Install in editable mode (development)
-pip install -e .
+pip install -e ".[dev]"
 
 # Run the entrypoint (prints loaded context length)
 python -m personal_mcp.server
+
+# Verify Ruff using pyproject.toml as the source of truth
+python -m ruff check .
+python -m ruff format --check .
 
 # Verify AI_GUIDE.md copies are in sync
 diff AI_GUIDE.md src/personal_mcp/AI_GUIDE.md
@@ -61,7 +65,8 @@ diff AI_GUIDE.md src/personal_mcp/AI_GUIDE.md
 
 Notes:
 
-* No test runner or linter is configured yet — the repo is intentionally minimal and evolving slowly.
+* Ruff and pytest are configured in this repo.
+* Ruff `line-length` and `E501` policy are defined in `pyproject.toml`; do not override them with CLI flags in docs or CI.
 
 ## Architecture
 

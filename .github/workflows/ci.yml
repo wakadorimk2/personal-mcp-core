@@ -17,6 +17,8 @@ jobs:
       - name: Install dev dependencies
         run: pip install -e ".[dev]"
 
+      # Ruff reads line-length and E501 policy from pyproject.toml.
+      # Keep CI free of CLI overrides so docs and local runs stay aligned.
       - name: ruff check
         run: ruff check .
 

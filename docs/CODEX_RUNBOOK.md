@@ -130,14 +130,19 @@ git diff
 
 目的: lint / import / format 系の失敗を先に潰す。
 
+Ruff 設定の正本は `pyproject.toml` とする。
+`ruff check .` は lint rule failure を示し、`E501` を ignore していない限り line-length violation を含みうる。
+`ruff format --check .` は formatting drift を示し、line-length 設定の CLI 上書き有無とは別に読む。
+
 コマンド例:
 
 ```bash
 ruff --version
 ruff check .
+ruff format --check .
 ```
 
-期待結果: `ruff check .` が成功する。失敗時は対象ファイルとルールが特定できる。
+期待結果: `ruff check .` と `ruff format --check .` が成功する。失敗時は対象ファイルと rule / formatting drift が特定できる。
 
 次に進む条件: 成功、または最小修正で収まりそうと判断できる。
 
