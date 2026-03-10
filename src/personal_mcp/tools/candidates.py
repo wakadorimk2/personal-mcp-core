@@ -15,6 +15,7 @@ except ImportError:  # pragma: no cover - exercised via fallback path in tests
     Tagger = None
 
 MAX_CANDIDATES = 8
+MAX_CANDIDATES_PER_TEXT = 2
 RECENT_SOURCE_LIMIT = 10
 COLD_START_THRESHOLD = 7
 MAX_CANDIDATE_LENGTH = 10
@@ -118,31 +119,27 @@ def _candidate_from_chunk(tokens: List[str]) -> str:
     for size in range(len(tokens), 0, -1):
         for start in range(len(tokens) - size + 1):
             chunk = tokens[start : start + size]
-            variants = [_join_chunk_tokens(chunk), "".join(chunk)]
-            seen_variants: set[str] = set()
-            for variant in variants:
-                candidate = variant.strip()
-                if not candidate or candidate in seen_variants:
-                    continue
-                seen_variants.add(candidate)
-                if len(candidate) > MAX_CANDIDATE_LENGTH:
-                    continue
-                if _is_sensitive_label(candidate):
-                    continue
-                if _is_meaningful_candidate(candidate):
-                    return candidate
+            candidate = _join_chunk_tokens(chunk).strip()
+            if not candidate:
+                continue
+            if len(candidate) > MAX_CANDIDATE_LENGTH:
+                continue
+            if _is_sensitive_label(candidate):
+                continue
+            if _is_meaningful_candidate(candidate):
+                return candidate
     return ""
 
 
-def _tokenized_candidate(text: str) -> tuple[str, bool]:
+def _tokenized_candidates(text: str) -> tuple[List[str], bool]:
     tagger = _get_tagger()
     if tagger is None:
-        return "", False
+        return [], False
 
     try:
         words = list(tagger(text))
     except Exception:
-        return "", False
+        return [], False
 
     chunks: List[List[str]] = []
     current: List[str] = []
@@ -184,31 +181,47 @@ def _tokenized_candidate(text: str) -> tuple[str, bool]:
     if current:
         chunks.append(current)
 
+    candidates: List[str] = []
+    seen: set[str] = set()
     for chunk in chunks:
         candidate = _candidate_from_chunk(chunk)
-        if candidate:
-            return candidate, sensitive_hit
+        normalized = _normalize_text(candidate)
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        candidates.append(candidate)
+        if len(candidates) >= MAX_CANDIDATES_PER_TEXT:
+            return candidates, sensitive_hit
 
+    if candidates:
+        return candidates, sensitive_hit
     if sensitive_hit:
-        return "", True
-    return "", False
+        return [], True
+    return [], False
 
 
-def _extract_candidate_text(text: str) -> str:
+def _extract_candidate_texts(text: str) -> List[str]:
     if _ASCII_SLUG.fullmatch(text.strip()):
-        return _clean_candidate_text(text)
+        return [_clean_candidate_text(text)]
 
-    tokenized, sensitive_hit = _tokenized_candidate(text)
+    tokenized, sensitive_hit = _tokenized_candidates(text)
     if tokenized:
         return tokenized
     if sensitive_hit:
-        return ""
+        return []
 
     fallback = _clean_candidate_text(_shorten_text(text))
     if _is_sensitive_label(fallback):
-        return ""
+        return []
     if _is_meaningful_candidate(fallback):
-        return fallback
+        return [fallback]
+    return []
+
+
+def _extract_candidate_text(text: str) -> str:
+    candidates = _extract_candidate_texts(text)
+    if candidates:
+        return candidates[0]
     return ""
 
 
@@ -272,14 +285,14 @@ def _merge_sources(sources: List[tuple[str, List[str]]], limit: int) -> List[Dic
 
     for source_name, texts in sources:
         for text in texts:
-            candidate = _extract_candidate_text(text)
-            normalized = _normalize_text(candidate)
-            if not normalized or normalized in seen:
-                continue
-            seen.add(normalized)
-            merged.append({"text": candidate, "source": source_name})
-            if len(merged) >= limit:
-                return merged
+            for candidate in _extract_candidate_texts(text):
+                normalized = _normalize_text(candidate)
+                if not normalized or normalized in seen:
+                    continue
+                seen.add(normalized)
+                merged.append({"text": candidate, "source": source_name})
+                if len(merged) >= limit:
+                    return merged
     return merged
 
 
