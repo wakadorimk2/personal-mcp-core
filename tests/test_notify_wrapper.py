@@ -22,13 +22,18 @@ def _run_notify(
     check: bool = True,
 ) -> subprocess.CompletedProcess:
     script = _repo_root() / "scripts" / "notify"
+    child_env = dict(os.environ)
+    child_env["NOTIFY_CHANNEL"] = "stdout"
+    child_env.pop("NOTIFY_CHANNEL_DIR", None)
+    if env:
+        child_env.update(env)
     return subprocess.run(
         [str(script), *args],
         input=input_text,
         capture_output=True,
         text=True,
         check=check,
-        env={**os.environ, **(env or {})},
+        env=child_env,
     )
 
 

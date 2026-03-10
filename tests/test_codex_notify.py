@@ -17,12 +17,15 @@ def _repo_root() -> Path:
 
 def _run_codex_notify(payload: dict[str, object]) -> subprocess.CompletedProcess[str]:
     script = _repo_root() / "scripts" / "codex_notify.py"
+    child_env = dict(os.environ)
+    child_env["NOTIFY_CHANNEL"] = "stdout"
+    child_env.pop("NOTIFY_CHANNEL_DIR", None)
     return subprocess.run(
         ["python3", str(script), json.dumps(payload)],
         capture_output=True,
         text=True,
         check=True,
-        env=os.environ.copy(),
+        env=child_env,
     )
 
 

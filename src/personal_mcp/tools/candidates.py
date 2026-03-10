@@ -27,7 +27,25 @@ _ASCII_WORD = re.compile(r"^[A-Za-z][A-Za-z0-9_-]*$")
 _KATAKANA = re.compile(r"^[ァ-ヶー]+$")
 _HONORIFICS = frozenset({"さん", "ちゃん", "くん", "君", "氏", "様", "先生"})
 _CANDIDATE_STOPWORDS = frozenset(
-    {"今日", "明日", "昨日", "今", "朝", "昼", "夜", "夕方", "記録", "内容", "こと", "もの"}
+    {
+        "今日",
+        "明日",
+        "昨日",
+        "今",
+        "朝",
+        "昼",
+        "夜",
+        "夕方",
+        "記録",
+        "内容",
+        "こと",
+        "もの",
+        # These verbal nouns tend to appear as low-signal follow-up candidates
+        # after a more descriptive first label and can crowd out natural labels.
+        "消費",
+        "実施",
+        "調査",
+    }
 )
 _CANDIDATE_POS2 = frozenset({"普通名詞", "固有名詞", "数詞"})
 _tagger: Optional[Any] = None
