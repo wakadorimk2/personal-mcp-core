@@ -31,6 +31,8 @@ _CANDIDATE_STOPWORDS = frozenset(
 )
 _CANDIDATE_POS2 = frozenset({"普通名詞", "固有名詞", "数詞"})
 _tagger: Optional[Any] = None
+# Keep this set aligned with docs/daily-input-ux-mvp.md section 4.4:
+# prefer everyday vocabulary and avoid domain-specific or honorific wording.
 FIXED_CANDIDATES: tuple[str, ...] = (
     "作業開始",
     "作業再開",
