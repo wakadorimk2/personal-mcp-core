@@ -127,6 +127,12 @@
 - VSCode は worktree ごとに作業机を固定し、待機状態を `main + clean` に保ってください
 - 副作用の可否（実行権限）は運用都合よりも [docs/AI_ROLE_POLICY.md](./docs/AI_ROLE_POLICY.md) を優先してください
 
+## Tooling source of truth
+
+- Ruff の `line-length` と `E501` 方針の正本は `pyproject.toml` です
+- `ruff check .` / `ruff format --check .` は `pyproject.toml` の設定をそのまま読む前提です
+- AI 向けガイドや runbook の記述と矛盾した場合は、Ruff 設定については `pyproject.toml` を優先してください
+
 ---
 
 ## 互換性に関するガードレール

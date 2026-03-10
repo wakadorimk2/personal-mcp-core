@@ -265,10 +265,17 @@ def test_http_get_dashboard_candidate_tap_script_exists(data_dir: Path) -> None:
     assert "input.value = text;" in html
     assert "renderComposerState();" in html
     assert "var dashboardInputFlow = null;" in html
+    assert (
+        'candidateSource: resolveDashboardCandidateSource(mode, next.candidate_source || ""),'
+        in html
+    )
     assert "flow_id: dashboardInputFlow.flowId" in html
     assert 'postUiEvent("input_started"' in html
     assert 'await postUiEvent("input_submitted", telemetryData);' in html
     assert 'await postUiEvent("save_success", telemetryData);' in html
+    assert "function resolveDashboardCandidateSource(mode, candidateSource) {" in html
+    assert 'if (mode === "text") return "free_text";' in html
+    assert "payload.candidate_source = flow" in html
     assert 'mode: "tag"' in html
     assert 'mode: "quick"' in html
     assert 'trigger: "candidate_tag"' in html

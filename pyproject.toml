@@ -30,11 +30,14 @@ where = ["src"]
 personal_mcp = ["AI_GUIDE.md"]
 
 [tool.ruff]
+# Source of truth for Ruff line length used by both lint and format.
+# Keep CI/local commands free of CLI overrides so they read this file.
 line-length = 100
 target-version = "py310"
 
 [tool.ruff.lint]
 # E: pycodestyle errors, F: pyflakes — minimal set, no docstring/type enforcement
+# E501 remains enabled unless it is explicitly added to ignore here.
 select = ["E", "F"]
 
 [tool.ruff.format]

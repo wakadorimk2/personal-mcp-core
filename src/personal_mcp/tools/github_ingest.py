@@ -5,12 +5,12 @@ Responsibility boundary vs github_sync (#147):
   github_sync (#147) — existing manual-sync MVP
     - reads /users/{username}/events first page (up to 100)
     - minimal data.* payload: github_event_id only as extra field
-    - dedup reads events.jsonl directly (storage.jsonl layer)
+    - dedup reads runtime storage (`events.db`) via storage boundary
 
   github_ingest (#247) — full spec implementation (docs/eng-ingest-impl.md)
     - same /users/{username}/events endpoint
     - rich data.* payload per Section 3.3
-    - storage-layer-agnostic dedup via read_events() (events_store boundary)
+    - dedup reads runtime storage (`events.db`) via storage boundary
     - insert-only / skip per Section 3.4
 
 Both use source="github" and data.github_event_id for dedup.
@@ -157,7 +157,7 @@ def _map_github_event(gh_event: Dict[str, Any]) -> Optional[Dict[str, Any]]:
 
 
 def _load_existing_github_event_ids(data_dir: Optional[str]) -> Set[str]:
-    """Return github_event_id values already stored in runtime storage (events.db)."""
+    """Return github_event_id values stored in the runtime primary storage."""
     ids: Set[str] = set()
     for r in read_events(data_dir):
         if r.get("source") == "github":
