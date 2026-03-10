@@ -16,6 +16,7 @@ Responsibility boundary vs github_sync (#147):
 Both use source="github" and data.github_event_id for dedup.
 Events saved by either tool share the same dedup key space.
 """
+
 from __future__ import annotations
 
 import json

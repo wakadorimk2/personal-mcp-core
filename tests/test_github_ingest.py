@@ -9,6 +9,7 @@ Verifies:
 - dedup (insert-only/skip) per Section 3.4
 - cross-dedup: events saved by github_sync are not re-ingested
 """
+
 from __future__ import annotations
 
 import json
@@ -565,9 +566,7 @@ def test_github_ingest_handles_fetch_exception(data_dir: Path, monkeypatch) -> N
 def test_github_ingest_handles_non_list_api_response(data_dir: Path, monkeypatch) -> None:
     import personal_mcp.tools.github_ingest as mod
 
-    monkeypatch.setattr(
-        mod, "_fetch_github_events", lambda u, t: {"message": "Bad credentials"}
-    )
+    monkeypatch.setattr(mod, "_fetch_github_events", lambda u, t: {"message": "Bad credentials"})
 
     result = github_ingest(username="user", data_dir=str(data_dir))
 
