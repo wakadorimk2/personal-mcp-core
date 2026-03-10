@@ -1,6 +1,9 @@
-# AI Role Separation Policy
+# AI Role Boundary Policy（共通）
 
-この文書は、personal-mcp-core における Claude Code と Codex CLI の役割分離に関する正本です。
+この文書は、personal-mcp-core における **AI runtime 共通の役割境界（role boundary）** の正本です。
+Claude Code・Codex CLI 等の特定の runtime 名に依存せず読めることを意図しています。
+runtime 固有の実行手順・通知運用・CLI 個別事情は runtime 別 runbook（Issue #310 で策定予定）に委譲します。
+
 運用上の判断はこの文書を優先し、`AI_GUIDE.md` と `CLAUDE.md` は導線のみを持ちます。
 
 ---
@@ -12,7 +15,7 @@ personal-mcp-core は MVP 段階のため、再現可能で監査しやすい最
 
 ## ゴール
 
-- Claude と Codex の責務を、副作用ベースで一意に分離する
+- AI runtime の責務を、副作用ベースで一意に分離する
 - 失敗時の分岐とエスカレーション条件を固定し、無限ループを防ぐ
 - テンプレを貼るだけで同じ運用を再現できるようにする
 
@@ -21,6 +24,7 @@ personal-mcp-core は MVP 段階のため、再現可能で監査しやすい最
 - 完全自律エージェント運用
 - 追加の抽象フレームワーク導入
 - 大規模 CI 整備やセキュリティ基盤構築
+- 通知運用（本 policy の scope 外。runtime 別 runbook に記載する）
 
 ---
 
@@ -45,7 +49,11 @@ personal-mcp-core は MVP 段階のため、再現可能で監査しやすい最
 
 ## 役割定義
 
-### Claude Code
+> **runtime と役割の対応**: 役割は runtime 名に依存しない。本節では「no-side-effect 担当」と「side-effect 担当」の二種を定義する。
+> 現在の対応例: Claude Code = no-side-effect 担当、Codex CLI = side-effect 担当。
+> runtime 固有の実行手順・コマンド・通知フローは runtime 別 runbook（Issue #310）に記載する。
+
+### no-side-effect 担当（実装担当）
 
 役割: 実装担当。ただし副作用は出さない。
 
@@ -69,10 +77,10 @@ personal-mcp-core は MVP 段階のため、再現可能で監査しやすい最
 - 出力は Issue スコープ内に限定する
 - ファイル削除や rename が必要でも、実際には行わず unified diff または変更指示として提示する
 - 実行していないコマンド結果を完了報告に書かない
-- 完了報告には「変更ファイル」「影響範囲」「推奨検証コマンド」を分けて記載し、Codex がレビューしやすい形にする
+- 完了報告には「変更ファイル」「影響範囲」「推奨検証コマンド」を分けて記載し、side-effect 担当がレビューしやすい形にする
 - 不確実な点は仮定として明記し、人間 Maintainer に判断を戻す
 
-### Codex CLI
+### side-effect 担当（執行・検証担当）
 
 役割: 執行・検証担当。副作用を出す側。
 
@@ -99,9 +107,9 @@ personal-mcp-core は MVP 段階のため、再現可能で監査しやすい最
 
 ---
 
-## Codex の最小修正制限
+## side-effect 担当の最小修正制限
 
-Codex の「最小修正」は、lint エラー、型エラー、テスト失敗、文書リンク切れなど、検証で直接確認できた失敗の解消に限る。
+side-effect 担当の「最小修正」は、lint エラー、型エラー、テスト失敗、文書リンク切れなど、検証で直接確認できた失敗の解消に限る。
 
 制限:
 
@@ -123,7 +131,9 @@ Codex の「最小修正」は、lint エラー、型エラー、テスト失敗
 
 ## GitHub 操作の許可範囲
 
-Codex が実行してよい GitHub 操作は以下に限定する。
+> 詳細な実行手順・CLI コマンドは runtime 別 runbook（Issue #310）に記載する。
+
+side-effect 担当 runtime が実行してよい GitHub 操作は以下に限定する。
 
 許可:
 
@@ -157,9 +167,9 @@ Issue 本文編集の最終ポリシー:
 
 | Step | 対象層 | 対象ファイル群 | 主担当 | 完了条件 | 次ステップ進行条件 |
 |---|---|---|---|---|---|
-| 1 | 正本 | `docs/AI_ROLE_POLICY.md`、必要に応じて `docs/skills/*.md`（canonical） | Maintainer（境界判断）+ Codex（編集） | 許可/禁止/停止条件が本文で一意に読める | Step 1 の差分が確定し、境界判断が確定している |
-| 2 | 導線 | `AI_GUIDE.md`、`CLAUDE.md` | Codex（同期）+ Maintainer（確認） | 正本参照と矛盾時の停止/エスカレーション導線が明記されている | Step 1 と矛盾しないことを差分で確認できる |
-| 3 | skills/runbook | `docs/CODEX_RUNBOOK.md`、`docs/skills/*`、`.codex/skills/*`、`.claude/skills/*` | Codex（同期）+ Claude（提案のみ） | 実行手順と配布物が Step 1/2 の語彙・制約に一致している | Step 1/2 が完了し、残差分がこの層の同期のみである |
+| 1 | 正本 | `docs/AI_ROLE_POLICY.md`、必要に応じて `docs/skills/*.md`（canonical） | Maintainer（境界判断）+ side-effect 担当（編集） | 許可/禁止/停止条件が本文で一意に読める | Step 1 の差分が確定し、境界判断が確定している |
+| 2 | 導線 | `AI_GUIDE.md`、`CLAUDE.md` | side-effect 担当（同期）+ Maintainer（確認） | 正本参照と矛盾時の停止/エスカレーション導線が明記されている | Step 1 と矛盾しないことを差分で確認できる |
+| 3 | skills/runbook | `docs/CODEX_RUNBOOK.md`、`docs/skills/*`、`.codex/skills/*`、`.claude/skills/*` | side-effect 担当（同期）+ no-side-effect 担当（提案のみ） | 実行手順と配布物が Step 1/2 の語彙・制約に一致している | Step 1/2 が完了し、残差分がこの層の同期のみである |
 
 移行中の暫定ルール:
 
@@ -172,17 +182,19 @@ Issue 本文編集の最終ポリシー:
 
 ## 標準フロー
 
-1. Claude が Issue スコープ内の diff と実行コマンド候補を提示する
+1. no-side-effect 担当が Issue スコープ内の diff と実行コマンド候補を提示する
 2. 人間 Maintainer が差分を適用する
-3. Codex が検証コマンドを実行する
-4. 失敗した場合、Codex は最小修正を最大 2 サイクルまで行う
-5. 成功した場合、Codex が PR を作成し、結果と残リスクを記録する
+3. side-effect 担当が検証コマンドを実行する
+4. 失敗した場合、side-effect 担当は最小修正を最大 2 サイクルまで行う
+5. 成功した場合、side-effect 担当が PR を作成し、結果と残リスクを記録する
 
 ---
 
 ## コピペ用テンプレ
 
-### Claude 用テンプレ
+> 以下は参考例示。runtime 固有の操作テンプレートは runtime 別 runbook（Issue #310 で策定予定）に移管する。
+
+### no-side-effect 担当用テンプレ（参考例示）
 
 ```text
 あなたはこのリポジトリにおける「実装担当（副作用を出さない側）」です。
@@ -212,7 +224,7 @@ Issue 本文編集の最終ポリシー:
 - Issue 外変更が必要なら実施せず提案に留める
 ```
 
-### Codex 用テンプレ
+### side-effect 担当用テンプレ（参考例示）
 
 ```text
 あなたはこのリポジトリにおける「執行・検証担当（副作用を出す側）」です。
