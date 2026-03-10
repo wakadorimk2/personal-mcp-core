@@ -40,6 +40,28 @@ The adapter sends plain-text webhook payloads only. Missing webhook
 configuration exits with code `2`; HTTP or transport failures exit with code
 `1`.
 
+### Secret management
+
+Webhook secret は次の優先順位で解決される。
+
+1. `DISCORD_WEBHOOK_URL` environment variable
+2. `~/.config/secrets/discord_webhook.env` fallback
+
+adapter は `DISCORD_WEBHOOK_URL` が未設定のときだけ fallback file を読む。
+そのため、一時的な差し替えや検証では process env を優先できる。
+
+Example:
+
+```bash
+mkdir -p ~/.config/secrets
+chmod 700 ~/.config/secrets
+
+echo 'export DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."' \
+  > ~/.config/secrets/discord_webhook.env
+
+chmod 600 ~/.config/secrets/discord_webhook.env
+```
+
 ## Claude Code integration
 
 `scripts/claude-notify` is a thin wrapper around the `claude` CLI. It forwards
@@ -68,8 +90,9 @@ Setup requirements:
 
 1. `claude` must be available on `PATH` in the same shell that runs
    `scripts/claude-notify`.
-2. `NOTIFY_CHANNEL=discord` and `DISCORD_WEBHOOK_URL` must be exported in that
-   same shell, shell startup file, or launcher script.
+2. `NOTIFY_CHANNEL=discord` must be set in that same shell, shell startup
+   file, or launcher script. `DISCORD_WEBHOOK_URL` は process env または
+   `~/.config/secrets/discord_webhook.env` fallback で解決される。
 3. If you use WSL or another wrapper shell, configure the environment where
    `claude`, `curl`, and `python3` actually execute.
 
@@ -276,6 +299,8 @@ payload shape into this repo's `scripts/notify` wrapper.
    repo's bridge script.
 2. Export Discord delivery variables in the shell environment that launches
    Codex.
+   `DISCORD_WEBHOOK_URL` は process env が優先され、未設定時のみ
+   `~/.config/secrets/discord_webhook.env` fallback を読む。
 3. Run a dry-run locally through `scripts/codex_notify.py` before attempting a
    real Discord delivery.
 
@@ -302,8 +327,10 @@ export DISCORD_WEBHOOK_AVATAR_URL="https://example.com/codex.png"
 Where to configure them:
 
 - Put `notify = [...]` in `~/.codex/config.toml`
-- Put `NOTIFY_CHANNEL` and `DISCORD_WEBHOOK_URL` in the shell startup file or
-  wrapper script that launches Codex
+- Put `NOTIFY_CHANNEL` in the shell startup file or wrapper script that
+  launches Codex
+- Put `DISCORD_WEBHOOK_URL` either in the shell startup / wrapper environment
+  or in `~/.config/secrets/discord_webhook.env`
 - If you use WSL, configure them inside the WSL environment where `codex` and
   `python3` actually run; Windows-side env vars are not assumed to propagate
   automatically
@@ -347,9 +374,10 @@ yet, export `NOTIFY_CHANNEL=discord` and `DISCORD_WEBHOOK_URL` in the same
 shell, then rerun the command above. A successful Discord webhook send produces
 no stdout output and exits with code `0`.
 
-Real Discord smoke-test evidence is tracked separately in issue #268 so this
-documented setup can stay reproducible without requiring a live webhook during
-issue #267.
+Real Discord smoke-test evidence is now recorded in
+[`docs/infra/ai-cli-discord-smoke-log.md`](./ai-cli-discord-smoke-log.md), so
+this documented setup can stay reproducible without requiring a live webhook
+during issue #267.
 
 ## Current event coverage and remaining gaps
 
@@ -388,9 +416,10 @@ Current behavior behind that table:
 ### Scope boundary for closing #255
 
 Issue #255 can close once the currently shipped Codex and Claude completion
-paths are operationalized and the real Discord smoke-test evidence is recorded.
-The gaps above should stay explicit follow-up work, not implied requirements
-for closing the Epic:
+paths are operationalized and the real Discord smoke-test evidence in
+[`docs/infra/ai-cli-discord-smoke-log.md`](./ai-cli-discord-smoke-log.md) is
+recorded. The gaps above should stay explicit follow-up work, not implied
+requirements for closing the Epic:
 
 - `needs_input` remains out of scope for #255
 - Codex-side failure notifications remain out of scope for #255

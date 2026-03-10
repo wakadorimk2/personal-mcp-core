@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ -z "${DISCORD_WEBHOOK_URL:-}" ]]; then
+  secret_file="$HOME/.config/secrets/discord_webhook.env"
+  if [[ -f "$secret_file" ]]; then
+    # shellcheck disable=SC1090
+    source "$secret_file"
+  fi
+fi
+
 webhook_url="${DISCORD_WEBHOOK_URL:-}"
 if [[ -z "$webhook_url" ]]; then
   echo "discord notify: DISCORD_WEBHOOK_URL is required" >&2
