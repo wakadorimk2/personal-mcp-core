@@ -495,7 +495,7 @@ function startDashboardInputFlow(options) {
     flowId: newDashboardFlowId(),
     mode: mode,
     trigger: (next.trigger || "").trim(),
-    candidateSource: (next.candidate_source || "").trim(),
+    candidateSource: resolveDashboardCandidateSource(mode, next.candidate_source || ""),
     initialText: text,
     editedBeforeSubmit: false
   };
@@ -514,11 +514,23 @@ function ensureDashboardInputFlow(options) {
   return startDashboardInputFlow(options);
 }
 
+function resolveDashboardCandidateSource(mode, candidateSource) {
+  var normalized = (candidateSource || "").trim();
+  if (normalized) return normalized;
+  if (mode === "text") return "free_text";
+  return "";
+}
+
 function buildDashboardFlowPayload(text, extraUiData) {
+  var mode = extraUiData && extraUiData.mode ? extraUiData.mode : "text";
+  var candidateSource = resolveDashboardCandidateSource(
+    mode,
+    extraUiData && extraUiData.candidate_source ? extraUiData.candidate_source : ""
+  );
   var flow = ensureDashboardInputFlow({
-    mode: extraUiData && extraUiData.mode ? extraUiData.mode : "text",
+    mode: mode,
     trigger: extraUiData && extraUiData.trigger ? extraUiData.trigger : "dashboard_submit",
-    candidate_source: extraUiData && extraUiData.candidate_source ? extraUiData.candidate_source : "",
+    candidate_source: candidateSource,
     text: text
   });
   var payload = Object.assign({}, extraUiData || {});
@@ -527,9 +539,9 @@ function buildDashboardFlowPayload(text, extraUiData) {
   payload.trigger = flow && flow.trigger ? flow.trigger : (payload.trigger || "dashboard_submit");
   payload.edited_before_submit = flow ? flow.editedBeforeSubmit : !!payload.edited_before_submit;
   payload.text_length = text.length;
-  if (flow && flow.candidateSource && !payload.candidate_source) {
-    payload.candidate_source = flow.candidateSource;
-  }
+  payload.candidate_source = flow
+    ? resolveDashboardCandidateSource(payload.mode, flow.candidateSource)
+    : candidateSource;
   return payload;
 }
 
