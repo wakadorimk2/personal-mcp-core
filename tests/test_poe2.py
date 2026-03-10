@@ -4,56 +4,64 @@ from pathlib import Path
 import pytest
 
 from personal_mcp.server import main
+from personal_mcp.storage.events_store import rebuild_db_from_jsonl
+from personal_mcp.storage.sqlite import append_sqlite, read_sqlite
+
+
+def _read_runtime_events(data_dir: Path) -> list[dict]:
+    return read_sqlite(data_dir / "events.db")
 
 
 def _write_events(path: Path, events: list[dict]) -> None:
     path.write_text("\n".join(json.dumps(e) for e in events) + "\n", encoding="utf-8")
 
 
-def test_poe2_log_add_writes_to_events_jsonl(data_dir: Path) -> None:
+def test_poe2_log_add_writes_to_events_db(data_dir: Path) -> None:
     main(["poe2-log-add", "farming T17 map", "--kind", "session", "--data-dir", str(data_dir)])
 
-    path = data_dir / "events.jsonl"
-    lines = path.read_text(encoding="utf-8").splitlines()
-    assert len(lines) == 1
-    record = json.loads(lines[0])
+    rows = _read_runtime_events(data_dir)
+    assert len(rows) == 1
+    record = rows[0]
     assert record["domain"] == "poe2"
     assert record["data"]["text"] == "farming T17 map"
 
 
 def test_poe2_log_add_appends_not_overwrites(data_dir: Path) -> None:
-    path = data_dir / "events.jsonl"
-    path.write_text('{"dummy": true}\n', encoding="utf-8")
+    existing = {
+        "ts": "2026-03-01T00:00:00+00:00",
+        "domain": "general",
+        "kind": "note",
+        "data": {"text": "first"},
+        "tags": [],
+        "v": 1,
+    }
+    append_sqlite(data_dir / "events.db", existing)
 
     main(["poe2-log-add", "second entry", "--data-dir", str(data_dir)])
 
-    lines = path.read_text(encoding="utf-8").splitlines()
-    assert len(lines) == 2
-    assert json.loads(lines[0]) == {"dummy": True}
-    record = json.loads(lines[1])
+    rows = _read_runtime_events(data_dir)
+    assert len(rows) == 2
+    assert rows[0] == existing
+    record = rows[1]
     assert record["domain"] == "poe2"
 
 
 def test_poe2_log_add_stores_kind_at_top_level(data_dir: Path) -> None:
     main(["poe2-log-add", "note text", "--kind", "note", "--data-dir", str(data_dir)])
 
-    path = data_dir / "events.jsonl"
-    record = json.loads(path.read_text(encoding="utf-8").splitlines()[0])
+    record = _read_runtime_events(data_dir)[0]
     assert record["kind"] == "note"
 
 
 def test_poe2_log_add_stores_tags(data_dir: Path) -> None:
     main(["poe2-log-add", "tagged entry", "--tags", "mapping,boss", "--data-dir", str(data_dir)])
 
-    path = data_dir / "events.jsonl"
-    record = json.loads(path.read_text(encoding="utf-8").splitlines()[0])
+    record = _read_runtime_events(data_dir)[0]
     assert "mapping" in record["tags"]
     assert "boss" in record["tags"]
 
 
-def test_poe2_log_list_reads_from_events_jsonl(
-    data_dir: Path, capsys: pytest.CaptureFixture
-) -> None:
+def test_poe2_log_list_reads_from_events_db(data_dir: Path, capsys: pytest.CaptureFixture) -> None:
     main(
         [
             "poe2-log-add",
@@ -117,6 +125,7 @@ def test_poe2_log_list_kind_filter_excludes_kind_missing_records(
             }
         ],
     )
+    rebuild_db_from_jsonl(data_dir=str(data_dir))
 
     main(["poe2-log-list", "--kind", "note", "--json", "--data-dir", str(data_dir)])
 
@@ -139,6 +148,7 @@ def test_poe2_log_list_text_shows_question_mark_for_kind_missing(
             }
         ],
     )
+    rebuild_db_from_jsonl(data_dir=str(data_dir))
 
     main(["poe2-log-list", "--data-dir", str(data_dir)])
 

@@ -70,7 +70,7 @@ def event_list(
               that date; ISO datetime strings are used as-is.
     --n:      after all filters, return the newest n records (newest first).
 
-    primary が空の場合は互換経路を読む。どちらもなければ空配列を返す。
+    runtime storage は events.db のみを参照する。存在しなければ空配列を返す。
     """
     rows = read_events(data_dir=data_dir)
 

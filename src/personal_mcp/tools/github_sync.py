@@ -2,13 +2,10 @@ from __future__ import annotations
 
 import json
 import urllib.request
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
 from personal_mcp.core.event import build_v1_record
-from personal_mcp.storage.events_store import append_event
-from personal_mcp.storage.jsonl import read_jsonl
-from personal_mcp.storage.path import resolve_data_dir
+from personal_mcp.storage.events_store import append_event, read_events
 
 
 _SKIP_TYPES: frozenset = frozenset({"WatchEvent", "PublicEvent", "MemberEvent"})
@@ -99,12 +96,10 @@ def _map_event_to_record(gh_event: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     )
 
 
-def _load_existing_github_event_ids(path: Path) -> Set[str]:
-    """Return the set of github_event_id values already stored."""
-    if not path.exists():
-        return set()
+def _load_existing_github_event_ids(data_dir: Optional[str]) -> Set[str]:
+    """Return github_event_id values stored in the runtime primary storage."""
     ids: Set[str] = set()
-    for r in read_jsonl(path):
+    for r in read_events(data_dir):
         if r.get("source") == "github":
             eid = r.get("data", {}).get("github_event_id")
             if eid:
@@ -121,10 +116,7 @@ def github_sync(
 
     Returns {"saved": int, "skipped": int, "failed": int}.
     """
-    resolved = resolve_data_dir(data_dir)
-    path = Path(resolved) / "events.jsonl"
-
-    existing_ids = _load_existing_github_event_ids(path)
+    existing_ids = _load_existing_github_event_ids(data_dir)
     try:
         gh_events = _fetch_github_events(username, token)
     except Exception:
@@ -144,7 +136,7 @@ def github_sync(
             if record is None:
                 skipped += 1
                 continue
-            append_event(record, data_dir=resolved)
+            append_event(record, data_dir=data_dir)
             existing_ids.add(event_id)
             saved += 1
         except Exception:

@@ -29,6 +29,13 @@ Issue: <https://github.com/wakadorimk2/personal-mcp-core/issues/185>
 - primary は `events.db`（SQLite）とし、write は `events.db` → `events.jsonl` の順で行う
 - `events.jsonl` は移行期間の互換経路として残し、read は `events.db` が空のときのみ fallback する
 
+## Phase4 runtime note (#191)
+
+- runtime read/write は `events.db` のみを参照する
+- recovery 用 migration command（`storage-db-to-jsonl` / `storage-jsonl-to-db`）は維持する
+- `events.jsonl` は runtime fallback ではなく recovery 入力/出力としてのみ扱う
+- GitHub sync / ingest の dedup も runtime storage 境界（`events.db`）に統一する
+
 ## Phased migration plan
 
 1. Phase1 (#185): 方針と運用ルールを確定し、Decision Record を固定する

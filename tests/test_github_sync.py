@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 from typing import Any, Dict
 
+from personal_mcp.storage.events_store import append_event, rebuild_db_from_jsonl
+from personal_mcp.storage.sqlite import read_sqlite
 from personal_mcp.tools.github_sync import (
     _load_existing_github_event_ids,
     _map_event_to_record,
@@ -19,6 +21,10 @@ from personal_mcp.tools.github_sync import (
 
 def _write_events(path: Path, events: list) -> None:
     path.write_text("\n".join(json.dumps(e) for e in events) + "\n", encoding="utf-8")
+
+
+def _read_runtime_events(data_dir: Path) -> list[dict]:
+    return read_sqlite(data_dir / "events.db")
 
 
 def _push_event(event_id: str = "100") -> Dict[str, Any]:
@@ -132,11 +138,10 @@ def test_map_watch_event_returns_none() -> None:
 
 
 def test_load_ids_returns_empty_when_file_missing(data_dir: Path) -> None:
-    assert _load_existing_github_event_ids(data_dir / "events.jsonl") == set()
+    assert _load_existing_github_event_ids(str(data_dir)) == set()
 
 
 def test_load_ids_returns_only_github_source_ids(data_dir: Path) -> None:
-    path = data_dir / "events.jsonl"
     github_event = {
         "v": 1,
         "ts": "2026-03-07T10:00:00+00:00",
@@ -155,8 +160,9 @@ def test_load_ids_returns_only_github_source_ids(data_dir: Path) -> None:
         "tags": [],
         "source": "manual",
     }
-    _write_events(path, [github_event, manual_event])
-    assert _load_existing_github_event_ids(path) == {"abc"}
+    append_event(github_event, data_dir=str(data_dir))
+    append_event(manual_event, data_dir=str(data_dir))
+    assert _load_existing_github_event_ids(str(data_dir)) == {"abc"}
 
 
 # ---------------------------------------------------------------------------
@@ -172,15 +178,14 @@ def test_github_sync_saves_new_event(data_dir: Path, monkeypatch) -> None:
     result = github_sync(username="user", data_dir=str(data_dir))
 
     assert result == {"saved": 1, "skipped": 0, "failed": 0}
-    lines = (data_dir / "events.jsonl").read_text(encoding="utf-8").splitlines()
-    assert len(lines) == 1
-    assert json.loads(lines[0])["data"]["github_event_id"] == "100"
+    rows = _read_runtime_events(data_dir)
+    assert len(rows) == 1
+    assert rows[0]["data"]["github_event_id"] == "100"
 
 
 def test_github_sync_skips_duplicate(data_dir: Path, monkeypatch) -> None:
     import personal_mcp.tools.github_sync as mod
 
-    path = data_dir / "events.jsonl"
     existing = {
         "v": 1,
         "ts": "2026-03-07T10:00:00+00:00",
@@ -190,14 +195,58 @@ def test_github_sync_skips_duplicate(data_dir: Path, monkeypatch) -> None:
         "tags": [],
         "source": "github",
     }
-    _write_events(path, [existing])
+    append_event(existing, data_dir=str(data_dir))
     monkeypatch.setattr(mod, "_fetch_github_events", lambda u, t: [_push_event("100")])
 
     result = github_sync(username="user", data_dir=str(data_dir))
 
     assert result["saved"] == 0
     assert result["skipped"] == 1
-    assert len(path.read_text(encoding="utf-8").splitlines()) == 1
+    assert len(_read_runtime_events(data_dir)) == 1
+
+
+def test_github_sync_skips_duplicate_when_id_exists_only_in_db(data_dir: Path, monkeypatch) -> None:
+    import personal_mcp.tools.github_sync as mod
+
+    append_only_db_record = {
+        "v": 1,
+        "ts": "2026-03-07T10:00:00+00:00",
+        "domain": "eng",
+        "kind": "artifact",
+        "data": {"text": "already saved", "github_event_id": "100"},
+        "tags": [],
+        "source": "github",
+    }
+    append_event(append_only_db_record, data_dir=str(data_dir))
+    monkeypatch.setattr(mod, "_fetch_github_events", lambda u, t: [_push_event("100")])
+
+    result = github_sync(username="user", data_dir=str(data_dir))
+
+    assert result["saved"] == 0
+    assert result["skipped"] == 1
+    rows = _read_runtime_events(data_dir)
+    assert len(rows) == 1
+
+
+def test_github_sync_skips_duplicate_after_recovery_migration(data_dir: Path, monkeypatch) -> None:
+    import personal_mcp.tools.github_sync as mod
+
+    existing = {
+        "v": 1,
+        "ts": "2026-03-07T10:00:00+00:00",
+        "domain": "eng",
+        "kind": "artifact",
+        "data": {"text": "already saved", "github_event_id": "100"},
+        "tags": [],
+        "source": "github",
+    }
+    _write_events(data_dir / "events.jsonl", [existing])
+    rebuild_db_from_jsonl(data_dir=str(data_dir))
+    monkeypatch.setattr(mod, "_fetch_github_events", lambda u, t: [_push_event("100")])
+
+    result = github_sync(username="user", data_dir=str(data_dir))
+
+    assert result == {"saved": 0, "skipped": 1, "failed": 0}
 
 
 def test_github_sync_skips_low_signal_event(data_dir: Path, monkeypatch) -> None:
