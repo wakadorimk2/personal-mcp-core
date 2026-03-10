@@ -14,6 +14,7 @@ from personal_mcp.storage.path import resolve_data_dir
 from personal_mcp.tools.event import event_add, event_list
 from personal_mcp.tools.daily_summary import generate_daily_summary
 from personal_mcp.tools.github_sync import github_sync
+from personal_mcp.tools.github_ingest import github_ingest
 from personal_mcp.tools.poe2_client_watcher import watch_client_log
 
 
@@ -144,6 +145,16 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     p_ghsync.add_argument("--data-dir", default=None)
     p_ghsync.add_argument("--json", action="store_true")
+    p_ghingest = sub.add_parser(
+        "github-ingest",
+        help="ingest GitHub user events with full data.* payload (eng-ingest-impl.md #247)",
+    )
+    p_ghingest.add_argument("--username", required=True, help="GitHub username")
+    p_ghingest.add_argument(
+        "--token", default=None, help="GitHub API token (or GITHUB_TOKEN env var)"
+    )
+    p_ghingest.add_argument("--data-dir", default=None)
+    p_ghingest.add_argument("--json", action="store_true")
     p_summary = sub.add_parser(
         "summary-generate",
         help="generate daily summary for a given UTC date",
@@ -281,6 +292,20 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.cmd == "github-sync":
         token = args.token or os.environ.get("GITHUB_TOKEN")
         result = github_sync(
+            username=args.username,
+            token=token,
+            data_dir=data_dir,
+        )
+        if args.json:
+            print(json.dumps(result, ensure_ascii=False))
+        else:
+            sv, sk, fl = result["saved"], result["skipped"], result["failed"]
+            print(f"saved: {sv}, skipped: {sk}, failed: {fl}")
+        return 0
+
+    if args.cmd == "github-ingest":
+        token = args.token or os.environ.get("GITHUB_TOKEN")
+        result = github_ingest(
             username=args.username,
             token=token,
             data_dir=data_dir,

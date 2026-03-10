@@ -219,6 +219,7 @@ src/personal_mcp/
 | [`docs/domain-extension-policy.md`](./docs/domain-extension-policy.md) | domain 拡張条件 |
 | [`docs/architecture.md`](./docs/architecture.md) | 技術的アーキテクチャ |
 | [`docs/cleanup-architecture.md`](./docs/cleanup-architecture.md) | cleanup taxonomy / constitution / cleanup と仕様変更の境界 |
+| [`docs/cleanup-pipeline.md`](./docs/cleanup-pipeline.md) | cleanup の入力、実行面、auto-fix/report/triage、Issue/Project 記録フロー |
 | [`docs/import-layering-dependency-constraints.md`](./docs/import-layering-dependency-constraints.md) | import / layering / dependency 制約の設計 |
 | [`docs/deterministic-toolchain-baseline.md`](./docs/deterministic-toolchain-baseline.md) | deterministic guardrail の baseline と導入順序 |
 | [`docs/infra/notify-wrapper.md`](./docs/infra/notify-wrapper.md) | `notify` wrapper の使い方と通知チャネル追加契約 |
