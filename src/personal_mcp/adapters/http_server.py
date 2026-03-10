@@ -6,7 +6,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from personal_mcp.core.event import ALLOWED_DOMAINS
-from personal_mcp.tools.candidates import list_candidates
+from personal_mcp.tools.candidates import FIXED_CANDIDATES, list_candidates
 from personal_mcp.tools.daily_summary import (
     count_events_by_date,
     get_latest_summary,
@@ -347,7 +347,7 @@ renderSuggestion();
 </body>
 </html>"""
 
-_DASHBOARD_HTML = """\
+_DASHBOARD_HTML_TEMPLATE = """\
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -472,7 +472,7 @@ h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
 </div>
 <div id="summaries"></div>
 <script>
-var DASHBOARD_FALLBACK_CANDIDATES = ["作業開始", "休憩", "移動", "食事", "作業完了"];
+var DASHBOARD_FALLBACK_CANDIDATES = DASHBOARD_FALLBACK_CANDIDATES_JSON;
 var candidateTapMode = "compose";
 var dashboardBusy = false;
 var dashboardInputFlow = null;
@@ -861,6 +861,11 @@ loadSummaries();
 </script>
 </body>
 </html>"""  # noqa: E501
+
+_DASHBOARD_HTML = _DASHBOARD_HTML_TEMPLATE.replace(
+    "DASHBOARD_FALLBACK_CANDIDATES_JSON",
+    json.dumps(list(FIXED_CANDIDATES), ensure_ascii=False),
+)
 
 
 def _make_html() -> str:

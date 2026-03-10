@@ -88,6 +88,11 @@ def test_list_candidates_cold_start_returns_fixed_only(data_dir: Path) -> None:
     assert got == expected
 
 
+def test_fixed_candidates_contract() -> None:
+    assert 0 < len(FIXED_CANDIDATES) <= 8
+    assert all(0 < len(text) <= MAX_CANDIDATE_LENGTH for text in FIXED_CANDIDATES)
+
+
 @pytest.mark.parametrize("count", [7, 8])
 def test_list_candidates_threshold_7_and_8_enable_non_fixed_sources(
     data_dir: Path, count: int
