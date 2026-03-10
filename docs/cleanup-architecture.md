@@ -2,10 +2,11 @@
 
 > スコープ: cleanup を単発作業ではなく、継続運用できる architecture として定義する
 > 親 Issue: #259
-> 関連: #94, #258, #260
-> 更新日: 2026-03-09
+> 関連: #94, #258, #260, #263, #264
+> 更新日: 2026-03-10
 >
 > **この文書は設計記録であり、cleanup pipeline や scheduler の実装導入は後続 Issue へ分離する。**
+> 実行面の設計は [`docs/cleanup-pipeline.md`](./cleanup-pipeline.md) を参照する。
 
 ---
 
@@ -236,9 +237,10 @@ cleanup は「雑にきれいにする作業」ではなく、
 drift を分類し、正本との距離を測り、
 auto-fix 境界と停止条件を固定したうえで扱う運用である。
 
-この文書で固定したのは次の 4 点である。
+この文書で固定したのは次の 5 点である。
 
 - cleanup taxonomy は `micro cleanup` / `periodic cleanup` / `doc drift detection`
 - 自動化は `L0-L3` の bounded model で扱う
 - auto-fix は「正本が明確で、非仕様変更で、局所 diff」の場合に限る
 - cleanup と spec change は「意味や約束を変えるか」で分ける
+- 実行面と記録面は [`docs/cleanup-pipeline.md`](./cleanup-pipeline.md) で別管理する
