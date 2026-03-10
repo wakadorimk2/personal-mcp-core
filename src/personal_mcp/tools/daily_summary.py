@@ -79,7 +79,12 @@ def get_latest_summary(date: str, data_dir: Optional[str] = None) -> Optional[Di
 
 
 def count_events_by_date(days: int = 28, data_dir: Optional[str] = None) -> List[Dict[str, Any]]:
-    """Return [{date, count}] for the last `days` local days, including 0-count days."""
+    """Return [{date, count}] for the last `days` local days, including 0-count days.
+
+    This is the current MVP feed for `/api/heatmap`: raw non-summary event counts.
+    Heatmap semantics are defined separately in `docs/heatmap-state-density-spec.md`
+    (Issue #253), and follow-up issues may replace this with a layer-aware aggregate.
+    """
     if days <= 0:
         return []
 
