@@ -36,6 +36,7 @@ def _seed_origin(origin_path: Path) -> None:
     _git(seed_path, "commit", "-m", "init")
     _git(seed_path, "remote", "add", "origin", str(origin_path))
     _git(seed_path, "push", "-u", "origin", "main")
+    _git(origin_path, "symbolic-ref", "HEAD", "refs/heads/main")
 
 
 def _clone_repo(origin_path: Path, clone_path: Path) -> None:
