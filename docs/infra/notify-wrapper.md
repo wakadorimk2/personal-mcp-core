@@ -40,6 +40,230 @@ The adapter sends plain-text webhook payloads only. Missing webhook
 configuration exits with code `2`; HTTP or transport failures exit with code
 `1`.
 
+## Claude Code integration
+
+`scripts/claude-notify` is a thin wrapper around the `claude` CLI. It forwards
+all arguments to `claude "$@"`, then emits a notification through
+`scripts/notify`.
+
+Invocation pattern:
+
+```bash
+PATH="$PWD/scripts:$PATH"
+export NOTIFY_CHANNEL=discord
+export DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
+
+scripts/claude-notify <claude-args...>
+```
+
+Current notification mapping:
+
+- Claude exit `0` -> `task_completed`
+- non-zero Claude exit -> `task_failed`
+- title -> `Claude Code`
+- source -> `claude_code`
+- message -> `Claude Code task completed` or `Claude Code exited with status <n>`
+
+Setup requirements:
+
+1. `claude` must be available on `PATH` in the same shell that runs
+   `scripts/claude-notify`.
+2. `NOTIFY_CHANNEL=discord` and `DISCORD_WEBHOOK_URL` must be exported in that
+   same shell, shell startup file, or launcher script.
+3. If you use WSL or another wrapper shell, configure the environment where
+   `claude`, `curl`, and `python3` actually execute.
+
+Exit semantics:
+
+- `scripts/claude-notify` always exits with the original Claude exit code
+- notification delivery failures do not overwrite that exit code
+- diagnose delivery problems from stderr, especially the line before
+  `claude-notify: notify delivery failed`
+
+### Local verification without a real Discord webhook
+
+These checks validate the current success and failure paths without contacting
+Discord. They use a fake `claude` binary and a temporary capture adapter.
+
+Success path:
+
+```bash
+tmpdir="$(mktemp -d)"
+cat >"$tmpdir/claude" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'claude ok\n'
+EOF
+chmod +x "$tmpdir/claude"
+
+cat >"$tmpdir/capture" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'event=%s\n' "$NOTIFY_EVENT"
+printf 'title=%s\n' "$NOTIFY_TITLE"
+printf 'source=%s\n' "$NOTIFY_SOURCE"
+printf 'message=%s\n' "$NOTIFY_MESSAGE"
+EOF
+chmod +x "$tmpdir/capture"
+
+PATH="$tmpdir:$PATH" \
+NOTIFY_CHANNEL=capture \
+NOTIFY_CHANNEL_DIR="$tmpdir" \
+scripts/claude-notify
+```
+
+Expected result:
+
+```text
+claude ok
+event=task_completed
+title=Claude Code
+source=claude_code
+message=Claude Code task completed
+```
+
+Failure path:
+
+```bash
+cat >"$tmpdir/claude" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'claude failed\n' >&2
+exit 17
+EOF
+chmod +x "$tmpdir/claude"
+
+PATH="$tmpdir:$PATH" \
+NOTIFY_CHANNEL=capture \
+NOTIFY_CHANNEL_DIR="$tmpdir" \
+scripts/claude-notify
+echo $?
+```
+
+Expected result:
+
+- stdout:
+
+```text
+event=task_failed
+title=Claude Code
+source=claude_code
+message=Claude Code exited with status 17
+```
+
+- stderr:
+
+```text
+claude failed
+```
+
+- final exit code: `17`
+
+### Discord delivery troubleshooting
+
+Use the same fake `claude` binary above when you want to test Discord delivery
+behavior in isolation. That keeps the check local and distinguishes it from a
+real smoke test with a live webhook.
+
+Missing webhook configuration:
+
+```bash
+cat >"$tmpdir/claude" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'claude ok\n'
+EOF
+chmod +x "$tmpdir/claude"
+
+PATH="$tmpdir:$PATH" \
+NOTIFY_CHANNEL=discord \
+scripts/claude-notify
+echo $?
+```
+
+Expected result:
+
+- stdout:
+
+```text
+claude ok
+```
+
+- stderr contains both:
+
+```text
+discord notify: DISCORD_WEBHOOK_URL is required
+claude-notify: notify delivery failed
+```
+
+- final exit code: `0` because Claude itself succeeded
+
+HTTP failure from the webhook endpoint:
+
+```bash
+cat >"$tmpdir/curl" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+printf '500'
+EOF
+chmod +x "$tmpdir/curl"
+
+PATH="$tmpdir:/usr/bin:/bin" \
+NOTIFY_CHANNEL=discord \
+DISCORD_WEBHOOK_URL="https://discord.example/webhook" \
+scripts/claude-notify
+echo $?
+```
+
+Expected stderr:
+
+```text
+discord notify: webhook POST failed with HTTP 500
+claude-notify: notify delivery failed
+```
+
+Transport failure from `curl`:
+
+```bash
+cat >"$tmpdir/curl" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'curl: (7) failed to connect\n' >&2
+exit 7
+EOF
+chmod +x "$tmpdir/curl"
+
+PATH="$tmpdir:/usr/bin:/bin" \
+NOTIFY_CHANNEL=discord \
+DISCORD_WEBHOOK_URL="https://discord.example/webhook" \
+scripts/claude-notify
+echo $?
+```
+
+Expected stderr:
+
+```text
+curl: (7) failed to connect
+discord notify: webhook POST failed
+claude-notify: notify delivery failed
+```
+
+Operational checklist:
+
+- If `DISCORD_WEBHOOK_URL is required` appears, export the webhook in the same
+  environment that launches `scripts/claude-notify`
+- If `webhook POST failed with HTTP ...` appears, verify the webhook URL,
+  webhook rotation state, and any proxy or ingress policy between the runner
+  and Discord
+- If `curl: (...)` appears, treat it as network, DNS, TLS, or local `curl`
+  availability trouble first
+- If Claude returned a non-zero status, fix that task failure separately from
+  notification delivery
+
+Local verification above proves wrapper behavior only. A real Discord smoke
+test requires a live webhook and should be recorded separately from this
+runbook.
+
 ## Codex CLI integration
 
 Codex CLI's `notify` setting runs an external command and passes one JSON
