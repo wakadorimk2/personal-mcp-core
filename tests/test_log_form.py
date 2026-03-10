@@ -157,6 +157,37 @@ def test_ui_event_add_sqlite_input_submitted_applies_mode_defaults(
     assert rec["data"]["trigger"] == expected_trigger
 
 
+def test_ui_event_add_sqlite_input_submitted_dashboard_uses_explicit_mode(data_dir: Path) -> None:
+    rec = ui_event_add_sqlite(
+        event_name="input_submitted",
+        ui_mode="dashboard",
+        data_dir=str(data_dir),
+        extra_data={
+            "mode": "quick",
+            "trigger": "candidate_quick_save",
+            "candidate_source": "recent",
+            "flow_id": "dashboard-123",
+        },
+    )
+    assert rec["data"]["ui_mode"] == "dashboard"
+    assert rec["data"]["mode"] == "quick"
+    assert rec["data"]["save_type"] == "instant"
+    assert rec["data"]["edited_before_submit"] is False
+    assert rec["data"]["trigger"] == "candidate_quick_save"
+    assert rec["data"]["candidate_source"] == "recent"
+    assert rec["data"]["flow_id"] == "dashboard-123"
+
+
+def test_ui_event_add_sqlite_input_submitted_dashboard_rejects_missing_mode(data_dir: Path) -> None:
+    with pytest.raises(ValueError, match="unsupported input mode"):
+        ui_event_add_sqlite(
+            event_name="input_submitted",
+            ui_mode="dashboard",
+            data_dir=str(data_dir),
+            extra_data={},
+        )
+
+
 # ---------------------------------------------------------------------------
 # append_sqlite / DB content
 # ---------------------------------------------------------------------------
@@ -403,6 +434,32 @@ def test_http_post_ui_events_input_submitted_fills_contract_defaults(data_dir: P
     assert body["data"]["save_type"] == "manual"
     assert body["data"]["edited_before_submit"] is True
     assert body["data"]["trigger"] == "candidate_tag"
+
+
+def test_http_post_ui_events_dashboard_accepts_explicit_input_mode(data_dir: Path) -> None:
+    handler_cls = _make_handler_for_test(str(data_dir))
+    responses = _post_json(
+        handler_cls,
+        {
+            "event_name": "input_submitted",
+            "ui_mode": "dashboard",
+            "extra_data": {
+                "mode": "tag",
+                "trigger": "candidate_tag",
+                "candidate_source": "recent",
+                "edited_before_submit": True,
+            },
+        },
+        "/events/ui",
+    )
+    status, body = responses[0]
+    assert status == 201
+    assert body["data"]["ui_mode"] == "dashboard"
+    assert body["data"]["mode"] == "tag"
+    assert body["data"]["save_type"] == "manual"
+    assert body["data"]["trigger"] == "candidate_tag"
+    assert body["data"]["candidate_source"] == "recent"
+    assert body["data"]["edited_before_submit"] is True
 
 
 def test_make_html_shows_optional_labels_and_suggestion() -> None:
