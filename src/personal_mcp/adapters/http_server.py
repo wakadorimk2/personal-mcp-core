@@ -475,6 +475,63 @@ h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
 var DASHBOARD_FALLBACK_CANDIDATES = ["作業開始", "休憩", "移動", "食事", "作業完了"];
 var candidateTapMode = "compose";
 var dashboardBusy = false;
+var dashboardInputFlow = null;
+
+function newDashboardFlowId() {
+  return "dashboard-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
+}
+
+function resetDashboardInputFlow() {
+  dashboardInputFlow = null;
+}
+
+function startDashboardInputFlow(options) {
+  var next = options || {};
+  var mode = (next.mode || "").trim();
+  if (!mode) return null;
+  if (dashboardInputFlow && !next.force) return dashboardInputFlow;
+  var text = typeof next.text === "string" ? next.text : document.getElementById("log-text").value;
+  dashboardInputFlow = {
+    flowId: newDashboardFlowId(),
+    mode: mode,
+    trigger: (next.trigger || "").trim(),
+    candidateSource: (next.candidate_source || "").trim(),
+    initialText: text,
+    editedBeforeSubmit: false
+  };
+  postUiEvent("input_started", {
+    flow_id: dashboardInputFlow.flowId,
+    mode: dashboardInputFlow.mode,
+    trigger: dashboardInputFlow.trigger,
+    text_length: text.length,
+    candidate_source: dashboardInputFlow.candidateSource
+  });
+  return dashboardInputFlow;
+}
+
+function ensureDashboardInputFlow(options) {
+  if (dashboardInputFlow) return dashboardInputFlow;
+  return startDashboardInputFlow(options);
+}
+
+function buildDashboardFlowPayload(text, extraUiData) {
+  var flow = ensureDashboardInputFlow({
+    mode: extraUiData && extraUiData.mode ? extraUiData.mode : "text",
+    trigger: extraUiData && extraUiData.trigger ? extraUiData.trigger : "dashboard_submit",
+    candidate_source: extraUiData && extraUiData.candidate_source ? extraUiData.candidate_source : "",
+    text: text
+  });
+  var payload = Object.assign({}, extraUiData || {});
+  payload.flow_id = flow ? flow.flowId : "";
+  payload.mode = flow ? flow.mode : (payload.mode || "text");
+  payload.trigger = flow && flow.trigger ? flow.trigger : (payload.trigger || "dashboard_submit");
+  payload.edited_before_submit = flow ? flow.editedBeforeSubmit : !!payload.edited_before_submit;
+  payload.text_length = text.length;
+  if (flow && flow.candidateSource && !payload.candidate_source) {
+    payload.candidate_source = flow.candidateSource;
+  }
+  return payload;
+}
 
 function heatColor(n) {
   if (n === 0) return '#eeeeee';
@@ -578,6 +635,13 @@ function renderCandidates(items) {
         await saveCandidateQuickLog(text, source);
         return;
       }
+      startDashboardInputFlow({
+        mode: "tag",
+        trigger: "candidate_tag",
+        candidate_source: source,
+        text: text,
+        force: true
+      });
       var input = document.getElementById("log-text");
       input.value = text;
       if (typeof input.setSelectionRange === "function") {
@@ -666,6 +730,7 @@ async function refreshDashboard(source) {
 async function submitDashboardLogText(text, extraUiData) {
   var msg = document.getElementById("log-msg");
   if (!text || dashboardBusy) return false;
+  var telemetryData = buildDashboardFlowPayload(text, extraUiData);
   setDashboardBusy(true);
   msg.textContent = "保存しています...";
   msg.className = "";
@@ -680,15 +745,15 @@ async function submitDashboardLogText(text, extraUiData) {
       saved = true;
       msg.textContent = "保存しました: " + text;
       msg.className = "msg-ok";
-      await postUiEvent("save_success", Object.assign({
-        text_length: text.length
-      }, extraUiData || {}));
+      await postUiEvent("input_submitted", telemetryData);
+      await postUiEvent("save_success", telemetryData);
       try {
         await Promise.all([loadHeatmap(), loadCandidates(), loadSummaries()]);
       } catch (refreshEx) {
         msg.textContent = "保存済み。再取得に失敗しました。再試行してください。";
         msg.className = "msg-err";
       }
+      resetDashboardInputFlow();
       setTimeout(function() { if (msg.className === "msg-ok") { msg.textContent = ""; msg.className = ""; } }, 3000);
     } else {
       var err = await r.json();
@@ -696,14 +761,14 @@ async function submitDashboardLogText(text, extraUiData) {
       msg.className = "msg-err";
       await postUiEvent("save_error", Object.assign({
         status: r.status
-      }, extraUiData || {}));
+      }, telemetryData));
     }
   } catch (ex) {
     msg.textContent = "接続エラー: " + ex.message;
     msg.className = "msg-err";
     await postUiEvent("save_error", Object.assign({
       reason: "fetch_exception"
-    }, extraUiData || {}));
+    }, telemetryData));
   } finally {
     setDashboardBusy(false);
   }
@@ -726,7 +791,15 @@ async function submitDashboardLog() {
 }
 
 async function saveCandidateQuickLog(text, source) {
+  startDashboardInputFlow({
+    mode: "quick",
+    trigger: "candidate_quick_save",
+    candidate_source: source || "",
+    text: text,
+    force: true
+  });
   await submitDashboardLogText(text, {
+    mode: "quick",
     trigger: "candidate_quick_save",
     candidate_source: source || ""
   });
@@ -740,8 +813,24 @@ document.getElementById("candidate-quick-mode").addEventListener("click", functi
 });
 document.getElementById("log-submit").addEventListener("click", submitDashboardLog);
 document.getElementById("refresh-btn").addEventListener("click", function() { refreshDashboard("manual"); });
-document.getElementById("log-text").addEventListener("input", renderComposerState);
+document.getElementById("log-text").addEventListener("input", function() {
+  var input = document.getElementById("log-text");
+  var flow = ensureDashboardInputFlow({
+    mode: "text",
+    trigger: "dashboard_submit",
+    text: input.value
+  });
+  if (flow && flow.initialText !== input.value) {
+    flow.editedBeforeSubmit = true;
+  }
+  renderComposerState();
+});
 document.getElementById("log-text").addEventListener("focus", function() {
+  ensureDashboardInputFlow({
+    mode: "text",
+    trigger: "dashboard_submit",
+    text: document.getElementById("log-text").value
+  });
   setTimeout(function() {
     document.getElementById("log-form").scrollIntoView({ block: "nearest" });
   }, 120);

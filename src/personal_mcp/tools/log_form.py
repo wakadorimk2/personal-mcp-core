@@ -32,6 +32,7 @@ INPUT_SUBMITTED_TRIGGER_BY_MODE: Dict[str, str] = {
 }
 DEFAULT_DOMAIN = "general"
 DEFAULT_KIND = "note"
+ALLOWED_INPUT_SUBMITTED_MODES: frozenset = frozenset(INPUT_SUBMITTED_SAVE_TYPE_BY_MODE)
 
 
 def suggest_labels(text: str) -> Dict[str, str]:
@@ -75,8 +76,17 @@ def _normalize_bool(value: Any) -> bool:
     return bool(value)
 
 
+def _resolve_input_submitted_mode(ui_mode: str, extra_data: Dict[str, Any]) -> str:
+    mode = str(extra_data.get("mode") or "").strip()
+    if not mode:
+        mode = ui_mode
+    if mode not in ALLOWED_INPUT_SUBMITTED_MODES:
+        raise ValueError(f"unsupported input mode: {mode}")
+    return mode
+
+
 def _input_submitted_contract_payload(ui_mode: str, extra_data: Dict[str, Any]) -> Dict[str, Any]:
-    mode = ui_mode
+    mode = _resolve_input_submitted_mode(ui_mode, extra_data)
     trigger = str(extra_data.get("trigger") or "").strip()
     if not trigger:
         trigger = INPUT_SUBMITTED_TRIGGER_BY_MODE[mode]
