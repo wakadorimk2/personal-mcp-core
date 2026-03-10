@@ -351,6 +351,53 @@ Real Discord smoke-test evidence is tracked separately in issue #268 so this
 documented setup can stay reproducible without requiring a live webhook during
 issue #267.
 
+## Current event coverage and remaining gaps
+
+This section is intentionally limited to the Codex CLI and Claude Code paths
+that issue #255 operationalizes. Local scripts can still call `scripts/notify`
+directly with any supported `--event`, but that is a separate integration path
+from the day-to-day AI CLI flow documented here.
+
+### Current coverage summary
+
+| path | `task_completed` | `task_failed` | `needs_input` | `long_task_finished` |
+|---|---|---|---|---|
+| Codex CLI via `scripts/codex_notify.py` | supported | not operationalized | not operationalized | not operationalized |
+| Claude Code via `scripts/claude-notify` | supported | supported | unsupported | unsupported |
+
+Current behavior behind that table:
+
+- Codex CLI currently uses the `notify` hook payload documented in this repo
+  for `agent-turn-complete`, and `scripts/codex_notify.py` maps that flow to
+  `task_completed`
+- Claude Code currently emits one notification after the wrapped `claude`
+  process exits, mapping exit `0` to `task_completed` and non-zero exit to
+  `task_failed`
+- Neither current AI CLI path projects contract-level optional fields such as
+  `task_ref`, `run_url`, or `next_action` into channel adapters
+
+### Remaining gaps outside the completion-oriented flow
+
+| gap | current state | operational impact | follow-up direction |
+|---|---|---|---|
+| Codex `task_failed` | Not operationalized in the current repo docs/tests. The documented Codex path covers `agent-turn-complete` only. | A Codex run that stops before completion can fail without an out-of-band notification, so operators still need the terminal or host session to notice it. | Add a dedicated Codex failure path only if Codex exposes a stable failure-side notify signal worth standardizing here. |
+| Codex or Claude `needs_input` | Unsupported. Current bridges emit only on task completion or process exit. | Approval waits, clarification requests, and other human-blocked pauses remain silent in Discord and other adapters. | Treat this as a separate contract/bridge feature once a stable upstream signal and `next_action` projection are defined. |
+| Codex or Claude `long_task_finished` | Unsupported in the AI CLI wrappers. Current flows only classify whole-task completion, not sub-jobs such as watch/build/sync loops finishing. | Operators cannot rely on the current AI CLI wrappers to distinguish “background job finished” from “requested task finished.” | Handle long-running job notifications in a separate wrapper/launcher design rather than stretching the completion path. |
+| Non-completion metadata richness | Partial. The contract defines `next_action`, `task_ref`, `run_url`, and `metadata`, but `scripts/notify` currently projects only title/source/message fields to adapters. | Even where `task_failed` exists today, adapters cannot display actionable follow-up detail without wrapper-contract work. | Keep adapters on the current minimal projection for #255 and cut any metadata expansion as a dedicated wrapper follow-up. |
+
+### Scope boundary for closing #255
+
+Issue #255 can close once the currently shipped Codex and Claude completion
+paths are operationalized and the real Discord smoke-test evidence is recorded.
+The gaps above should stay explicit follow-up work, not implied requirements
+for closing the Epic:
+
+- `needs_input` remains out of scope for #255
+- Codex-side failure notifications remain out of scope for #255
+- `long_task_finished` for AI CLI wrappers remains out of scope for #255
+- Wrapper-contract expansion for `next_action` / `task_ref` / `run_url` /
+  `metadata` remains out of scope for #255
+
 ## Channel contract
 
 - Adapters live under `scripts/notify.d/<channel>` and must be executable.
