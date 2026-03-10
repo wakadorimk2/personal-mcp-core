@@ -7,6 +7,7 @@ from personal_mcp.server import main
 from personal_mcp.storage.events_store import rebuild_db_from_jsonl
 from personal_mcp.storage.sqlite import append_sqlite, read_sqlite
 
+
 def _read_runtime_events(data_dir: Path) -> list[dict]:
     return read_sqlite(data_dir / "events.db")
 
@@ -60,9 +61,7 @@ def test_poe2_log_add_stores_tags(data_dir: Path) -> None:
     assert "boss" in record["tags"]
 
 
-def test_poe2_log_list_reads_from_events_db(
-    data_dir: Path, capsys: pytest.CaptureFixture
-) -> None:
+def test_poe2_log_list_reads_from_events_db(data_dir: Path, capsys: pytest.CaptureFixture) -> None:
     main(
         [
             "poe2-log-add",

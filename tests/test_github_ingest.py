@@ -16,7 +16,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict
 
-from personal_mcp.storage.events_store import append_event
+from personal_mcp.storage.events_store import append_event, rebuild_db_from_jsonl
 from personal_mcp.storage.sqlite import read_sqlite
 from personal_mcp.tools.github_ingest import (
     _load_existing_github_event_ids,
@@ -345,7 +345,6 @@ def test_load_ids_returns_empty_when_no_events(data_dir: Path) -> None:
 
 
 def test_load_ids_returns_github_source_ids(data_dir: Path) -> None:
-    path = data_dir / "events.jsonl"
     github_event = {
         "v": 1,
         "ts": "2026-03-07T10:00:00+00:00",
@@ -364,13 +363,12 @@ def test_load_ids_returns_github_source_ids(data_dir: Path) -> None:
         "tags": [],
         "source": "manual",
     }
-    _write_events(path, [github_event, manual_event])
+    append_event(github_event, data_dir=str(data_dir))
+    append_event(manual_event, data_dir=str(data_dir))
     assert _load_existing_github_event_ids(str(data_dir)) == {"abc"}
 
 
-def test_load_ids_includes_jsonl_only_github_rows_when_db_has_other_rows(
-    data_dir: Path,
-) -> None:
+def test_load_ids_after_recovery_migration_includes_github_rows(data_dir: Path) -> None:
     append_event(
         {
             "v": 1,
@@ -383,7 +381,6 @@ def test_load_ids_includes_jsonl_only_github_rows_when_db_has_other_rows(
         },
         data_dir=str(data_dir),
     )
-    path = data_dir / "events.jsonl"
     manual_event = {
         "v": 1,
         "ts": "2026-03-07T10:00:00+00:00",
@@ -402,7 +399,8 @@ def test_load_ids_includes_jsonl_only_github_rows_when_db_has_other_rows(
         "tags": [],
         "source": "github",
     }
-    _write_events(path, [manual_event, github_jsonl_only])
+    _write_events(data_dir / "events.jsonl", [manual_event, github_jsonl_only])
+    rebuild_db_from_jsonl(data_dir=str(data_dir))
 
     assert _load_existing_github_event_ids(str(data_dir)) == {"abc"}
 
@@ -431,7 +429,6 @@ def test_github_ingest_saves_new_event(data_dir: Path, monkeypatch) -> None:
 def test_github_ingest_skips_duplicate(data_dir: Path, monkeypatch) -> None:
     import personal_mcp.tools.github_ingest as mod
 
-    path = data_dir / "events.jsonl"
     existing = {
         "v": 1,
         "ts": "2026-03-07T10:00:00+00:00",
@@ -441,15 +438,14 @@ def test_github_ingest_skips_duplicate(data_dir: Path, monkeypatch) -> None:
         "tags": [],
         "source": "github",
     }
-    _write_events(path, [existing])
+    append_event(existing, data_dir=str(data_dir))
     monkeypatch.setattr(mod, "_fetch_github_events", lambda u, t: [_push_event("100")])
 
     result = github_ingest(username="user", data_dir=str(data_dir))
 
     assert result["saved"] == 0
     assert result["skipped"] == 1
-    # File must still have exactly the pre-existing record (no new append)
-    assert len(path.read_text(encoding="utf-8").splitlines()) == 1
+    assert len(_read_runtime_events(data_dir)) == 1
 
 
 def test_github_ingest_skips_event_already_saved_by_github_sync(
@@ -459,8 +455,6 @@ def test_github_ingest_skips_event_already_saved_by_github_sync(
     """Events saved by github_sync (#147) must not be re-ingested (cross-dedup regression)."""
     import personal_mcp.tools.github_ingest as mod
 
-    # Simulate github_sync having previously saved this event (minimal data.* payload)
-    path = data_dir / "events.jsonl"
     github_sync_record = {
         "v": 1,
         "ts": "2026-03-07T10:00:00+00:00",
@@ -470,44 +464,21 @@ def test_github_ingest_skips_event_already_saved_by_github_sync(
         "tags": [],
         "source": "github",
     }
-    _write_events(path, [github_sync_record])
+    append_event(github_sync_record, data_dir=str(data_dir))
     monkeypatch.setattr(mod, "_fetch_github_events", lambda u, t: [_push_event("100")])
 
     result = github_ingest(username="user", data_dir=str(data_dir))
 
     assert result["saved"] == 0
     assert result["skipped"] == 1
-    assert len(path.read_text(encoding="utf-8").splitlines()) == 1
+    assert len(_read_runtime_events(data_dir)) == 1
 
 
-def test_github_ingest_skips_duplicate_when_id_exists_only_in_jsonl(
-    data_dir: Path,
-    monkeypatch,
+def test_github_ingest_skips_duplicate_after_recovery_migration(
+    data_dir: Path, monkeypatch
 ) -> None:
     import personal_mcp.tools.github_ingest as mod
 
-    append_event(
-        {
-            "v": 1,
-            "ts": "2026-03-07T10:00:00+00:00",
-            "domain": "general",
-            "kind": "note",
-            "data": {"text": "db row"},
-            "tags": [],
-            "source": "manual",
-        },
-        data_dir=str(data_dir),
-    )
-    path = data_dir / "events.jsonl"
-    manual_event = {
-        "v": 1,
-        "ts": "2026-03-07T10:00:00+00:00",
-        "domain": "general",
-        "kind": "note",
-        "data": {"text": "db row"},
-        "tags": [],
-        "source": "manual",
-    }
     github_sync_record = {
         "v": 1,
         "ts": "2026-03-07T10:00:00+00:00",
@@ -517,13 +488,14 @@ def test_github_ingest_skips_duplicate_when_id_exists_only_in_jsonl(
         "tags": [],
         "source": "github",
     }
-    _write_events(path, [manual_event, github_sync_record])
+    _write_events(data_dir / "events.jsonl", [github_sync_record])
+    rebuild_db_from_jsonl(data_dir=str(data_dir))
     monkeypatch.setattr(mod, "_fetch_github_events", lambda u, t: [_push_event("100")])
 
     result = github_ingest(username="user", data_dir=str(data_dir))
 
     assert result == {"saved": 0, "skipped": 1, "failed": 0}
-    assert len(path.read_text(encoding="utf-8").splitlines()) == 2
+    assert len(_read_runtime_events(data_dir)) == 1
 
 
 def test_github_ingest_skips_low_signal_event(data_dir: Path, monkeypatch) -> None:

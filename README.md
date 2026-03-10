@@ -75,12 +75,13 @@ make smoke DATA_DIR="$DATA_DIR" DATE="$(date -u +%F)"
 
 | 導線 | 現在の参照先 |
 |---|---|
-| CLI (`event-add` / `event-list` / `event-today`) | storage 境界（primary: `events.db`） |
-| Web入力 (`web-serve` の `/events` / `/events/ui`) | storage 境界（primary: `events.db`） |
-| summary (`summary-generate` / dashboard集計) | storage 境界（primary: `events.db`） |
+| CLI (`event-add` / `event-list` / `event-today`) | storage 境界（runtime: `events.db`） |
+| Web入力 (`web-serve` の `/events` / `/events/ui`) | storage 境界（runtime: `events.db`） |
+| summary (`summary-generate` / dashboard集計) | storage 境界（runtime: `events.db`） |
+| GitHub sync / ingest | storage 境界（runtime: `events.db`） |
 
-移行期間は `events.jsonl` を互換経路として維持する（dual-write + fallback read）。
-単一ストレージ化の方針・移行段階・障害復旧ルールは [`docs/storage-unification-plan.md`](./docs/storage-unification-plan.md) を参照。
+runtime は `events.db` のみを参照する。`events.jsonl` は recovery 用に維持し、必要な場合だけ `storage-jsonl-to-db` / `storage-db-to-jsonl` を明示実行する。
+単一ストレージ化の経緯・障害復旧ルールは [`docs/storage-unification-plan.md`](./docs/storage-unification-plan.md) を参照。
 
 | 優先順 | 解決方法 |
 |---|---|
