@@ -9,6 +9,7 @@ from personal_mcp.core.event import build_v1_record
 from personal_mcp.storage.events_store import append_event
 from personal_mcp.storage.jsonl import read_jsonl
 from personal_mcp.storage.path import resolve_data_dir
+from personal_mcp.storage.sqlite import read_sqlite
 
 
 _SKIP_TYPES: frozenset = frozenset({"WatchEvent", "PublicEvent", "MemberEvent"})
@@ -99,16 +100,18 @@ def _map_event_to_record(gh_event: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     )
 
 
-def _load_existing_github_event_ids(path: Path) -> Set[str]:
-    """Return the set of github_event_id values already stored."""
-    if not path.exists():
-        return set()
+def _load_existing_github_event_ids(data_dir: Optional[str]) -> Set[str]:
+    """Return github_event_id values already stored across current storages."""
+    resolved = Path(resolve_data_dir(data_dir))
+    db_path = resolved / "events.db"
+    jsonl_path = resolved / "events.jsonl"
     ids: Set[str] = set()
-    for r in read_jsonl(path):
-        if r.get("source") == "github":
-            eid = r.get("data", {}).get("github_event_id")
-            if eid:
-                ids.add(str(eid))
+    for rows in (read_sqlite(db_path), read_jsonl(jsonl_path)):
+        for r in rows:
+            if r.get("source") == "github":
+                eid = r.get("data", {}).get("github_event_id")
+                if eid:
+                    ids.add(str(eid))
     return ids
 
 
@@ -122,9 +125,7 @@ def github_sync(
     Returns {"saved": int, "skipped": int, "failed": int}.
     """
     resolved = resolve_data_dir(data_dir)
-    path = Path(resolved) / "events.jsonl"
-
-    existing_ids = _load_existing_github_event_ids(path)
+    existing_ids = _load_existing_github_event_ids(resolved)
     try:
         gh_events = _fetch_github_events(username, token)
     except Exception:

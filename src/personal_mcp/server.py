@@ -171,14 +171,14 @@ def main(argv: Optional[List[str]] = None) -> int:
     p_summary.add_argument("--json", action="store_true")
     p_db_to_jsonl = sub.add_parser(
         "storage-db-to-jsonl",
-        help="regenerate events.jsonl from events.db",
+        help="recovery-only: regenerate events.jsonl from events.db",
     )
     p_db_to_jsonl.add_argument("--data-dir", default=None)
     p_db_to_jsonl.add_argument("--dry-run", action="store_true")
     p_db_to_jsonl.add_argument("--json", action="store_true")
     p_jsonl_to_db = sub.add_parser(
         "storage-jsonl-to-db",
-        help="regenerate events.db from events.jsonl",
+        help="recovery-only: regenerate events.db from events.jsonl",
     )
     p_jsonl_to_db.add_argument("--data-dir", default=None)
     p_jsonl_to_db.add_argument("--dry-run", action="store_true")

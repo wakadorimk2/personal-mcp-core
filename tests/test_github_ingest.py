@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 from personal_mcp.storage.events_store import append_event
+from personal_mcp.storage.sqlite import read_sqlite
 from personal_mcp.tools.github_ingest import (
     _load_existing_github_event_ids,
     _map_github_event,
@@ -28,6 +29,10 @@ from personal_mcp.tools.github_ingest import (
 # ---------------------------------------------------------------------------
 # fixtures / helpers
 # ---------------------------------------------------------------------------
+
+
+def _read_runtime_events(data_dir: Path) -> list[dict]:
+    return read_sqlite(data_dir / "events.db")
 
 
 def _push_event(event_id: str = "100") -> Dict[str, Any]:
@@ -415,9 +420,9 @@ def test_github_ingest_saves_new_event(data_dir: Path, monkeypatch) -> None:
     result = github_ingest(username="user", data_dir=str(data_dir))
 
     assert result == {"saved": 1, "skipped": 0, "failed": 0}
-    lines = (data_dir / "events.jsonl").read_text(encoding="utf-8").splitlines()
-    assert len(lines) == 1
-    saved = json.loads(lines[0])
+    rows = _read_runtime_events(data_dir)
+    assert len(rows) == 1
+    saved = rows[0]
     assert saved["data"]["github_event_id"] == "100"
     assert saved["data"]["github_event_type"] == "PushEvent"
     assert saved["data"]["repo_full_name"] == "user/repo"

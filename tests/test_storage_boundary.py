@@ -1,4 +1,3 @@
-import json
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,17 +13,14 @@ def _db_count(db_path: Path) -> int:
         return int(conn.execute("SELECT COUNT(*) FROM events").fetchone()[0])
 
 
-def test_cli_event_add_writes_primary_and_compat_storage(data_dir: Path) -> None:
+def test_cli_event_add_writes_primary_storage_only(data_dir: Path) -> None:
     event_add(domain="general", text="cli event", data_dir=str(data_dir))
 
     db_path = data_dir / "events.db"
-    jsonl_path = data_dir / "events.jsonl"
 
     assert db_path.exists()
-    assert jsonl_path.exists()
     assert _db_count(db_path) == 1
-    line = json.loads(jsonl_path.read_text(encoding="utf-8").splitlines()[0])
-    assert line["data"]["text"] == "cli event"
+    assert not (data_dir / "events.jsonl").exists()
 
 
 def test_event_today_reads_web_input_via_same_storage_boundary(data_dir: Path, capsys) -> None:

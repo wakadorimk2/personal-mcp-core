@@ -5,7 +5,10 @@ from pathlib import Path
 
 import pytest
 
+from personal_mcp.core.event import build_v1_record
 from personal_mcp.core.event import ALLOWED_DOMAINS
+from personal_mcp.storage.events_store import rebuild_db_from_jsonl
+from personal_mcp.storage.sqlite import append_sqlite, read_sqlite
 from personal_mcp.tools.event import event_add, event_list
 
 
@@ -23,18 +26,27 @@ def _write_events(path: Path, events: list) -> None:
     path.write_text("\n".join(json.dumps(e) for e in events) + "\n", encoding="utf-8")
 
 
+def _seed_runtime_events(data_dir: Path, events: list[dict]) -> None:
+    db_path = data_dir / "events.db"
+    for event in events:
+        append_sqlite(db_path, event)
+
+
+def _read_runtime_events(data_dir: Path) -> list[dict]:
+    return read_sqlite(data_dir / "events.db")
+
+
 # ---------------------------------------------------------------------------
 # event_add tests (existing)
 # ---------------------------------------------------------------------------
 
 
-def test_event_add_creates_jsonl_with_one_line(data_dir: Path) -> None:
-    path = data_dir / "events.jsonl"
+def test_event_add_creates_db_with_one_row(data_dir: Path) -> None:
     event_add(domain="poe2", text="test", data_dir=str(data_dir))
 
-    lines = path.read_text(encoding="utf-8").splitlines()
-    assert len(lines) == 1
-    record = json.loads(lines[0])
+    rows = _read_runtime_events(data_dir)
+    assert len(rows) == 1
+    record = rows[0]
     assert record["domain"] == "poe2"
     assert record["data"]["text"] == "test"
 
@@ -45,47 +57,49 @@ def test_event_add_uses_env_data_dir_when_omitted(monkeypatch, tmp_path: Path) -
 
     event_add(domain="poe2", text="test")
 
-    path = data_dir / "events.jsonl"
-    lines = path.read_text(encoding="utf-8").splitlines()
-    assert len(lines) == 1
-    record = json.loads(lines[0])
+    rows = _read_runtime_events(data_dir)
+    assert len(rows) == 1
+    record = rows[0]
     assert record["data"]["text"] == "test"
 
 
 def test_event_add_appends_without_overwriting(data_dir: Path) -> None:
-    path = data_dir / "events.jsonl"
-    path.write_text('{"dummy": true}\n', encoding="utf-8")
+    existing = build_v1_record(
+        ts="2026-03-01T00:00:00+00:00",
+        domain="general",
+        text="first",
+        tags=[],
+        kind="note",
+    )
+    append_sqlite(data_dir / "events.db", existing)
 
     event_add(domain="mood", text="second", data_dir=str(data_dir))
 
-    lines = path.read_text(encoding="utf-8").splitlines()
-    assert len(lines) == 2
-    assert json.loads(lines[0]) == {"dummy": True}
-    record = json.loads(lines[1])
+    rows = _read_runtime_events(data_dir)
+    assert len(rows) == 2
+    assert rows[0] == existing
+    record = rows[1]
     assert record["domain"] == "mood"
     assert record["data"]["text"] == "second"
 
 
 @pytest.mark.parametrize("domain", ["eng", "worklog", "summary"])
 def test_event_add_accepts_new_allowed_domains(data_dir: Path, domain: str) -> None:
-    path = data_dir / "events.jsonl"
-
     event_add(domain=domain, text=f"{domain} entry", data_dir=str(data_dir))
 
-    lines = path.read_text(encoding="utf-8").splitlines()
-    assert len(lines) == 1
-    record = json.loads(lines[0])
+    rows = _read_runtime_events(data_dir)
+    assert len(rows) == 1
+    record = rows[0]
     assert record["domain"] == domain
     assert record["data"]["text"] == f"{domain} entry"
 
 
 def test_event_add_rejects_disallowed_domain_without_writing(data_dir: Path) -> None:
-    path = data_dir / "events.jsonl"
-
     with pytest.raises(ValueError, match="unsupported domain: art"):
         event_add(domain="art", text="bad domain", data_dir=str(data_dir))
 
-    assert not path.exists()
+    assert not (data_dir / "events.db").exists()
+    assert not (data_dir / "events.jsonl").exists()
 
 
 def test_event_add_writes_v1_field(data_dir: Path) -> None:
@@ -176,13 +190,13 @@ def test_event_list_returns_empty_when_file_missing(data_dir: Path) -> None:
 
 
 def test_event_list_returns_all_events(data_dir: Path) -> None:
-    _write_events(data_dir / "events.jsonl", _EVENTS)
+    _seed_runtime_events(data_dir, _EVENTS)
     result = event_list(data_dir=str(data_dir))
     assert len(result) == 3
 
 
 def test_event_list_newest_first(data_dir: Path) -> None:
-    _write_events(data_dir / "events.jsonl", _EVENTS)
+    _seed_runtime_events(data_dir, _EVENTS)
     result = event_list(data_dir=str(data_dir))
     texts = [r["data"]["text"] for r in result]
     # newest event (day2 afternoon) should come first
@@ -191,7 +205,7 @@ def test_event_list_newest_first(data_dir: Path) -> None:
 
 
 def test_event_list_filter_by_domain(data_dir: Path) -> None:
-    _write_events(data_dir / "events.jsonl", _EVENTS)
+    _seed_runtime_events(data_dir, _EVENTS)
     result = event_list(domain="poe2", data_dir=str(data_dir))
     assert len(result) == 1
     assert result[0]["domain"] == "poe2"
@@ -199,7 +213,7 @@ def test_event_list_filter_by_domain(data_dir: Path) -> None:
 
 
 def test_event_list_filter_by_date(data_dir: Path) -> None:
-    _write_events(data_dir / "events.jsonl", _EVENTS)
+    _seed_runtime_events(data_dir, _EVENTS)
     day2 = _local_date(_TS_DAY2_A)
     result = event_list(date=day2, data_dir=str(data_dir))
     assert len(result) == 2
@@ -208,7 +222,7 @@ def test_event_list_filter_by_date(data_dir: Path) -> None:
 
 
 def test_event_list_filter_by_date_excludes_other_days(data_dir: Path) -> None:
-    _write_events(data_dir / "events.jsonl", _EVENTS)
+    _seed_runtime_events(data_dir, _EVENTS)
     day1 = _local_date(_TS_DAY1_A)
     result = event_list(date=day1, data_dir=str(data_dir))
     assert len(result) == 1
@@ -216,7 +230,7 @@ def test_event_list_filter_by_date_excludes_other_days(data_dir: Path) -> None:
 
 
 def test_event_list_tolerates_legacy_records_missing_v(data_dir: Path) -> None:
-    # Explicit legacy compatibility coverage.
+    # Legacy JSONL is normalized only through the recovery migration path.
     legacy_event = {
         "ts": _TS_DAY2_A,
         "domain": "general",
@@ -224,6 +238,7 @@ def test_event_list_tolerates_legacy_records_missing_v(data_dir: Path) -> None:
         "tags": [],
     }
     _write_events(data_dir / "events.jsonl", [legacy_event])
+    rebuild_db_from_jsonl(data_dir=str(data_dir))
 
     result = event_list(data_dir=str(data_dir))
 
@@ -233,7 +248,7 @@ def test_event_list_tolerates_legacy_records_missing_v(data_dir: Path) -> None:
 
 
 def test_event_list_includes_legacy_records_missing_kind(data_dir: Path) -> None:
-    # Explicit legacy compatibility coverage.
+    # Legacy JSONL is normalized only through the recovery migration path.
     legacy_event = {
         "ts": _TS_DAY2_A,
         "domain": "poe2",
@@ -241,6 +256,7 @@ def test_event_list_includes_legacy_records_missing_kind(data_dir: Path) -> None
         "tags": [],
     }
     _write_events(data_dir / "events.jsonl", [legacy_event])
+    rebuild_db_from_jsonl(data_dir=str(data_dir))
 
     result = event_list(data_dir=str(data_dir))
 
@@ -250,7 +266,7 @@ def test_event_list_includes_legacy_records_missing_kind(data_dir: Path) -> None
 
 
 def test_event_list_filter_by_since(data_dir: Path) -> None:
-    _write_events(data_dir / "events.jsonl", _EVENTS)
+    _seed_runtime_events(data_dir, _EVENTS)
     # since day2 UTC: should exclude day1 event
     result = event_list(since="2026-03-03", data_dir=str(data_dir))
     assert len(result) == 2
@@ -259,7 +275,7 @@ def test_event_list_filter_by_since(data_dir: Path) -> None:
 
 
 def test_event_list_limit_n(data_dir: Path) -> None:
-    _write_events(data_dir / "events.jsonl", _EVENTS)
+    _seed_runtime_events(data_dir, _EVENTS)
     result = event_list(n=1, data_dir=str(data_dir))
     assert len(result) == 1
     # should be the newest
@@ -267,7 +283,7 @@ def test_event_list_limit_n(data_dir: Path) -> None:
 
 
 def test_event_list_empty_for_unmatched_domain(data_dir: Path) -> None:
-    _write_events(data_dir / "events.jsonl", _EVENTS)
+    _seed_runtime_events(data_dir, _EVENTS)
     result = event_list(domain="nonexistent", data_dir=str(data_dir))
     assert result == []
 
@@ -282,10 +298,9 @@ def test_mood_add_writes_mood_domain(data_dir: Path) -> None:
 
     main(["mood-add", "少し疲れた", "--data-dir", str(data_dir)])
 
-    path = data_dir / "events.jsonl"
-    lines = path.read_text(encoding="utf-8").splitlines()
-    assert len(lines) == 1
-    record = json.loads(lines[0])
+    rows = _read_runtime_events(data_dir)
+    assert len(rows) == 1
+    record = rows[0]
     assert record["domain"] == "mood"
     assert record["data"]["text"] == "少し疲れた"
 
@@ -295,8 +310,7 @@ def test_mood_add_no_numeric_score_in_data(data_dir: Path) -> None:
 
     main(["mood-add", "まあまあ", "--data-dir", str(data_dir)])
 
-    path = data_dir / "events.jsonl"
-    record = json.loads(path.read_text(encoding="utf-8").splitlines()[0])
+    record = _read_runtime_events(data_dir)[0]
     data = record.get("data", {})
     numeric_keys = [k for k, v in data.items() if isinstance(v, (int, float))]
     assert numeric_keys == [], f"numeric keys found in data: {numeric_keys}"
@@ -307,25 +321,30 @@ def test_mood_add_with_tags(data_dir: Path) -> None:
 
     main(["mood-add", "元気", "--tags", "work,tired", "--data-dir", str(data_dir)])
 
-    path = data_dir / "events.jsonl"
-    record = json.loads(path.read_text(encoding="utf-8").splitlines()[0])
+    record = _read_runtime_events(data_dir)[0]
     assert record["domain"] == "mood"
     assert "work" in record["tags"]
     assert "tired" in record["tags"]
 
 
 def test_mood_add_appends_to_existing_events(data_dir: Path) -> None:
-    path = data_dir / "events.jsonl"
-    path.write_text('{"dummy": true}\n', encoding="utf-8")
+    existing = build_v1_record(
+        ts="2026-03-01T00:00:00+00:00",
+        domain="general",
+        text="first",
+        tags=[],
+        kind="note",
+    )
+    append_sqlite(data_dir / "events.db", existing)
 
     from personal_mcp.server import main
 
     main(["mood-add", "追記テスト", "--data-dir", str(data_dir)])
 
-    lines = path.read_text(encoding="utf-8").splitlines()
-    assert len(lines) == 2
-    assert json.loads(lines[0]) == {"dummy": True}
-    record = json.loads(lines[1])
+    rows = _read_runtime_events(data_dir)
+    assert len(rows) == 2
+    assert rows[0] == existing
+    record = rows[1]
     assert record["domain"] == "mood"
 
 
@@ -335,7 +354,7 @@ def test_mood_add_appends_to_existing_events(data_dir: Path) -> None:
 
 
 def test_event_list_text_has_date_header(data_dir: Path, capsys: pytest.CaptureFixture) -> None:
-    _write_events(data_dir / "events.jsonl", _EVENTS)
+    _seed_runtime_events(data_dir, _EVENTS)
     day2 = _local_date(_TS_DAY2_A)
 
     from personal_mcp.server import main
@@ -363,7 +382,7 @@ def test_event_list_text_no_output_when_empty(
 
 
 def test_event_list_json_flag_returns_array(data_dir: Path, capsys: pytest.CaptureFixture) -> None:
-    _write_events(data_dir / "events.jsonl", _EVENTS)
+    _seed_runtime_events(data_dir, _EVENTS)
 
     from personal_mcp.server import main
 
@@ -388,7 +407,7 @@ def test_event_list_json_empty_is_array(data_dir: Path, capsys: pytest.CaptureFi
 
 def test_event_list_text_line_format(data_dir: Path, capsys: pytest.CaptureFixture) -> None:
     """Each detail line must match 'HH:MM [domain] text'."""
-    _write_events(data_dir / "events.jsonl", [_EVENTS[1]])  # day2 poe2 only
+    _seed_runtime_events(data_dir, [_EVENTS[1]])  # day2 poe2 only
 
     from personal_mcp.server import main
 
@@ -440,7 +459,7 @@ def test_event_today_returns_only_today(data_dir: Path) -> None:
             "v": 1,
         },
     ]
-    _write_events(data_dir / "events.jsonl", events)
+    _seed_runtime_events(data_dir, events)
 
     today = datetime.now().astimezone().strftime("%Y-%m-%d")
     from personal_mcp.tools.event import event_list as _event_list
@@ -461,7 +480,7 @@ def test_event_today_excludes_yesterday(data_dir: Path) -> None:
             "v": 1,
         },
     ]
-    _write_events(data_dir / "events.jsonl", events)
+    _seed_runtime_events(data_dir, events)
 
     today = datetime.now().astimezone().strftime("%Y-%m-%d")
     from personal_mcp.tools.event import event_list as _event_list
@@ -482,7 +501,7 @@ def test_event_today_text_no_date_header(data_dir: Path, capsys: pytest.CaptureF
             "v": 1,
         },
     ]
-    _write_events(data_dir / "events.jsonl", events)
+    _seed_runtime_events(data_dir, events)
 
     from personal_mcp.server import main
 
@@ -496,7 +515,7 @@ def test_event_today_text_no_date_header(data_dir: Path, capsys: pytest.CaptureF
 def test_event_today_text_handles_legacy_record_missing_kind(
     data_dir: Path, capsys: pytest.CaptureFixture
 ) -> None:
-    # Explicit legacy compatibility coverage.
+    # Legacy JSONL is normalized only through the recovery migration path.
     events = [
         {
             "ts": _today_local_noon(),
@@ -506,6 +525,7 @@ def test_event_today_text_handles_legacy_record_missing_kind(
         },
     ]
     _write_events(data_dir / "events.jsonl", events)
+    rebuild_db_from_jsonl(data_dir=str(data_dir))
 
     from personal_mcp.server import main
 
@@ -528,7 +548,7 @@ def test_event_today_text_line_format(data_dir: Path, capsys: pytest.CaptureFixt
             "v": 1,
         },
     ]
-    _write_events(data_dir / "events.jsonl", events)
+    _seed_runtime_events(data_dir, events)
 
     from personal_mcp.server import main
 
@@ -571,7 +591,7 @@ def test_event_today_domain_filter(data_dir: Path, capsys: pytest.CaptureFixture
             "v": 1,
         },
     ]
-    _write_events(data_dir / "events.jsonl", events)
+    _seed_runtime_events(data_dir, events)
 
     from personal_mcp.server import main
 
@@ -593,7 +613,7 @@ def test_event_today_json_flag(data_dir: Path, capsys: pytest.CaptureFixture) ->
             "v": 1,
         },
     ]
-    _write_events(data_dir / "events.jsonl", events)
+    _seed_runtime_events(data_dir, events)
 
     from personal_mcp.server import main
 
