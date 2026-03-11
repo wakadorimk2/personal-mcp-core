@@ -58,7 +58,13 @@ def rebuild_jsonl_from_db(data_dir: Optional[str] = None, dry_run: bool = False)
 
 
 def rebuild_db_from_jsonl(data_dir: Optional[str] = None, dry_run: bool = False) -> Dict[str, Any]:
-    """Regenerate primary DB from compatibility JSONL records."""
+    """Regenerate primary DB from compatibility JSONL records.
+
+    Semantics: faithful reconstruction with no deduplication.
+    All JSONL records are inserted as-is, so duplicate records in JSONL are
+    preserved in the regenerated DB. Runtime dedup remains the responsibility
+    of github_sync / github_ingest.
+    """
     db_path, jsonl_path = _paths(data_dir)
     if not jsonl_path.exists():
         raise FileNotFoundError(f"missing source file: {jsonl_path}")
