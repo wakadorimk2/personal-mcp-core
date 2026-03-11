@@ -92,17 +92,23 @@ def append_sqlite(db_path: Path, record: Dict[str, Any]) -> Literal["saved", "sk
     dedup_key = _github_dedup_key(record)
     with sqlite3.connect(str(db_path)) as conn:
         _ensure_schema(conn)
-        cursor = conn.execute(
-            "INSERT OR IGNORE INTO events (ts, domain, kind, dedup_key, raw)"
-            " VALUES (?, ?, ?, ?, ?)",
-            (
-                record.get("ts"),
-                record.get("domain"),
-                record.get("kind"),
-                dedup_key,
-                json.dumps(record, ensure_ascii=False),
-            ),
-        )
+        try:
+            cursor = conn.execute(
+                "INSERT INTO events (ts, domain, kind, dedup_key, raw)"
+                " VALUES (?, ?, ?, ?, ?)",
+                (
+                    record.get("ts"),
+                    record.get("domain"),
+                    record.get("kind"),
+                    dedup_key,
+                    json.dumps(record, ensure_ascii=False),
+                ),
+            )
+        except sqlite3.IntegrityError as exc:
+            if dedup_key and "events.dedup_key" in str(exc):
+                conn.rollback()
+                return "skipped"
+            raise
         conn.commit()
     return "saved" if cursor.rowcount == 1 else "skipped"
 

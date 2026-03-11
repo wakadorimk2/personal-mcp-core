@@ -172,6 +172,23 @@ def test_append_sqlite_backfills_pre307_github_dedup_key(data_dir: Path) -> None
     assert rows == [(1, "github:100")]
 
 
+def test_append_sqlite_raises_on_invalid_write_not_duplicate(data_dir: Path) -> None:
+    db_path = data_dir / "events.db"
+
+    with pytest.raises(sqlite3.IntegrityError):
+        append_sqlite(
+            db_path,
+            {
+                "v": 1,
+                "kind": "note",
+                "data": {"text": "missing required fields"},
+                "tags": [],
+            },
+        )
+
+    assert read_sqlite(db_path) == []
+
+
 def test_rebuild_db_from_jsonl_reports_actual_written_count_after_dedup(
     data_dir: Path,
 ) -> None:
