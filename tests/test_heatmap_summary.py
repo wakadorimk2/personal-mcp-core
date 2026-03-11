@@ -7,9 +7,13 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from personal_mcp.core.event import build_v1_record
+from personal_mcp.storage.events_store import read_events
 from personal_mcp.storage.sqlite import append_sqlite
 from personal_mcp.tools.candidates import FIXED_CANDIDATES
 from personal_mcp.tools.daily_summary import (
+    _count_events_by_date_filtered,
+    _is_display_population_record,
+    _is_scale_population_record,
     count_events_by_date,
     count_events_by_date_debug,
     generate_daily_summary,
@@ -73,6 +77,7 @@ def _add_telemetry_event(db_path: Path, ts: str | None = None) -> None:
         tags=["ux", "experiment"],
         kind="interaction",
         source="web-form-ui",
+        extra_data={"observation_model": "current"},
     )
     append_sqlite(db_path, record)
 
@@ -161,6 +166,73 @@ def test_count_events_by_date_sorted_ascending(data_dir: Path) -> None:
     result = count_events_by_date(28, data_dir=str(data_dir))
     dates = [item["date"] for item in result]
     assert dates == sorted(dates)
+
+
+def test_display_population_helper_excludes_summary_and_telemetry() -> None:
+    summary_record = build_v1_record(
+        ts=datetime.now(timezone.utc).isoformat(),
+        domain="summary",
+        text="summary",
+        tags=[],
+        kind="artifact",
+        source="generated",
+        extra_data={"date": _today_utc()},
+    )
+    telemetry_record = build_v1_record(
+        ts=datetime.now(timezone.utc).isoformat(),
+        domain="general",
+        text="[ui] input_submitted",
+        tags=["ux", "experiment"],
+        kind="interaction",
+        source="web-form-ui",
+        extra_data={"observation_model": "current"},
+    )
+    event_record = build_v1_record(
+        ts=datetime.now(timezone.utc).isoformat(),
+        domain="general",
+        text="x",
+        tags=[],
+        kind="note",
+        source="test",
+    )
+    assert _is_display_population_record(summary_record) is False
+    assert _is_display_population_record(telemetry_record) is False
+    assert _is_display_population_record(event_record) is True
+
+
+def test_scale_population_helper_matches_display_without_boundary() -> None:
+    event_record = build_v1_record(
+        ts=datetime.now(timezone.utc).isoformat(),
+        domain="general",
+        text="x",
+        tags=[],
+        kind="note",
+        source="test",
+    )
+    assert _is_scale_population_record(event_record) is True
+
+
+def test_filtered_counter_supports_future_scale_window_without_changing_display(
+    data_dir: Path,
+) -> None:
+    db_path = data_dir / "events.db"
+    _add_event(db_path, ts=_date_days_ago(2) + "T12:00:00+00:00")
+    _add_event(db_path, ts=datetime.now(timezone.utc).isoformat())
+    rows = read_events(data_dir=str(data_dir))
+
+    display = _count_events_by_date_filtered(rows, 28, _is_display_population_record)
+    scale_window = _count_events_by_date_filtered(
+        rows,
+        28,
+        lambda record: _is_scale_population_record(record, boundary_date=_today_local()),
+    )
+
+    today = _today_local()
+    old_day = (datetime.now().astimezone().date() - timedelta(days=2)).isoformat()
+    assert next(item for item in display if item["date"] == today)["count"] == 1
+    assert next(item for item in display if item["date"] == old_day)["count"] == 1
+    assert next(item for item in scale_window if item["date"] == today)["count"] == 1
+    assert next(item for item in scale_window if item["date"] == old_day)["count"] == 0
 
 
 def test_count_events_by_date_excludes_web_form_ui_source(data_dir: Path) -> None:

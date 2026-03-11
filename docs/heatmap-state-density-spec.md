@@ -87,6 +87,35 @@ shipped_density[date] = count(events WHERE
 
 ---
 
+### 3.1 Population seam (Issue #332)
+
+Issue #332 は heatmap semantics の再定義ではなく、legacy telemetry を scale 母集団から分離するための
+data contract / aggregation seam を導入する issue として扱う。
+
+この issue で導入する概念:
+
+| term | meaning |
+|---|---|
+| `display_population` | shipped `/api/heatmap` が数える集合。#332 では変更しない |
+| `scale_population` | 将来の scale-specific consumer が参照する調整用集合。#332 では seam のみ導入する |
+
+追加方針:
+
+- `data.observation_model` を optional metadata として導入する
+- 新規 UI telemetry writer は `data.observation_model = "current"` を書く
+- existing historical record は immutable のまま保持し、migration しない
+- historical fallback は explicit boundary date ベースで扱う
+- `source` や legacy payload shape から legacy/current を暗黙推定しない
+
+非目標:
+
+- `/api/heatmap` の response shape や shipped count semantics の変更
+- `/api/heatmap/debug` に新しい field を追加すること
+- `raw_count` / `shipped_density` の再定義
+- relative scale の consumer や UI 色分け変更（#257 系で扱う）
+
+---
+
 ## 4. Telemetry の扱い — 3案比較と採否
 
 ### 比較表

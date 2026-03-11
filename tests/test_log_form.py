@@ -32,6 +32,7 @@ def test_event_add_sqlite_returns_v1_record(data_dir: Path) -> None:
     assert rec["domain"] == "general"
     assert rec["kind"] == "note"
     assert rec["data"]["text"] == "hello"
+    assert "observation_model" not in rec["data"]
     assert rec["source"] == "web-form"
     assert "ts" in rec
 
@@ -92,6 +93,7 @@ def test_ui_event_add_sqlite_returns_v1_record(data_dir: Path) -> None:
     assert rec["source"] == "web-form-ui"
     assert rec["data"]["event_name"] == "ui_mode_changed"
     assert rec["data"]["ui_mode"] == "quick"
+    assert rec["data"]["observation_model"] == "current"
 
 
 @pytest.mark.parametrize("event_name", sorted(ALLOWED_UI_EVENT_NAMES))
@@ -395,6 +397,7 @@ def test_http_post_ui_events_returns_201_on_valid_input(data_dir: Path) -> None:
     assert body["data"]["event_name"] == "ui_mode_changed"
     assert body["data"]["ui_mode"] == "quick"
     assert body["data"]["from_mode"] == "text"
+    assert body["data"]["observation_model"] == "current"
 
 
 def test_http_post_ui_events_returns_201_on_dashboard_refresh_event(data_dir: Path) -> None:
