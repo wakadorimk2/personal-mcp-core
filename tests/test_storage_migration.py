@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -9,6 +10,7 @@ import pytest
 from personal_mcp.server import main
 from personal_mcp.storage.events_store import rebuild_db_from_jsonl, rebuild_jsonl_from_db
 from personal_mcp.storage.sqlite import append_sqlite, read_sqlite
+from personal_mcp.tools.event import event_list
 
 
 def _db_count(db_path: Path) -> int:
@@ -20,6 +22,12 @@ def _write_events(path: Path, events: list[dict]) -> None:
     path.write_text(
         "\n".join(json.dumps(event, ensure_ascii=False) for event in events) + "\n",
         encoding="utf-8",
+    )
+
+
+def _today_local_noon() -> str:
+    return (
+        datetime.now().astimezone().replace(hour=12, minute=0, second=0, microsecond=0).isoformat()
     )
 
 
@@ -121,6 +129,122 @@ def test_rebuild_db_from_jsonl_dry_run_and_apply_with_legacy_normalization(data_
     assert len(rows) == 2
     assert rows[0]["data"]["text"] == "legacy entry"
     assert rows[1]["data"]["text"] == "v1 entry"
+
+
+def test_event_list_reads_legacy_record_imported_via_recovery_migration(data_dir: Path) -> None:
+    _write_events(
+        data_dir / "events.jsonl",
+        [
+            {
+                "ts": "2026-03-03T12:00:00+00:00",
+                "domain": "general",
+                "payload": {"text": "legacy"},
+                "tags": [],
+            }
+        ],
+    )
+
+    rebuild_db_from_jsonl(data_dir=str(data_dir))
+
+    result = event_list(data_dir=str(data_dir))
+
+    assert len(result) == 1
+    assert result[0]["data"]["text"] == "legacy"
+    assert "v" not in result[0]
+
+
+def test_event_list_keeps_kind_missing_when_importing_legacy_record(data_dir: Path) -> None:
+    _write_events(
+        data_dir / "events.jsonl",
+        [
+            {
+                "ts": "2026-03-03T12:00:00+00:00",
+                "domain": "poe2",
+                "payload": {"text": "no-kind"},
+                "tags": [],
+            }
+        ],
+    )
+
+    rebuild_db_from_jsonl(data_dir=str(data_dir))
+
+    result = event_list(data_dir=str(data_dir))
+
+    assert len(result) == 1
+    assert result[0]["data"]["text"] == "no-kind"
+    assert "kind" not in result[0]
+
+
+def test_event_today_reads_legacy_record_imported_via_recovery_migration(
+    data_dir: Path, capsys: pytest.CaptureFixture
+) -> None:
+    _write_events(
+        data_dir / "events.jsonl",
+        [
+            {
+                "ts": _today_local_noon(),
+                "domain": "poe2",
+                "payload": {"text": "legacy today"},
+                "tags": [],
+            }
+        ],
+    )
+
+    rebuild_db_from_jsonl(data_dir=str(data_dir))
+
+    main(["event-today", "--data-dir", str(data_dir)])
+
+    captured = capsys.readouterr()
+    assert "[poe2] legacy today" in captured.out
+    assert "[?]" not in captured.out
+
+
+def test_poe2_log_list_kind_filter_excludes_kind_missing_after_recovery_migration(
+    data_dir: Path, capsys: pytest.CaptureFixture
+) -> None:
+    _write_events(
+        data_dir / "events.jsonl",
+        [
+            {
+                "ts": "2026-03-04T10:00:00Z",
+                "domain": "poe2",
+                "payload": {"text": "legacy no-kind"},
+                "tags": [],
+            }
+        ],
+    )
+
+    rebuild_db_from_jsonl(data_dir=str(data_dir))
+
+    main(["poe2-log-list", "--kind", "note", "--json", "--data-dir", str(data_dir)])
+
+    captured = capsys.readouterr()
+    rows = json.loads(captured.out)
+    assert rows == []
+
+
+def test_poe2_log_list_text_shows_question_mark_after_recovery_migration(
+    data_dir: Path, capsys: pytest.CaptureFixture
+) -> None:
+    _write_events(
+        data_dir / "events.jsonl",
+        [
+            {
+                "ts": "2026-03-04T10:00:00Z",
+                "domain": "poe2",
+                "payload": {"text": "legacy no-kind"},
+                "tags": [],
+            }
+        ],
+    )
+
+    rebuild_db_from_jsonl(data_dir=str(data_dir))
+
+    main(["poe2-log-list", "--data-dir", str(data_dir)])
+
+    captured = capsys.readouterr()
+    assert "[?]" in captured.out
+    assert "legacy no-kind" in captured.out
 
 
 def test_cli_storage_migration_dry_run_json_output(

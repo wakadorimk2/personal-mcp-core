@@ -16,7 +16,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict
 
-from personal_mcp.storage.events_store import append_event, rebuild_db_from_jsonl
+from personal_mcp.storage.events_store import append_event
 from personal_mcp.storage.sqlite import read_sqlite
 from personal_mcp.tools.github_ingest import (
     _load_existing_github_event_ids,
@@ -104,10 +104,6 @@ def _watch_event(event_id: str = "999") -> Dict[str, Any]:
         "created_at": "2026-03-07T10:00:00Z",
         "payload": {},
     }
-
-
-def _write_events(path: Path, events: list) -> None:
-    path.write_text("\n".join(json.dumps(e) for e in events) + "\n", encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------
@@ -368,7 +364,7 @@ def test_load_ids_returns_github_source_ids(data_dir: Path) -> None:
     assert _load_existing_github_event_ids(str(data_dir)) == {"abc"}
 
 
-def test_load_ids_after_recovery_migration_includes_github_rows(data_dir: Path) -> None:
+def test_load_ids_ignores_non_github_rows_in_runtime_db(data_dir: Path) -> None:
     append_event(
         {
             "v": 1,
@@ -381,26 +377,18 @@ def test_load_ids_after_recovery_migration_includes_github_rows(data_dir: Path) 
         },
         data_dir=str(data_dir),
     )
-    manual_event = {
-        "v": 1,
-        "ts": "2026-03-07T10:00:00+00:00",
-        "domain": "general",
-        "kind": "note",
-        "data": {"text": "db row"},
-        "tags": [],
-        "source": "manual",
-    }
-    github_jsonl_only = {
-        "v": 1,
-        "ts": "2026-03-07T10:00:00+00:00",
-        "domain": "eng",
-        "kind": "artifact",
-        "data": {"text": "legacy", "github_event_id": "abc"},
-        "tags": [],
-        "source": "github",
-    }
-    _write_events(data_dir / "events.jsonl", [manual_event, github_jsonl_only])
-    rebuild_db_from_jsonl(data_dir=str(data_dir))
+    append_event(
+        {
+            "v": 1,
+            "ts": "2026-03-07T10:00:00+00:00",
+            "domain": "eng",
+            "kind": "artifact",
+            "data": {"text": "runtime row", "github_event_id": "abc"},
+            "tags": [],
+            "source": "github",
+        },
+        data_dir=str(data_dir),
+    )
 
     assert _load_existing_github_event_ids(str(data_dir)) == {"abc"}
 
@@ -471,30 +459,6 @@ def test_github_ingest_skips_event_already_saved_by_github_sync(
 
     assert result["saved"] == 0
     assert result["skipped"] == 1
-    assert len(_read_runtime_events(data_dir)) == 1
-
-
-def test_github_ingest_skips_duplicate_after_recovery_migration(
-    data_dir: Path, monkeypatch
-) -> None:
-    import personal_mcp.tools.github_ingest as mod
-
-    github_sync_record = {
-        "v": 1,
-        "ts": "2026-03-07T10:00:00+00:00",
-        "domain": "eng",
-        "kind": "artifact",
-        "data": {"text": "legacy", "github_event_id": "100"},
-        "tags": [],
-        "source": "github",
-    }
-    _write_events(data_dir / "events.jsonl", [github_sync_record])
-    rebuild_db_from_jsonl(data_dir=str(data_dir))
-    monkeypatch.setattr(mod, "_fetch_github_events", lambda u, t: [_push_event("100")])
-
-    result = github_ingest(username="user", data_dir=str(data_dir))
-
-    assert result == {"saved": 0, "skipped": 1, "failed": 0}
     assert len(_read_runtime_events(data_dir)) == 1
 
 

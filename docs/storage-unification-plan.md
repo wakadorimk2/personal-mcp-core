@@ -14,6 +14,13 @@ Issue: <https://github.com/wakadorimk2/personal-mcp-core/issues/185>
 - 移行期間中の `events.jsonl`: 互換レイヤ
 - 実装順序: #189 -> #190 -> #191
 
+## Current steady state after #191 / #306
+
+- runtime read/write は `events.db` のみを参照する
+- `events.jsonl` は通常運用の互換経路ではなく、明示実行された recovery 入力/出力としてのみ扱う
+- `storage-db-to-jsonl` / `storage-jsonl-to-db` は MVP 期間中の **recovery-only 保守コマンド** として維持する
+- GitHub sync / ingest の dedup も runtime storage 境界（`events.db`）に統一する
+
 ## Current state before #189 (2026-03-08)
 
 - CLI (`event-add` / `event-list` / `event-today`) は `events.jsonl` を read/write する
@@ -29,12 +36,11 @@ Issue: <https://github.com/wakadorimk2/personal-mcp-core/issues/185>
 - primary は `events.db`（SQLite）とし、write は `events.db` → `events.jsonl` の順で行う
 - `events.jsonl` は移行期間の互換経路として残し、read は `events.db` が空のときのみ fallback する
 
-## Phase4 runtime note (#191)
+## Phase4 runtime note (#191, clarified by #306)
 
 - runtime read/write は `events.db` のみを参照する
-- recovery 用 migration command（`storage-db-to-jsonl` / `storage-jsonl-to-db`）は維持する
+- recovery 用 migration command（`storage-db-to-jsonl` / `storage-jsonl-to-db`）は、常設互換経路ではなく保守用 command として維持する
 - `events.jsonl` は runtime fallback ではなく recovery 入力/出力としてのみ扱う
-- GitHub sync / ingest の dedup も runtime storage 境界（`events.db`）に統一する
 
 ## Phased migration plan
 
@@ -51,7 +57,7 @@ Issue: <https://github.com/wakadorimk2/personal-mcp-core/issues/185>
 - migration tool の dry-run と復旧手順が検証済みである
 - README / runbook の運用ルールが単一化後の状態に更新済みである
 
-## Failure recovery rule (during transition)
+## Recovery rule after unification
 
 - 真実源は `events.db` とする
 - `events.jsonl` 欠損時は `events.db` から再生成する

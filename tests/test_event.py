@@ -7,7 +7,6 @@ import pytest
 
 from personal_mcp.core.event import build_v1_record
 from personal_mcp.core.event import ALLOWED_DOMAINS
-from personal_mcp.storage.events_store import rebuild_db_from_jsonl
 from personal_mcp.storage.sqlite import append_sqlite, read_sqlite
 from personal_mcp.tools.event import event_add, event_list
 
@@ -20,10 +19,6 @@ from personal_mcp.tools.event import event_add, event_list
 def _local_date(ts_str: str) -> str:
     """Convert ISO timestamp to local YYYY-MM-DD (timezone-agnostic)."""
     return datetime.fromisoformat(ts_str).astimezone().strftime("%Y-%m-%d")
-
-
-def _write_events(path: Path, events: list) -> None:
-    path.write_text("\n".join(json.dumps(e) for e in events) + "\n", encoding="utf-8")
 
 
 def _seed_runtime_events(data_dir: Path, events: list[dict]) -> None:
@@ -227,42 +222,6 @@ def test_event_list_filter_by_date_excludes_other_days(data_dir: Path) -> None:
     result = event_list(date=day1, data_dir=str(data_dir))
     assert len(result) == 1
     assert result[0]["data"]["text"] == "day1 mood"
-
-
-def test_event_list_tolerates_legacy_records_missing_v(data_dir: Path) -> None:
-    # Legacy JSONL is normalized only through the recovery migration path.
-    legacy_event = {
-        "ts": _TS_DAY2_A,
-        "domain": "general",
-        "payload": {"text": "legacy"},
-        "tags": [],
-    }
-    _write_events(data_dir / "events.jsonl", [legacy_event])
-    rebuild_db_from_jsonl(data_dir=str(data_dir))
-
-    result = event_list(data_dir=str(data_dir))
-
-    assert len(result) == 1
-    assert result[0]["data"]["text"] == "legacy"
-    assert "v" not in result[0]
-
-
-def test_event_list_includes_legacy_records_missing_kind(data_dir: Path) -> None:
-    # Legacy JSONL is normalized only through the recovery migration path.
-    legacy_event = {
-        "ts": _TS_DAY2_A,
-        "domain": "poe2",
-        "payload": {"text": "no-kind"},
-        "tags": [],
-    }
-    _write_events(data_dir / "events.jsonl", [legacy_event])
-    rebuild_db_from_jsonl(data_dir=str(data_dir))
-
-    result = event_list(data_dir=str(data_dir))
-
-    assert len(result) == 1
-    assert result[0]["data"]["text"] == "no-kind"
-    assert "kind" not in result[0]
 
 
 def test_event_list_filter_by_since(data_dir: Path) -> None:
@@ -510,30 +469,6 @@ def test_event_today_text_no_date_header(data_dir: Path, capsys: pytest.CaptureF
     captured = capsys.readouterr()
     assert "---" not in captured.out
     assert "[mood] hello" in captured.out
-
-
-def test_event_today_text_handles_legacy_record_missing_kind(
-    data_dir: Path, capsys: pytest.CaptureFixture
-) -> None:
-    # Legacy JSONL is normalized only through the recovery migration path.
-    events = [
-        {
-            "ts": _today_local_noon(),
-            "domain": "poe2",
-            "payload": {"text": "legacy today"},
-            "tags": [],
-        },
-    ]
-    _write_events(data_dir / "events.jsonl", events)
-    rebuild_db_from_jsonl(data_dir=str(data_dir))
-
-    from personal_mcp.server import main
-
-    main(["event-today", "--data-dir", str(data_dir)])
-
-    captured = capsys.readouterr()
-    assert "[poe2] legacy today" in captured.out
-    assert "[?]" not in captured.out
 
 
 def test_event_today_text_line_format(data_dir: Path, capsys: pytest.CaptureFixture) -> None:

@@ -3,7 +3,7 @@
 ## What is this
 
 個人の活動をローカルに append-only で記録する、CLI ベースのセルフ観測ツール。
-ゲームセッション・気分・作業ログなどを共通の JSONL イベント形式で保存し、タイムライン表示やドメイン別フィルタリングができる。
+ゲームセッション・気分・作業ログなどを共通のイベント契約（Event Contract v1）で記録し、タイムライン表示やドメイン別フィルタリングができる。
 設計思想・哲学的背景については [`docs/design-principles.md`](./docs/design-principles.md) を参照。
 
 ---
@@ -80,7 +80,7 @@ make smoke DATA_DIR="$DATA_DIR" DATE="$(date -u +%F)"
 | summary (`summary-generate` / dashboard集計) | storage 境界（runtime: `events.db`） |
 | GitHub sync / ingest | storage 境界（runtime: `events.db`） |
 
-runtime は `events.db` のみを参照する。`events.jsonl` は recovery 用に維持し、必要な場合だけ `storage-jsonl-to-db` / `storage-db-to-jsonl` を明示実行する。
+runtime は `events.db` のみを参照する。`events.jsonl` は通常運用では read/write せず、必要な場合だけ `storage-jsonl-to-db` / `storage-db-to-jsonl` を明示実行して生成または取り込む recovery 用の保守ファイルとして扱う。これらの command は常設互換経路ではない。
 単一ストレージ化の経緯・障害復旧ルールは [`docs/storage-unification-plan.md`](./docs/storage-unification-plan.md) を参照。
 
 | 優先順 | 解決方法 |
