@@ -118,6 +118,55 @@ def count_events_by_date(days: int = 28, data_dir: Optional[str] = None) -> List
     return [{"date": d, "count": buckets[d]} for d in sorted(buckets)]
 
 
+def count_events_by_date_debug(
+    days: int = 28, data_dir: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    """Return a debug-only per-day heatmap breakdown for verification.
+
+    Fields per entry:
+    - date: local YYYY-MM-DD, matching `/api/heatmap`
+    - raw_count: all non-summary events for the day
+    - shipped_density: current `/api/heatmap` count after telemetry exclusion
+    - telemetry_count: events emitted by the web UI telemetry layer
+    - life_count: raw_count minus telemetry_count
+    """
+    if days <= 0:
+        return []
+
+    today = datetime.now().astimezone().date()
+    raw_buckets: Dict[str, int] = {}
+    telemetry_buckets: Dict[str, int] = {}
+    for i in range(days - 1, -1, -1):
+        day = (today - timedelta(days=i)).isoformat()
+        raw_buckets[day] = 0
+        telemetry_buckets[day] = 0
+
+    for record in read_events(data_dir=data_dir):
+        if record.get("domain") == "summary":
+            continue
+        day = _local_date(record.get("ts", ""))
+        if day and day in raw_buckets:
+            raw_buckets[day] += 1
+            if record.get("source") == "web-form-ui":
+                telemetry_buckets[day] += 1
+
+    result: List[Dict[str, Any]] = []
+    for day in sorted(raw_buckets):
+        raw_count = raw_buckets[day]
+        telemetry_count = telemetry_buckets[day]
+        shipped_density = raw_count - telemetry_count
+        result.append(
+            {
+                "date": day,
+                "raw_count": raw_count,
+                "shipped_density": shipped_density,
+                "telemetry_count": telemetry_count,
+                "life_count": shipped_density,
+            }
+        )
+    return result
+
+
 def list_summaries(days: int = 28, data_dir: Optional[str] = None) -> List[Dict[str, Any]]:
     """Return latest summary per date for the last `days` days, newest first."""
     if days <= 0:

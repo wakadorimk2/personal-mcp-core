@@ -11,6 +11,7 @@ from personal_mcp.storage.sqlite import append_sqlite
 from personal_mcp.tools.candidates import FIXED_CANDIDATES
 from personal_mcp.tools.daily_summary import (
     count_events_by_date,
+    count_events_by_date_debug,
     generate_daily_summary,
     list_summaries,
 )
@@ -58,6 +59,20 @@ def _append_summary(db_path: Path, date_str: str, text: str = "summary") -> None
         kind="artifact",
         source="generated",
         extra_data={"date": date_str},
+    )
+    append_sqlite(db_path, record)
+
+
+def _add_telemetry_event(db_path: Path, ts: str | None = None) -> None:
+    if ts is None:
+        ts = datetime.now(timezone.utc).isoformat()
+    record = build_v1_record(
+        ts=ts,
+        domain="general",
+        text="[ui] input_submitted",
+        tags=["ux", "experiment"],
+        kind="interaction",
+        source="web-form-ui",
     )
     append_sqlite(db_path, record)
 
@@ -386,3 +401,80 @@ def test_http_get_dashboard_has_sticky_composer_and_enter_submit(data_dir: Path)
     assert 'enterkeyhint="done"' in html
     assert 'document.getElementById("log-text").addEventListener("keydown"' in html
     assert 'btn.textContent = "保存中...";' in html
+
+
+def test_debug_returns_28_entries(data_dir: Path) -> None:
+    result = count_events_by_date_debug(28, data_dir=str(data_dir))
+    assert len(result) == 28
+
+
+def test_debug_fields_present(data_dir: Path) -> None:
+    result = count_events_by_date_debug(28, data_dir=str(data_dir))
+    expected_keys = {"date", "raw_count", "shipped_density", "telemetry_count", "life_count"}
+    for item in result:
+        assert set(item.keys()) == expected_keys
+
+
+def test_debug_shipped_density_matches_heatmap(data_dir: Path) -> None:
+    db_path = data_dir / "events.db"
+    _add_event(db_path, domain="mood")
+    _add_event(db_path, domain="eng")
+    _add_telemetry_event(db_path)
+    heatmap = count_events_by_date(28, data_dir=str(data_dir))
+    debug = count_events_by_date_debug(28, data_dir=str(data_dir))
+    heatmap_by_date = {item["date"]: item["count"] for item in heatmap}
+    for item in debug:
+        assert item["shipped_density"] == heatmap_by_date[item["date"]]
+
+
+def test_debug_raw_count_includes_telemetry(data_dir: Path) -> None:
+    db_path = data_dir / "events.db"
+    _add_event(db_path)
+    _add_telemetry_event(db_path)
+    result = count_events_by_date_debug(28, data_dir=str(data_dir))
+    today_entry = next(item for item in result if item["date"] == _today_local())
+    assert today_entry["raw_count"] == 2
+    assert today_entry["shipped_density"] == 1
+    assert today_entry["telemetry_count"] == 1
+
+
+def test_debug_telemetry_count_identifies_web_form_ui(data_dir: Path) -> None:
+    db_path = data_dir / "events.db"
+    _add_event(db_path, domain="mood")
+    _add_telemetry_event(db_path)
+    _add_telemetry_event(db_path)
+    result = count_events_by_date_debug(28, data_dir=str(data_dir))
+    today_entry = next(item for item in result if item["date"] == _today_local())
+    assert today_entry["telemetry_count"] == 2
+    assert today_entry["life_count"] == 1
+
+
+def test_debug_life_count_equals_raw_minus_telemetry(data_dir: Path) -> None:
+    db_path = data_dir / "events.db"
+    _add_event(db_path, domain="mood")
+    _add_event(db_path, domain="eng")
+    _add_telemetry_event(db_path)
+    result = count_events_by_date_debug(28, data_dir=str(data_dir))
+    today_entry = next(item for item in result if item["date"] == _today_local())
+    assert today_entry["life_count"] == today_entry["raw_count"] - today_entry["telemetry_count"]
+    assert today_entry["life_count"] == today_entry["shipped_density"]
+
+
+def test_debug_excludes_summary(data_dir: Path) -> None:
+    db_path = data_dir / "events.db"
+    _append_summary(db_path, _today_utc())
+    result = count_events_by_date_debug(28, data_dir=str(data_dir))
+    today_entry = next(item for item in result if item["date"] == _today_local())
+    assert today_entry["raw_count"] == 0
+    assert today_entry["telemetry_count"] == 0
+
+
+def test_http_get_heatmap_debug_200(data_dir: Path) -> None:
+    handler_cls = _make_handler_for_test(str(data_dir))
+    resp = _do_get_json(handler_cls, "/api/heatmap/debug")
+    assert len(resp) == 1
+    status, body = resp[0]
+    assert status == 200
+    assert len(body) == 28
+    expected_keys = {"date", "raw_count", "shipped_density", "telemetry_count", "life_count"}
+    assert all(set(item.keys()) == expected_keys for item in body)

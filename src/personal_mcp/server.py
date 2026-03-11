@@ -178,7 +178,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     p_db_to_jsonl.add_argument("--json", action="store_true")
     p_jsonl_to_db = sub.add_parser(
         "storage-jsonl-to-db",
-        help="recovery-only: regenerate events.db from events.jsonl",
+        help=(
+            "recovery-only: faithful reconstruction of events.db "
+            "from events.jsonl (no dedup applied)"
+        ),
     )
     p_jsonl_to_db.add_argument("--data-dir", default=None)
     p_jsonl_to_db.add_argument("--dry-run", action="store_true")
