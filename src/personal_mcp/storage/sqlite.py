@@ -94,8 +94,7 @@ def append_sqlite(db_path: Path, record: Dict[str, Any]) -> Literal["saved", "sk
         _ensure_schema(conn)
         try:
             cursor = conn.execute(
-                "INSERT INTO events (ts, domain, kind, dedup_key, raw)"
-                " VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO events (ts, domain, kind, dedup_key, raw) VALUES (?, ?, ?, ?, ?)",
                 (
                     record.get("ts"),
                     record.get("domain"),
