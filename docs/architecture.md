@@ -3,6 +3,8 @@
 > This document describes the system structure of `personal-mcp-core`.
 > For design principles and AI behavior rules, see `AI_GUIDE.md`.
 > For Claude Code-specific instructions, see `CLAUDE.md`.
+> For role boundaries and the authoritative role split policy, see [`docs/AI_ROLE_POLICY.md`](./AI_ROLE_POLICY.md).
+> This document covers system structure only; role boundaries, operational rules, and notification operations are not in scope here.
 
 ## Overview
 

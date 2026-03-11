@@ -30,6 +30,8 @@ If this file, `AI_GUIDE.md`, old templates, or historical comments conflict with
 
 To avoid false stops caused by stale wording, never treat non-authoritative role notes as a blocker by themselves.
 
+`CLAUDE.md` is a routing document for Claude Code — it provides constraints and routes to authoritative sources. It does not replicate role boundary definitions, runtime runbooks, or notification operations.
+
 ## Practical guardrails for Claude Code
 
 When working in this repo, treat the following as hard constraints:
