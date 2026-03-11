@@ -13,6 +13,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+from personal_mcp.core.event import build_v1_record
+from personal_mcp.storage.sqlite import append_sqlite
+
 
 def _run(*args: str, check: bool = True, env: dict | None = None) -> subprocess.CompletedProcess:
     """personal-mcp CLI を同一インタープリタで実行する。"""
@@ -54,6 +57,34 @@ def _read_runtime_events(data_dir: Path) -> list[dict]:
     with sqlite3.connect(str(db_path)) as conn:
         rows = conn.execute("SELECT raw FROM events ORDER BY id ASC")
         return [json.loads(raw) for (raw,) in rows]
+
+
+def _append_worker_record(
+    data_dir: Path,
+    *,
+    ts: str,
+    worker_id: str,
+    worker_name: str,
+    terminal_id: str,
+    current_issue: str,
+    status: str,
+) -> None:
+    record = build_v1_record(
+        ts=ts,
+        domain="worker",
+        text=f"{worker_name} is {status} on {current_issue}",
+        tags=[status],
+        kind="milestone",
+        source="worker-cli",
+        extra_data={
+            "worker_id": worker_id,
+            "worker_name": worker_name,
+            "terminal_id": terminal_id,
+            "current_issue": current_issue,
+            "status": status,
+        },
+    )
+    append_sqlite(data_dir / "events.db", record)
 
 
 # ---------------------------------------------------------------------------
@@ -124,6 +155,16 @@ def test_event_add_accepts_summary_domain(tmp_path: Path) -> None:
     assert record["data"]["text"] == "daily summary"
 
 
+def test_event_add_accepts_worker_domain(tmp_path: Path) -> None:
+    data_dir = tmp_path / "data"
+
+    _run("event-add", "worker event", "--domain", "worker", "--data-dir", str(data_dir))
+
+    record = _read_runtime_events(data_dir)[0]
+    assert record["domain"] == "worker"
+    assert record["data"]["text"] == "worker event"
+
+
 def test_event_add_rejects_disallowed_domain_without_creating_file(tmp_path: Path) -> None:
     data_dir = tmp_path / "data"
 
@@ -140,6 +181,159 @@ def test_event_add_rejects_disallowed_domain_without_creating_file(tmp_path: Pat
     assert result.returncode != 0
     assert not (data_dir / "events.db").exists()
     assert not (data_dir / "events.jsonl").exists()
+
+
+def test_worker_status_set_and_ai_board_json(tmp_path: Path) -> None:
+    data_dir = tmp_path / "data"
+
+    _run(
+        "worker-status-set",
+        "--worker-id",
+        "claude-1",
+        "--worker-name",
+        "Claude-1",
+        "--terminal-id",
+        "tty-1",
+        "--current-issue",
+        "#324",
+        "--status",
+        "working",
+        "--data-dir",
+        str(data_dir),
+    )
+
+    result = _run("ai-board", "--json", "--data-dir", str(data_dir))
+    rows = json.loads(result.stdout)
+
+    assert rows == [
+        {
+            "worker_id": "claude-1",
+            "worker_name": "Claude-1",
+            "terminal_id": "tty-1",
+            "current_issue": "#324",
+            "status": "working",
+            "last_update": rows[0]["last_update"],
+        }
+    ]
+
+
+def test_worker_board_shows_latest_state_per_worker(tmp_path: Path) -> None:
+    data_dir = tmp_path / "data"
+
+    _run(
+        "worker-status-set",
+        "--worker-id",
+        "claude-1",
+        "--terminal-id",
+        "tty-1",
+        "--current-issue",
+        "#324",
+        "--status",
+        "working",
+        "--data-dir",
+        str(data_dir),
+    )
+    _run(
+        "worker-status-set",
+        "--worker-id",
+        "claude-1",
+        "--terminal-id",
+        "tty-1",
+        "--current-issue",
+        "#325",
+        "--status",
+        "reviewing",
+        "--data-dir",
+        str(data_dir),
+    )
+
+    result = _run("worker-board", "--json", "--data-dir", str(data_dir))
+    rows = json.loads(result.stdout)
+
+    assert len(rows) == 1
+    assert rows[0]["worker_id"] == "claude-1"
+    assert rows[0]["worker_name"] == "claude-1"
+    assert rows[0]["current_issue"] == "#325"
+    assert rows[0]["status"] == "reviewing"
+
+
+def test_worker_board_prefers_latest_timestamp_over_append_order(tmp_path: Path) -> None:
+    data_dir = tmp_path / "data"
+
+    _append_worker_record(
+        data_dir,
+        ts="2026-03-11T10:00:00+09:00",
+        worker_id="claude-1",
+        worker_name="Claude-1",
+        terminal_id="tty-1",
+        current_issue="#325",
+        status="reviewing",
+    )
+    _append_worker_record(
+        data_dir,
+        ts="2026-03-11T09:00:00+09:00",
+        worker_id="claude-1",
+        worker_name="Claude-1",
+        terminal_id="tty-1",
+        current_issue="#324",
+        status="working",
+    )
+
+    result = _run("ai-board", "--json", "--data-dir", str(data_dir))
+    rows = json.loads(result.stdout)
+
+    assert len(rows) == 1
+    assert rows[0]["current_issue"] == "#325"
+    assert rows[0]["status"] == "reviewing"
+    assert rows[0]["last_update"] == "2026-03-11T10:00:00+09:00"
+
+
+def test_ai_board_default_output_renders_table(tmp_path: Path) -> None:
+    data_dir = tmp_path / "data"
+
+    _run(
+        "worker-status-set",
+        "--worker-id",
+        "claude-1",
+        "--worker-name",
+        "Claude-1",
+        "--terminal-id",
+        "tty-1",
+        "--current-issue",
+        "#324",
+        "--status",
+        "working",
+        "--data-dir",
+        str(data_dir),
+    )
+
+    result = _run("ai-board", "--data-dir", str(data_dir))
+
+    assert "AI TEAM" in result.stdout
+    assert "worker" in result.stdout
+    assert "terminal" in result.stdout
+    assert "Claude-1" in result.stdout
+    assert "#324" in result.stdout
+
+
+def test_worker_status_set_rejects_invalid_status(tmp_path: Path) -> None:
+    data_dir = tmp_path / "data"
+
+    result = _run(
+        "worker-status-set",
+        "--worker-id",
+        "claude-1",
+        "--terminal-id",
+        "tty-1",
+        "--status",
+        "paused",
+        "--data-dir",
+        str(data_dir),
+        check=False,
+    )
+
+    assert result.returncode != 0
+    assert not (data_dir / "events.db").exists()
 
 
 def test_env_var_data_dir_is_used(tmp_path: Path) -> None:

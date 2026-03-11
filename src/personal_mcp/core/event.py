@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 
-ALLOWED_DOMAINS = frozenset({"poe2", "mood", "general", "eng", "worklog", "summary"})
+ALLOWED_DOMAINS = frozenset({"poe2", "mood", "general", "eng", "worklog", "summary", "worker"})
 
 
 def build_v1_record(
