@@ -883,13 +883,24 @@ def _make_handler(data_dir: str):
         def log_message(self, fmt: str, *args: Any) -> None:
             pass
 
+        def _write_response(
+            self, status: int, content_type: str, payload: bytes, *, charset: str | None = None
+        ) -> None:
+            try:
+                self.send_response(status)
+                header_value = content_type
+                if charset:
+                    header_value = f"{content_type}; charset={charset}"
+                self.send_header("Content-Type", header_value)
+                self.send_header("Content-Length", str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
+            except (BrokenPipeError, ConnectionResetError):
+                return
+
         def _json(self, status: int, body: Any) -> None:
             payload = json.dumps(body, ensure_ascii=False).encode()
-            self.send_response(status)
-            self.send_header("Content-Type", "application/json")
-            self.send_header("Content-Length", str(len(payload)))
-            self.end_headers()
-            self.wfile.write(payload)
+            self._write_response(status, "application/json", payload)
 
         def _read_json_body(self) -> Any:
             try:
@@ -905,18 +916,10 @@ def _make_handler(data_dir: str):
             parsed = urlparse(self.path)
             if parsed.path in ("/", "/index.html", "/dashboard"):
                 html = _DASHBOARD_HTML.encode("utf-8")
-                self.send_response(200)
-                self.send_header("Content-Type", "text/html; charset=utf-8")
-                self.send_header("Content-Length", str(len(html)))
-                self.end_headers()
-                self.wfile.write(html)
+                self._write_response(200, "text/html", html, charset="utf-8")
             elif parsed.path == "/input":
                 html = _make_html().encode("utf-8")
-                self.send_response(200)
-                self.send_header("Content-Type", "text/html; charset=utf-8")
-                self.send_header("Content-Length", str(len(html)))
-                self.end_headers()
-                self.wfile.write(html)
+                self._write_response(200, "text/html", html, charset="utf-8")
             elif parsed.path == "/health":
                 self._json(200, {"status": "ok"})
             elif parsed.path == "/summaries":

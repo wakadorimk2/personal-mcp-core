@@ -1,92 +1,91 @@
-# Heatmap State Change Density Spec
+# Heatmap v1 Density Semantics — Decision Record
 
-> **スコープ注記**
-> この文書は Issue #253 の repo 内 authoritative spec である。
-> heatmap が何を表すかという意味定義を固定し、後続の実装 Issue が参照できる状態を作る。
-> 本文書は runtime 実装の完了を意味しない。現行の `/api/heatmap` は MVP として raw event count を返しており、
-> 本文書に沿った集計・UI 導線への反映は follow-up Issue で行う。
+> **スコープ**: Issue #312 — density semantics / telemetry boundary の固定
+> **作成根拠**: Issue #253 で確定した heatmap 意味定義を、v1 の runtime / debug / color-scale follow-up が参照できる粒度へ operationalize する。
+> **この文書の役割**: Issue #256（debug surface 実装）と #257（color scale 検討）の dependency / terminology source。
+> **変更禁止**: この文書の決定を覆す変更は Maintainer の明示承認が必要。
 
-## 1. Purpose
+---
 
-heatmap は raw event count をそのまま見せる UI ではなく、
-一定時間におけるユーザーの state change density を可視化する UI として扱う。
+## 1. #253 との関係
 
-この定義により、現状の違和感を見た目調整の問題ではなく、
-可視化指標の意味定義の問題として整理する。
+Issue #253 は heatmap の density semantics を概念レベルで確定した **authoritative decision** である。
 
-## 2. Design Premise
+この文書はその上位決定を前提とし、以下を行う：
 
-- 人生は「時間を状態変化に変換するプロセス」とみなす
-- state change は観測解像度に依存する
-- heatmap は単一固定指標を表示するものではなく、観測解像度によって見え方が変わる前提を持つ
-- 将来の UI は解像度を切り替えられる前提を持つが、具体的な操作方式はこの文書では確定しない
+- v1 observation layer の操作的定義
+- telemetry の扱い（比較と採否）
+- `life_density` / `system_density` concept の採否
+- debug 導線の定義
+- #256 / #257 が参照できる terminology と dependency の固定
 
-## 3. Observation Layers
+**#253 の内容を再議論しない。** この文書で引用する #253 の前提を覆す発見があった場合は、実装を止め Maintainer へエスカレーションする。
 
-### 3.1 Coarse life view
+この文書が #253 から引き継ぐ固定前提は次の 4 点である。
 
-粗い解像度では、意味のある life activity の集約を観測対象とする。
+- heatmap は raw event count の表示ではなく、`state change density` を可視化する UI である
+- 観測は coarse / medium / fine の observation layer を持つ
+- telemetry は通常の life view と別レイヤーで扱う
+- 集約単位は universal metric へ固定せず、観測解像度や event kind に応じて自然な単位を採る
 
-例:
-- memo
-- GitHub
-- Steam
-- illustration
+この要約と #253 本文の語義が衝突した場合は、#253 を優先する。
 
-ここでの heatmap は「その日にどれだけ人生上の意味ある活動変化があったか」を見るためのものとする。
+---
 
-### 3.2 Medium domain view
+## 2. v1 Observation Layer
 
-中粒度では、domain activity を観測対象とする。
+v1 shipped UI における observation layer を以下に固定する。
 
-例:
-- writing
-- coding
-- gaming
-- drawing
+**採用: user-authored life events**
 
-ここでは coarse life view より細かいが、raw event そのものではない activity 単位の変化を見る。
+観測対象とするイベントの条件:
 
-### 3.3 Fine event view
+```
+include event WHERE
+    domain != "summary"
+    AND source != "web-form-ui"
+```
 
-細粒度では raw event を観測対象にできる。
-ただし、この view は coarse / medium よりも観測装置やイベント分割の影響を強く受ける。
+### 除外対象の整理
 
-## 4. Telemetry Position
+| 除外理由 | 識別条件 | 除外タイミング |
+|---|---|---|
+| 日次サマリー（派生データ） | `domain == "summary"` | 既実装（現在の `count_events_by_date`） |
+| UI telemetry（システム生成） | `source == "web-form-ui"` | `#317` で実装済み |
 
-telemetry は削除対象ではないが、人生そのものではなく観測装置側のイベントである。
-そのため、通常の life view とは別レイヤーの観測として扱う。
+### 実装反映状況
 
-原則:
-- life view の主目的は、ユーザーの life activity における state change density の観測である
-- telemetry view の主目的は、UI / instrumentation / debug の観測である
-- telemetry を coarse life view の primary meaning として扱わない
+現在の `count_events_by_date`（`src/personal_mcp/tools/daily_summary.py:81`）は
+`domain == "summary"` と `source == "web-form-ui"` の両方を除外し、
+`/api/heatmap` はこの observation layer に一致する `shipped_density` を返している。
 
-## 5. Aggregation Unit
+**実装変更禁止**: この文書は spec であり、`count_events_by_date` のコード変更は行わない。
 
-件数 vs 文字数を universal metric の二択として固定しない。
-集約単位は、解像度や event kind に応じて自然なものを選ぶ。
+---
 
-例:
-- coarse life view では activity cluster の有無や密度が自然な単位になりうる
-- medium domain view では domain 別 activity のまとまりが自然な単位になりうる
-- fine event view では raw event count が自然な単位になりうる
-- memo 系では text length や note density が補助指標になりうる
+## 3. v1 Shipped UI が表示する主指標
 
-このため、heatmap 全体に対して 1 つの universal metric を固定する前提は採らない。
+**primary metric: `shipped_density`**
 
-## 6. Current Runtime vs Spec
+定義:
 
-現行 runtime の `/api/heatmap` は、`summary` を除くイベントを日単位に数えた `count` を返す。
-これは MVP の暫定実装であり、本 spec の最終意味定義をまだ満たしていない。
+```
+shipped_density[date] = count(events WHERE
+    local_date(ts) == date
+    AND domain != "summary"
+    AND source != "web-form-ui"
+)
+```
 
-後続 Issue は少なくとも以下を再議論せず参照できること:
-- heatmap は state change density を表す
-- coarse / medium / fine の観測解像度を前提とする
-- telemetry は life view と別レイヤーで扱う
-- 集約単位は単一固定ではなく、解像度依存で選ぶ
+- 集計単位: ローカル日（timezone-aware）
+- 集計期間: 直近 28 日（当日含む）
+- データ形状: `[{date: "YYYY-MM-DD", count: N}]`（現在の `/api/heatmap` と同形）
 
-### 6.1 Population seam (Issue #332)
+この定義が `/api/heatmap` で返すべき v1 の意味定義。
+
+**現在の実装**: `#317` 適用後の `/api/heatmap` は `shipped_density` を返している。
+
+### 3.1 Population seam (Issue #332)
 
 Issue #332 は heatmap semantics の再定義ではなく、legacy telemetry を scale 母集団から分離するための
 data contract / aggregation seam を導入する issue として扱う。
@@ -113,28 +112,91 @@ data contract / aggregation seam を導入する issue として扱う。
 - `raw_count` / `shipped_density` の再定義
 - relative scale の consumer や UI 色分け変更（#257 系で扱う）
 
-## 7. Debug Surface (Issue #256)
+---
+
+## 4. Telemetry の扱い — 3案比較と採否
+
+### 比較表
+
+| 案 | 概要 | v1 採否 |
+|---|---|---|
+| **weight 0（exclude）** | telemetry を density から除外する | **採用** |
+| **low weight** | telemetry に小さな重みを付けてカウントする | **不採用** |
+| **separate density axis** | telemetry を別 density 軸で表示する | **不採用（debug 用途に保留）** |
+
+### weight 0（exclude）を採用する根拠
+
+1. **設計原則との整合**: telemetry events は UI インタラクション計測のための system-generated data であり、user activity の観測値ではない（`design-principles.md` 原則 2「Human Observability 基盤」）。
+2. **ノイズ分離**: 1 件の user log 入力が 2〜3 件の telemetry events（`input_submitted` + `save_success` 等）を生成するため、telemetry を混入させると density が実際の活動量より過大に見える。
+3. **実装単純性**: フィルタ条件が `source != "web-form-ui"` の 1 条件で表現できる。既存の summary 除外ロジックと同じ接線（observation layer の分離）で扱える。
+4. **可逆性**: 除外したイベントは DB に保持される。debug 時には `raw_count` として参照可能。
+
+### low weight を採用しない理由
+
+- 重みの根拠（0.1 など）の設定が恣意的であり、design principles の「非評価的設計（non-evaluative design）」に反する。
+- 小数カウントの実装は既存の integer count と API 互換でなくなるリスクがある。
+- MVP の最小性・可逆性原則（CLAUDE.md）に適合しない。
+
+### separate density axis を採用しない理由（v1 shipped UI）
+
+- v1 shipped UI の scope を超える UI 変更を要する。
+- color scale を 2 軸に分けることは「色スケールの最終設計」に踏み込むため、本 Issue のスコープ外（禁止）。
+- ただし **debug surface 用途に保留**する（Section 6 参照）。#256 でこの軸を debug 導線として検討してよい。
+
+---
+
+## 5. `life_density` / `system_density` concept の採否
+
+### 用語定義（概念レベル）
+
+| term | 意味 |
+|---|---|
+| `life_density` | user-authored life events の density = `shipped_density` の concept 語 |
+| `system_density` | system-generated events（summary + telemetry）の density |
+
+### v1 での採否決定
+
+**概念として採用、公開 interface は保留**
+
+- `life_density` / `system_density` はこの spec および後続 #256 / #257 の **内部 terminology** として使用する。
+- API レスポンスフィールド名・schema フィールド名としての **公式採用は v1 では行わない**。
+- 公開 interface 化には Maintainer の明示承認と API contract 変更 Issue が必要（人間レビュー必須トリガー）。
+
+### 保留理由の明記（再開条件）
+
+- `life_density` を公開 interface とするには `/api/heatmap` のレスポンス shape を変更するか、新 endpoint を追加する必要がある。
+- これは API contract / schema change であり、互換性ポリシー（`README.md#互換性ポリシー`）の審査対象。
+- v1 期間中のフィールド名変更は禁止（`AI_GUIDE.md` 互換性ガードレール参照）。
+
+---
+
+## 6. Debug Surface — `raw_count` と `shipped_density` の比較
+
+### 各値の定義
+
+| 値 | 定義 | 現在の実装 |
+|---|---|---|
+| `raw_count` | summary 除外のみの日別件数 | `/api/heatmap/debug` の `raw_count` |
+| `shipped_density` | telemetry + summary 除外の日別件数（v1 主指標） | `/api/heatmap` の `count` および `/api/heatmap/debug` の `shipped_density` |
+| `telemetry_count` | `source="web-form-ui"` events の日別件数 | `/api/heatmap/debug` の `telemetry_count` |
+| `life_count` | `raw_count - telemetry_count` | `/api/heatmap/debug` の `life_count`（現状は `shipped_density` と同値） |
+
+### 関係式
+
+```
+raw_count[date] = shipped_density[date] + telemetry_count[date]
+```
+
+### v1 debug 導線
 
 `/api/heatmap/debug` は検証専用エンドポイントであり、実運用 UI では使用しない。
 
-### 7.1 返却フィールド
+1. `GET /api/heatmap` は `shipped_density` を返す（telemetry 除外）。
+2. `GET /api/heatmap/debug` は `raw_count` / `shipped_density` / `telemetry_count` / `life_count` を返す。
+3. `raw_count - shipped_density = telemetry_count`。この差分が大きい場合、telemetry が density を過大にしていたことを意味する。
+4. `life_count` は現状 `shipped_density` と同値であり、debug 用の概念ラベルとして扱う。
 
-| field | 意味 |
-|---|---|
-| `date` | ローカルタイムゾーン基準の YYYY-MM-DD |
-| `raw_count` | summary 除外後の全イベント数 (`/api/heatmap` の `count` と同値) |
-| `shipped_density` | v1 UI が採用している density (`raw_count` と等値) |
-| `telemetry_count` | `source="web-form-ui"` のイベント数 |
-| `life_count` | `raw_count - telemetry_count` |
-
-### 7.2 比較時の誤認ポイント
-
-- 日付基準はローカルタイムゾーンであり、UTC ではない
-- `domain="summary"` は全カウントから除外する
-- `shipped_density == raw_count` は v1 MVP の仕様であり、バグではない
-- telemetry の識別は `source="web-form-ui"` を使う
-
-### 7.3 代表日の照合手順
+### 代表日の照合手順
 
 ```bash
 curl http://localhost:8080/api/heatmap/debug | python3 -m json.tool
@@ -143,26 +205,85 @@ curl http://localhost:8080/api/heatmap/debug | python3 -c "
 import json, sys
 for d in json.load(sys.stdin):
     if d['telemetry_count'] > 0:
-        print(d['date'], 'raw:', d['raw_count'], 'telem:', d['telemetry_count'], 'life:', d['life_count'])
+        print(d['date'], 'raw:', d['raw_count'], 'shipped:', d['shipped_density'], 'telem:', d['telemetry_count'])
 "
 ```
 
 期待される観察結果:
 
-- `raw_count == shipped_density`
-- `telemetry_count > 0` の日は UI telemetry 寄与がある
-- `life_count == raw_count` の日は telemetry 寄与がない
+- `raw_count >= shipped_density`
+- `raw_count - shipped_density == telemetry_count`
+- `life_count == shipped_density`
 
-## 8. Non-goal
+### Shipped UI tooltip の意味
 
-- この文書だけで heatmap 集計ロジックを確定実装すること
-- ピンチ / スライダー / トグルの具体的な UI 操作を確定すること
-- event taxonomy 全体を再設計すること
-- telemetry 収集を廃止すること
+現在の tooltip: `item.date + ': ' + item.count + '件'`（`src/personal_mcp/adapters/http_server.py:670`）
 
-## 9. References
+- 現在の `count` = `shipped_density`（user-authored events のみ）
 
-- Parent issue: #252
-- Decision record: #253
-- Current heatmap runtime: `src/personal_mcp/tools/daily_summary.py`
-- Current heatmap API surface: `src/personal_mcp/adapters/http_server.py`
+tooltip の `件` という単位はそのまま維持してよい。意味は「その日に記録した活動の件数」に対応する。tooltip ラベルの変更判断は #257 のスコープ。
+
+---
+
+## 7. #256 / #257 への dependency と terminology
+
+### #256 が参照すべき箇所
+
+- **Section 2**: observation layer（除外条件 `source != "web-form-ui"`）
+- **Section 3**: `shipped_density` の定義式
+- **Section 4**: telemetry weight 0 の採用根拠と low weight / separate axis の非採用理由
+- **Section 6**: `raw_count` / `shipped_density` / `telemetry_count` の定義と関係式
+
+### #257 が参照すべき箇所
+
+- **Section 2**: observation layer（shipped UI が数える対象）
+- **Section 3**: `shipped_density` の定義式
+- **Section 4**: telemetry を shipped UI の density から除外する根拠
+- **Section 5**: `life_density` / `system_density` concept（内部 terminology）
+
+### terminology table（#256 / #257 共通 internal terminology）
+
+| term | 定義 | public interface 化 |
+|---|---|---|
+| `raw_count` | summary 除外のみの日別件数（現在挙動） | なし（内部のみ） |
+| `shipped_density` | telemetry + summary 除外の日別件数（v1 目標） | なし（内部のみ） |
+| `telemetry_count` | `source="web-form-ui"` events の日別件数 | なし（内部のみ） |
+| `life_density` | `shipped_density` の concept 語 | 保留（Section 5） |
+| `system_density` | summary + telemetry events の日別件数 | 保留（Section 5） |
+| observation layer | shipped UI の集計対象 events の集合 | 仕様概念（interface 化なし） |
+
+---
+
+## 8. スコープ外・提案止まり・後続課題
+
+### この文書のスコープ外（提案止まり / 人間レビュー必須）
+
+- `/api/heatmap` の response shape 変更（`{date, count}` → 別形式）
+- `life_density` / `system_density` の公開 interface 化
+- color scale の最終設計（thresholds の意味的根拠付け）
+- telemetry taxonomy 全体の再設計（新 event_name / ui_mode の追加）
+- UI 操作方式の最終決定
+
+### 人間レビュー必須の未確定事項
+
+- `source != "web-form-ui"` フィルタが将来の telemetry 種別追加時に成立するか（新 `source` 値が増えた場合の拡張方針）
+- `life_count` を将来も `shipped_density` の別名として維持するか、より広い concept に拡張するか
+
+### 後続 Issue dependency
+
+| Issue | 参照 Section | 内容 |
+|---|---|---|
+| #256 | 2, 3, 4, 6 | debug surface 実装（`raw_count` / `shipped_density` / `telemetry_count` を見比べられる導線） |
+| #257 | 2, 3, 4, 5 | color scale 検討（shipped UI がどの density を色付け対象にするかの前提固定） |
+
+---
+
+## 関連ドキュメント
+
+- `docs/design-principles.md` — 設計原則（原則 2: Human Observability 基盤）
+- `docs/event-contract-v1.md` — Event Contract v1（`source` / `domain` フィールド定義）
+- `docs/mvp-contract-decisions.md` — MVP 向け実装方針（summary 保存戦略）
+- `docs/kind-taxonomy-v1.md` — kind taxonomy（telemetry は `kind: "interaction"`）
+- `src/personal_mcp/tools/daily_summary.py` — `count_events_by_date` 実装
+- `src/personal_mcp/tools/log_form.py` — `ui_event_add_sqlite`（telemetry 書き込み）
+- `src/personal_mcp/adapters/http_server.py` — `/api/heatmap` handler と `heatColor`

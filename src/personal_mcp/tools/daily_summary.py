@@ -79,13 +79,16 @@ def get_latest_summary(date: str, data_dir: Optional[str] = None) -> Optional[Di
 
 
 def _is_display_population_record(record: Dict[str, Any]) -> bool:
-    return record.get("domain") != "summary"
+    """Return True for shipped heatmap density records."""
+    if record.get("domain") == "summary":
+        return False
+    return record.get("source") != "web-form-ui"
 
 
 def _is_scale_population_record(
     record: Dict[str, Any], boundary_date: Optional[str] = None
 ) -> bool:
-    """Return True for records eligible for future scale-only consumers.
+    """Return True for future scale-only consumers.
 
     Issue #332 introduces a metadata contract and an aggregation seam only.
     Shipped `/api/heatmap` and `/api/heatmap/debug` semantics do not change here.
@@ -125,11 +128,11 @@ def _count_events_by_date_filtered(
 
 
 def count_events_by_date(days: int = 28, data_dir: Optional[str] = None) -> List[Dict[str, Any]]:
-    """Return [{date, count}] for the last `days` local days, including 0-count days.
+    """Return [{date, count}] for the last `days` local days (0-count days included).
 
-    This is the current MVP feed for `/api/heatmap`: raw non-summary event counts.
-    Heatmap semantics are defined separately in `docs/heatmap-state-density-spec.md`
-    (Issue #253), and follow-up issues may replace this with a layer-aware aggregate.
+    The returned `count` is `shipped_density` as defined in
+    `docs/heatmap-state-density-spec.md`:
+    summary artifacts and `source="web-form-ui"` telemetry are excluded.
     """
     rows = read_events(data_dir=data_dir)
     return _count_events_by_date_filtered(rows, days, _is_display_population_record)
@@ -142,8 +145,8 @@ def count_events_by_date_debug(
 
     Fields per entry:
     - date: local YYYY-MM-DD, matching `/api/heatmap`
-    - raw_count: current shipped `/api/heatmap` count
-    - shipped_density: explicit label for the current v1 shipped value
+    - raw_count: all non-summary events for the day
+    - shipped_density: current `/api/heatmap` count after telemetry exclusion
     - telemetry_count: events emitted by the web UI telemetry layer
     - life_count: raw_count minus telemetry_count
     """
@@ -171,13 +174,14 @@ def count_events_by_date_debug(
     for day in sorted(raw_buckets):
         raw_count = raw_buckets[day]
         telemetry_count = telemetry_buckets[day]
+        shipped_density = raw_count - telemetry_count
         result.append(
             {
                 "date": day,
                 "raw_count": raw_count,
-                "shipped_density": raw_count,
+                "shipped_density": shipped_density,
                 "telemetry_count": telemetry_count,
-                "life_count": raw_count - telemetry_count,
+                "life_count": shipped_density,
             }
         )
     return result
