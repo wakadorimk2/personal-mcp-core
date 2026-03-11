@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from personal_mcp.core.event import build_v1_record
 from personal_mcp.storage.events_store import append_event, read_events
@@ -78,13 +78,34 @@ def get_latest_summary(date: str, data_dir: Optional[str] = None) -> Optional[Di
     return latest
 
 
-def count_events_by_date(days: int = 28, data_dir: Optional[str] = None) -> List[Dict[str, Any]]:
-    """Return [{date, count}] for the last `days` local days, including 0-count days.
+def _is_display_population_record(record: Dict[str, Any]) -> bool:
+    return record.get("domain") != "summary"
 
-    This is the current MVP feed for `/api/heatmap`: raw non-summary event counts.
-    Heatmap semantics are defined separately in `docs/heatmap-state-density-spec.md`
-    (Issue #253), and follow-up issues may replace this with a layer-aware aggregate.
+
+def _is_scale_population_record(
+    record: Dict[str, Any], boundary_date: Optional[str] = None
+) -> bool:
+    """Return True for records eligible for future scale-only consumers.
+
+    Issue #332 introduces a metadata contract and an aggregation seam only.
+    Shipped `/api/heatmap` and `/api/heatmap/debug` semantics do not change here.
+    A future scale-specific consumer may pass an explicit boundary date to opt
+    into a narrower calibration window without changing display_population.
     """
+    if not _is_display_population_record(record):
+        return False
+    if boundary_date is None:
+        return True
+    local_day = _local_date(record.get("ts", ""))
+    return bool(local_day and local_day >= boundary_date)
+
+
+def _count_events_by_date_filtered(
+    rows: List[Dict[str, Any]],
+    days: int,
+    include_record: Callable[[Dict[str, Any]], bool],
+) -> List[Dict[str, Any]]:
+    """Count records by local day using an explicit population predicate."""
     if days <= 0:
         return []
 
@@ -93,14 +114,25 @@ def count_events_by_date(days: int = 28, data_dir: Optional[str] = None) -> List
     for i in range(days - 1, -1, -1):
         buckets[(today - timedelta(days=i)).isoformat()] = 0
 
-    for r in read_events(data_dir=data_dir):
-        if r.get("domain") == "summary":
+    for record in rows:
+        if not include_record(record):
             continue
-        d = _local_date(r.get("ts", ""))
-        if d and d in buckets:
-            buckets[d] += 1
+        local_day = _local_date(record.get("ts", ""))
+        if local_day and local_day in buckets:
+            buckets[local_day] += 1
 
-    return [{"date": d, "count": buckets[d]} for d in sorted(buckets)]
+    return [{"date": day, "count": buckets[day]} for day in sorted(buckets)]
+
+
+def count_events_by_date(days: int = 28, data_dir: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Return [{date, count}] for the last `days` local days, including 0-count days.
+
+    This is the current MVP feed for `/api/heatmap`: raw non-summary event counts.
+    Heatmap semantics are defined separately in `docs/heatmap-state-density-spec.md`
+    (Issue #253), and follow-up issues may replace this with a layer-aware aggregate.
+    """
+    rows = read_events(data_dir=data_dir)
+    return _count_events_by_date_filtered(rows, days, _is_display_population_record)
 
 
 def count_events_by_date_debug(

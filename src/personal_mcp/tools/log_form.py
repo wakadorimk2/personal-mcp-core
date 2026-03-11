@@ -161,6 +161,7 @@ def ui_event_add_sqlite(
         payload_data.update(extra_data)
     if normalized_event_name == "input_submitted":
         payload_data.update(_input_submitted_contract_payload(normalized_ui_mode, extra_data or {}))
+    payload_data["observation_model"] = "current"
 
     record = build_v1_record(
         ts=_now_iso(),
