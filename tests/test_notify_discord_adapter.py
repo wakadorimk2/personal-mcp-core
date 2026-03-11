@@ -309,3 +309,23 @@ def test_notify_discord_test_channel_errors_without_env_or_secret_file(tmp_path:
     assert result.returncode == 2
     assert "DISCORD_TEST_WEBHOOK_URL is required" in result.stderr
     assert not args_file.exists()
+
+
+def test_notify_discord_test_channel_does_not_fallback_to_prod_webhook(tmp_path: Path) -> None:
+    _, args_file = _write_fake_curl(tmp_path)
+    home = tmp_path / "home"
+
+    result = _run_notify(
+        "--channel",
+        "discord-test",
+        "hello",
+        env={
+            **_fake_curl_env(tmp_path, args_file),
+            "HOME": str(home),
+            "DISCORD_WEBHOOK_URL": "https://discord.example/prod-webhook",
+        },
+    )
+
+    assert result.returncode == 2
+    assert "DISCORD_TEST_WEBHOOK_URL is required" in result.stderr
+    assert not args_file.exists()
