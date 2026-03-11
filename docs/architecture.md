@@ -129,8 +129,8 @@ external requirements. The placeholder prints context length to verify the load 
 
 All domains (poe2, mood, general, eng, worklog) converge to a single `Event` type so that:
 
-- Storage code (`append_jsonl`) needs no domain-specific branches.
-- History can be reconstructed from JSONL files alone, without domain knowledge.
+- Storage boundary code needs no domain-specific branches.
+- History can be reconstructed from Event Contract records without domain knowledge.
 - Future adapters can filter or aggregate events using the common `domain` and optional `tags` fields.
 
 ### v1 record fields
@@ -150,7 +150,7 @@ All domains (poe2, mood, general, eng, worklog) converge to a single `Event` typ
 
 `tags` / `source` / `ref` は optional（省略可）。required keys は正典の「Required top-level keys」に従う。
 
-### JSONL example
+### Event record example
 
 ```python
 from personal_mcp.core.event import build_v1_record
@@ -158,7 +158,7 @@ from personal_mcp.core.event import build_v1_record
 record = build_v1_record(
     ts="2026-03-04T11:00:00+00:00",
     domain="eng",
-    text="JSONL append-only方針を確認",
+    text="DB-only runtime と recovery 境界を確認",
     tags=["schema"],
     kind="milestone",
 )
@@ -167,10 +167,10 @@ record = build_v1_record(
 #   "ts": "2026-03-04T11:00:00+00:00",
 #   "domain": "eng",
 #   "kind": "milestone",
-#   "data": {"text": "JSONL append-only方針を確認"},
+#   "data": {"text": "DB-only runtime と recovery 境界を確認"},
 #   "tags": ["schema"]
 # }
 ```
 
-`build_v1_record` の結果はそのまま `append_jsonl(path, record)` に渡せる。
-legacy record（`payload` 形式）は `read_jsonl` が読み込み時に v1 形状へ正規化する（`storage/jsonl.py:_normalize_event_record`）。
+`build_v1_record` の結果は runtime storage と recovery migration の両方で使う正規レコード形状である。
+legacy record（`payload` 形式）は recovery path の `read_jsonl` が読み込み時に v1 形状へ正規化する（`storage/jsonl.py:_normalize_event_record`）。
