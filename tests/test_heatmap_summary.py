@@ -44,16 +44,6 @@ def _add_event(db_path: Path, domain: str = "mood", ts: str | None = None) -> No
     append_sqlite(db_path, record)
 
 
-def _add_telemetry_event(db_path: Path, ts: str | None = None) -> None:
-    """Add a UI telemetry event (source="web-form-ui") excluded by shipped_density."""
-    if ts is None:
-        ts = datetime.now(timezone.utc).isoformat()
-    record = build_v1_record(
-        ts=ts, domain="general", text="x", tags=[], kind="interaction", source="web-form-ui"
-    )
-    append_sqlite(db_path, record)
-
-
 def _append_summary(db_path: Path, date_str: str, text: str = "summary") -> None:
     record = build_v1_record(
         ts=datetime.now(timezone.utc).isoformat(),
@@ -68,6 +58,7 @@ def _append_summary(db_path: Path, date_str: str, text: str = "summary") -> None
 
 
 def _add_telemetry_event(db_path: Path, ts: str | None = None) -> None:
+    """Add a UI telemetry event matching ui_event_add_sqlite output."""
     if ts is None:
         ts = datetime.now(timezone.utc).isoformat()
     record = build_v1_record(
@@ -216,8 +207,11 @@ def test_filtered_counter_supports_future_scale_window_without_changing_display(
     data_dir: Path,
 ) -> None:
     db_path = data_dir / "events.db"
-    _add_event(db_path, ts=_date_days_ago(2) + "T12:00:00+00:00")
-    _add_event(db_path, ts=datetime.now(timezone.utc).isoformat())
+    now_local = datetime.now().astimezone().replace(microsecond=0)
+    old_local = (now_local - timedelta(days=2)).replace(hour=12, minute=0, second=0)
+    current_local = now_local.replace(hour=12, minute=0, second=0)
+    _add_event(db_path, ts=old_local.astimezone(timezone.utc).isoformat())
+    _add_event(db_path, ts=current_local.astimezone(timezone.utc).isoformat())
     rows = read_events(data_dir=str(data_dir))
 
     display = _count_events_by_date_filtered(rows, 28, _is_display_population_record)
@@ -227,12 +221,44 @@ def test_filtered_counter_supports_future_scale_window_without_changing_display(
         lambda record: _is_scale_population_record(record, boundary_date=_today_local()),
     )
 
-    today = _today_local()
-    old_day = (datetime.now().astimezone().date() - timedelta(days=2)).isoformat()
+    today = current_local.date().isoformat()
+    old_day = old_local.date().isoformat()
     assert next(item for item in display if item["date"] == today)["count"] == 1
     assert next(item for item in display if item["date"] == old_day)["count"] == 1
     assert next(item for item in scale_window if item["date"] == today)["count"] == 1
     assert next(item for item in scale_window if item["date"] == old_day)["count"] == 0
+
+
+def test_scale_population_boundary_ignores_pre_boundary_high_count_days(data_dir: Path) -> None:
+    """Boundary filtering must keep old display counts out of scale calibration.
+
+    #317 already excludes `source="web-form-ui"` telemetry from shipped density.
+    #343 adds the seam for a narrower scale population, so the remaining risk is
+    pre-boundary display counts dominating the scale max.
+    """
+    db_path = data_dir / "events.db"
+    now_local = datetime.now().astimezone().replace(microsecond=0)
+    old_local = (now_local - timedelta(days=5)).replace(hour=12, minute=0, second=0)
+    current_local = now_local.replace(hour=12, minute=0, second=0)
+    boundary = (now_local.date() - timedelta(days=1)).isoformat()
+
+    for _ in range(10):
+        _add_event(db_path, ts=old_local.astimezone(timezone.utc).isoformat())
+    _add_event(db_path, ts=current_local.astimezone(timezone.utc).isoformat())
+
+    rows = read_events(data_dir=str(data_dir))
+    display = _count_events_by_date_filtered(rows, 28, _is_display_population_record)
+    scale_window = _count_events_by_date_filtered(
+        rows, 28, lambda record: _is_scale_population_record(record, boundary_date=boundary)
+    )
+
+    old_day = old_local.date().isoformat()
+    today = current_local.date().isoformat()
+    assert next(item for item in display if item["date"] == old_day)["count"] == 10
+    assert next(item for item in display if item["date"] == today)["count"] == 1
+    assert next(item for item in scale_window if item["date"] == old_day)["count"] == 0
+    assert next(item for item in scale_window if item["date"] == today)["count"] == 1
+    assert max(item["count"] for item in scale_window) == 1
 
 
 def test_count_events_by_date_excludes_web_form_ui_source(data_dir: Path) -> None:

@@ -114,6 +114,26 @@ data contract / aggregation seam を導入する issue として扱う。
 - `raw_count` / `shipped_density` の再定義
 - relative scale の consumer や UI 色分け変更（#257 系で扱う）
 
+### `source` フィルタと `observation_model` / `boundary_date` の分担
+
+`source != "web-form-ui"` と `data.observation_model` / `boundary_date` は、同じ問題を別の層で扱う。
+
+| 仕組み | 役割 | この issue での扱い |
+|---|---|---|
+| `source != "web-form-ui"` | shipped `/api/heatmap` の `display_population` を定義する | #317 実装済み。#343 でも変更しない |
+| `data.observation_model = "current"` | 新規 writer が current observation model に属することを明示する | metadata contract として保持する |
+| `boundary_date` | historical records を scale 用の fallback で切り分ける | `scale_population` を絞る seam として使う |
+
+設計上の関係:
+
+- `display_population` は現行 shipped semantics のまま維持する
+- `scale_population` は `display_population` を土台にしつつ、必要なら `boundary_date` でさらに狭める
+- historical records の扱いは `source` や legacy payload shape から暗黙推定せず、明示的な boundary で制御する
+
+そのため #343 は telemetry 除外ロジックを置き換える issue ではなく、
+`source != "web-form-ui"` で決まる表示用集合に対して、
+scale 用の母集団を別条件で扱えるようにする issue と位置づける。
+
 ---
 
 ## 4. Telemetry の扱い — 3案比較と採否
