@@ -130,6 +130,11 @@ personal-mcp storage-db-to-jsonl --data-dir <data-dir>
 personal-mcp storage-jsonl-to-db --data-dir <data-dir>
 ```
 
+> **Note**: `storage-jsonl-to-db` は JSONL の内容を **忠実に再構築** する（dedup なし）。
+> JSONL に重複レコードが含まれる場合、DB にも同数のレコードが挿入される。
+> 将来の重複排除は runtime の `github-sync` / `github-ingest` が担う。
+> この挙動は「復元はデータの回収であり、内容の修正ではない」という原則と一致する。
+
 ### 4. `event-list` で読み取れることを確認する
 
 ```sh

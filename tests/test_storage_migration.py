@@ -179,3 +179,25 @@ def test_cli_storage_db_to_jsonl_returns_error_when_source_missing(
     captured = capsys.readouterr()
     assert rc == 1
     assert "missing source file" in captured.out
+
+
+def test_rebuild_db_from_jsonl_preserves_duplicates(data_dir: Path) -> None:
+    """Faithful reconstruction keeps duplicate JSONL rows in the DB."""
+    jsonl_path = data_dir / "events.jsonl"
+    db_path = data_dir / "events.db"
+    dup_event = {
+        "v": 1,
+        "ts": "2026-03-08T06:00:00+00:00",
+        "domain": "eng",
+        "kind": "artifact",
+        "data": {"text": "dup", "github_event_id": "999"},
+        "tags": [],
+        "source": "github",
+    }
+    _write_events(jsonl_path, [dup_event, dup_event])
+
+    result = rebuild_db_from_jsonl(data_dir=str(data_dir))
+
+    assert result["written_count"] == 2
+    rows = read_sqlite(db_path)
+    assert len(rows) == 2
