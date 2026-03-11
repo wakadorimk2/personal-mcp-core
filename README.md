@@ -3,7 +3,7 @@
 ## What is this
 
 個人の活動をローカルに append-only で記録する、CLI ベースのセルフ観測ツール。
-ゲームセッション・気分・作業ログなどを共通の JSONL イベント形式で保存し、タイムライン表示やドメイン別フィルタリングができる。
+ゲームセッション・気分・作業ログなどを共通の Event Contract v1 レコードとして扱い、runtime では `events.db` に保存してタイムライン表示やドメイン別フィルタリングができる。
 設計思想・哲学的背景については [`docs/design-principles.md`](./docs/design-principles.md) を参照。
 
 ---
@@ -185,7 +185,7 @@ src/personal_mcp/
 ├── server.py               # CLIエントリーポイント
 ├── tools/event.py          # 共通イベント記録・一覧
 ├── tools/poe2_client_watcher.py  # PoE2 Client.txt 監視
-├── storage/jsonl.py        # 追記型JSONLストレージ
+├── storage/jsonl.py        # recovery / migration 用の JSONL 互換 I/O
 ├── adapters/mcp_server.py  # MCP system context adapter
 └── core/guide.py           # AI_GUIDE.md ローダー
 ```
@@ -202,7 +202,7 @@ src/personal_mcp/
 
 > 詳細・背景: [Issue #19](https://github.com/wakadorimk2/personal-mcp-core/issues/19)
 
-- **保証**: JSONL イベント形式（破壊的変更時は `schema_version` フィールド追加 + ワンタイム移行スクリプト同伴）
+- **保証**: Event Contract v1 のイベントレコード形式（recovery 用 JSONL 入出力を含む。破壊的変更時は `schema_version` フィールド追加 + ワンタイム移行スクリプト同伴）
 - **保証しない**: CLI コマンド名、内部モジュール構造、MCP アダプター IF、設定ファイル形式
 
 ---
