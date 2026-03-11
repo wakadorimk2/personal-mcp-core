@@ -302,3 +302,20 @@ def test_http_get_dashboard_has_sticky_composer_and_enter_submit(data_dir: Path)
     assert 'enterkeyhint="done"' in html
     assert 'document.getElementById("log-text").addEventListener("keydown"' in html
     assert 'btn.textContent = "保存中...";' in html
+
+
+def test_dashboard_quick_mode_armed_resets_to_compose_after_save(data_dir: Path) -> None:
+    handler_cls = _make_handler_for_test(str(data_dir))
+    _, _, html = _do_get_html(handler_cls, "/dashboard")
+    # Hint text communicates one-shot armed mode (not sticky toggle)
+    assert "次の候補タップ 1 回だけ即保存します" in html
+    # Default candidateTapMode is compose; quick mode does not persist across page loads
+    assert 'var candidateTapMode = "compose";' in html
+    # setCandidateTapMode("compose") is called inside saveCandidateQuickLog,
+    # ensuring mode resets after request completes (both success and failure paths)
+    fn_start = html.find("async function saveCandidateQuickLog(")
+    fn_end = html.find('document.getElementById("candidate-compose-mode")', fn_start)
+    assert fn_start != -1, "saveCandidateQuickLog not found in dashboard HTML"
+    assert fn_end != -1, "boundary after saveCandidateQuickLog not found"
+    fn_body = html[fn_start:fn_end]
+    assert 'setCandidateTapMode("compose");' in fn_body
