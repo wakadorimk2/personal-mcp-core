@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from personal_mcp.storage.events_store import read_events
@@ -37,6 +37,18 @@ def _format_status_text(worker_name: str, status: str, current_issue: Optional[s
     if current_issue:
         return f"{worker_name} is {status} on {current_issue}"
     return f"{worker_name} is {status}"
+
+
+def _parse_ts(value: Any) -> Optional[datetime]:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed
 
 
 def worker_status_set(
@@ -105,13 +117,22 @@ def worker_board_rows(data_dir: Optional[str] = None) -> List[Dict[str, Any]]:
             if isinstance(current_issue, str) and current_issue.strip()
             else None
         )
+        record_ts = record.get("ts")
+        record_ts_dt = _parse_ts(record_ts)
+        existing = latest_by_worker.get(worker_id)
+        if existing is not None:
+            existing_ts_dt = _parse_ts(existing.get("last_update"))
+            if existing_ts_dt is not None and (
+                record_ts_dt is None or record_ts_dt <= existing_ts_dt
+            ):
+                continue
         latest_by_worker[worker_id] = {
             "worker_id": worker_id,
             "worker_name": worker_name,
             "terminal_id": terminal_id,
             "current_issue": normalized_issue,
             "status": status,
-            "last_update": record.get("ts"),
+            "last_update": record_ts if isinstance(record_ts, str) else None,
         }
 
     return sorted(
