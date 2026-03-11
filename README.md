@@ -223,6 +223,7 @@ src/personal_mcp/
 |---|---|
 | [`docs/design-principles.md`](./docs/design-principles.md) | 設計思想・Architecture North Star（哲学的背景） |
 | [`docs/event-contract-v1.md`](./docs/event-contract-v1.md) | イベント保存契約の正典 |
+| [`docs/eng-domain-concept.md`](./docs/eng-domain-concept.md) | `eng` domain の concept / boundary |
 | [`docs/daily-input-ux-mvp.md`](./docs/daily-input-ux-mvp.md) | daily use UI 主導線（ヒートマップ直下入力）のMVP方針 |
 | [`docs/kind-taxonomy-v1.md`](./docs/kind-taxonomy-v1.md) | `kind` フィールド分類 |
 | [`docs/data-directory.md`](./docs/data-directory.md) | データ保存先の詳細ルール |
