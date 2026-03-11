@@ -50,10 +50,7 @@ ls -lh <backup-dir>/
 
 ```sh
 ls -lh <data-dir>/
-<<<<<<< HEAD
 ls -lh <data-dir>/events.db
-=======
->>>>>>> origin/main
 ```
 
 runtime は `events.db` を正本とする。復元前に `events.db` の有無を確認し、正本がまだ読み取れる状態であれば現状を別の場所に退避しておくことを検討する。
@@ -149,14 +146,10 @@ personal-mcp storage-jsonl-to-db --data-dir <data-dir>
 > JSONL に重複レコードが含まれる場合、DB にも同数のレコードが挿入される。
 > runtime の重複排除は `github-sync` / `github-ingest` が担う。
 > この挙動は「復元はデータの回収であり、内容の修正ではない」という原則と一致する。
+>
+> これらの command は recovery-only 保守コマンドであり、通常運用の互換経路ではない。
 
-<<<<<<< HEAD
-これらの command は recovery-only 保守コマンドであり、通常運用の互換経路ではない。
-
-### 4. `event-list` で読み取れることを確認する
-=======
-### 3. `event-list` で runtime が読み取れることを確認する
->>>>>>> origin/main
+### 4. `event-list` で runtime が読み取れることを確認する
 
 ```sh
 personal-mcp event-list --n 10 --data-dir <data-dir>
@@ -184,14 +177,9 @@ personal-mcp event-list --since YYYY-MM-DD --data-dir <data-dir>
 - [ ] バックアップ後の追記分の有無を確認した（回収できないデータの把握）
 - [ ] 復元先の data-dir が repo 外であることを確認した
 - [ ] `--delete` を使わない形で rsync を実行した
-<<<<<<< HEAD
-- [ ] 復元後、`events.db` の存在を確認した
-- [ ] 復元後、`personal-mcp event-list` で読み取れることを確認した
-=======
 - [ ] 復元後、`ls` で `events.db` を含むファイルの存在を確認した
 - [ ] `events.db` が欠損していた場合は migration tool で再生成した
 - [ ] 復元後、`personal-mcp event-list` で runtime が読み取れることを確認した
->>>>>>> origin/main
 - [ ] 最新レコードのタイムスタンプが想定の範囲内であることを確認した
 
 ---
