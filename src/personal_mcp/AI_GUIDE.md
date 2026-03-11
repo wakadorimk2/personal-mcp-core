@@ -11,6 +11,8 @@
 
 ---
 
+> **文書責務**: AI 行動原則・姿勢の**正本**。役割境界の正本は [`docs/AI_ROLE_POLICY.md`](./docs/AI_ROLE_POLICY.md) であり、本文書はその**導線**（再定義しない）。runtime 別 runbook 詳細設計・通知運用は scope 外。
+
 ## 基本姿勢（最優先）
 
 - このリポジトリの所有者は、人間です
@@ -119,6 +121,7 @@
 - 正本は [docs/AI_ROLE_POLICY.md](./docs/AI_ROLE_POLICY.md) です（この節と `CLAUDE.md` は導線です）
 - この節・`CLAUDE.md`・運用メモの記述が正本と矛盾する場合、正本を優先し、副作用を伴う作業は一旦停止して人間 Maintainer にエスカレーションしてください
 - 旧ルール参照による誤停止を避けるため、判断基準は常に正本に固定してください
+- runtime 別 runbook の詳細設計・通知運用は正本の非ゴール（scope 外）です
 
 ## AI作業環境運用（Git / worktree / VSCode）
 
