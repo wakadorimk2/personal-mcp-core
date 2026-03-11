@@ -9,6 +9,7 @@ from personal_mcp.core.event import ALLOWED_DOMAINS
 from personal_mcp.tools.candidates import FIXED_CANDIDATES, list_candidates
 from personal_mcp.tools.daily_summary import (
     count_events_by_date,
+    count_events_by_date_debug,
     get_latest_summary,
     list_summaries,
 )
@@ -931,6 +932,8 @@ def _make_handler(data_dir: str):
                     self._json(200, rec)
             elif parsed.path == "/api/heatmap":
                 self._json(200, count_events_by_date(28, data_dir or None))
+            elif parsed.path == "/api/heatmap/debug":
+                self._json(200, count_events_by_date_debug(28, data_dir or None))
             elif parsed.path == "/api/candidates":
                 self._json(200, list_candidates(data_dir or None))
             elif parsed.path == "/api/summaries/list":
