@@ -1,5 +1,7 @@
 # CODEX_RUNBOOK
 
+この文書は [`docs/RUNBOOK_BASELINE.md`](./RUNBOOK_BASELINE.md) で定義した runtime-specific runbook baseline の exemplar（Codex CLI 用）です。
+
 Codex はこの runbook に従って、`review -> ruff -> pytest -> 最小修正 -> 再実行 -> Draft PR` の順で進む。役割境界の正本は [docs/AI_ROLE_POLICY.md](./AI_ROLE_POLICY.md) とし、この文書は実行手順に絞る。
 
 ## Codex がやること

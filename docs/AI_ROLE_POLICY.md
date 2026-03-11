@@ -2,7 +2,8 @@
 
 この文書は、personal-mcp-core における **AI runtime 共通の役割境界（role boundary）** の正本です。
 Claude Code・Codex CLI 等の特定の runtime 名に依存せず読めることを意図しています。
-runtime 固有の実行手順・通知運用・CLI 個別事情は runtime 別 runbook（Issue #310 で策定予定）に委譲します。
+runtime 固有の実行手順・通知運用・CLI 個別事情は runtime 別 runbook に委譲します。
+基準構造は [`docs/RUNBOOK_BASELINE.md`](./RUNBOOK_BASELINE.md) を参照し、既存の Codex CLI 向け具体例は [`docs/CODEX_RUNBOOK.md`](./CODEX_RUNBOOK.md) にあります。
 
 運用上の判断はこの文書を優先し、`AI_GUIDE.md` と `CLAUDE.md` は導線のみを持ちます。
 
@@ -51,7 +52,8 @@ personal-mcp-core は MVP 段階のため、再現可能で監査しやすい最
 
 > **runtime と役割の対応**: 役割は runtime 名に依存しない。本節では「no-side-effect 担当」と「side-effect 担当」の二種を定義する。
 > 現在の対応例: Claude Code = no-side-effect 担当、Codex CLI = side-effect 担当。
-> runtime 固有の実行手順・コマンド・通知フローは runtime 別 runbook（Issue #310）に記載する。
+> runtime 固有の実行手順・コマンド・通知フローは runtime 別 runbook に記載する。
+> 基準構造は [`docs/RUNBOOK_BASELINE.md`](./RUNBOOK_BASELINE.md)、既存の Codex CLI 手順は [`docs/CODEX_RUNBOOK.md`](./CODEX_RUNBOOK.md) を参照する。
 
 ### no-side-effect 担当（実装担当）
 
@@ -131,7 +133,8 @@ side-effect 担当の「最小修正」は、lint エラー、型エラー、テ
 
 ## GitHub 操作の許可範囲
 
-> 詳細な実行手順・CLI コマンドは runtime 別 runbook（Issue #310）に記載する。
+> 詳細な実行手順・CLI コマンドは runtime 別 runbook に記載する。
+> 基準構造は [`docs/RUNBOOK_BASELINE.md`](./RUNBOOK_BASELINE.md)、既存の Codex CLI 手順は [`docs/CODEX_RUNBOOK.md`](./CODEX_RUNBOOK.md) を参照する。
 
 side-effect 担当 runtime が実行してよい GitHub 操作は以下に限定する。
 
@@ -192,7 +195,8 @@ Issue 本文編集の最終ポリシー:
 
 ## コピペ用テンプレ
 
-> 以下は参考例示。runtime 固有の操作テンプレートは runtime 別 runbook（Issue #310 で策定予定）に移管する。
+> 以下は参考例示。runtime 固有の操作テンプレートは runtime 別 runbook に移管する。
+> 基準構造は [`docs/RUNBOOK_BASELINE.md`](./RUNBOOK_BASELINE.md)、既存の Codex CLI 手順は [`docs/CODEX_RUNBOOK.md`](./CODEX_RUNBOOK.md) を参照する。
 
 ### no-side-effect 担当用テンプレ（参考例示）
 
