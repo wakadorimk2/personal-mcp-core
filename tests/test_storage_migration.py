@@ -23,6 +23,33 @@ def _write_events(path: Path, events: list[dict]) -> None:
     )
 
 
+def _insert_pre307_row(db_path: Path, record: dict) -> None:
+    with sqlite3.connect(str(db_path)) as conn:
+        conn.executescript(
+            """
+            CREATE TABLE events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ts TEXT NOT NULL,
+                domain TEXT NOT NULL,
+                kind TEXT,
+                raw TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_events_ts ON events (ts);
+            CREATE INDEX IF NOT EXISTS idx_events_domain ON events (domain);
+            """
+        )
+        conn.execute(
+            "INSERT INTO events (ts, domain, kind, raw) VALUES (?, ?, ?, ?)",
+            (
+                record["ts"],
+                record["domain"],
+                record["kind"],
+                json.dumps(record, ensure_ascii=False),
+            ),
+        )
+        conn.commit()
+
+
 def test_rebuild_jsonl_from_db_dry_run_and_apply(data_dir: Path) -> None:
     db_path = data_dir / "events.db"
     jsonl_path = data_dir / "events.jsonl"
@@ -121,6 +148,59 @@ def test_rebuild_db_from_jsonl_dry_run_and_apply_with_legacy_normalization(data_
     assert len(rows) == 2
     assert rows[0]["data"]["text"] == "legacy entry"
     assert rows[1]["data"]["text"] == "v1 entry"
+
+
+def test_append_sqlite_backfills_pre307_github_dedup_key(data_dir: Path) -> None:
+    db_path = data_dir / "events.db"
+    existing = {
+        "v": 1,
+        "ts": "2026-03-07T10:00:00+00:00",
+        "domain": "eng",
+        "kind": "artifact",
+        "data": {"text": "already saved", "github_event_id": "100"},
+        "tags": [],
+        "source": "github",
+    }
+    _insert_pre307_row(db_path, existing)
+
+    outcome = append_sqlite(db_path, existing)
+
+    assert outcome == "skipped"
+    assert len(read_sqlite(db_path)) == 1
+    with sqlite3.connect(str(db_path)) as conn:
+        rows = conn.execute("SELECT id, dedup_key FROM events ORDER BY id ASC").fetchall()
+    assert rows == [(1, "github:100")]
+
+
+def test_rebuild_db_from_jsonl_reports_actual_written_count_after_dedup(
+    data_dir: Path,
+) -> None:
+    duplicate = {
+        "v": 1,
+        "ts": "2026-03-07T10:00:00+00:00",
+        "domain": "eng",
+        "kind": "artifact",
+        "data": {"text": "duplicate", "github_event_id": "100"},
+        "tags": [],
+        "source": "github",
+    }
+    manual = {
+        "v": 1,
+        "ts": "2026-03-07T11:00:00+00:00",
+        "domain": "general",
+        "kind": "note",
+        "data": {"text": "manual"},
+        "tags": [],
+        "source": "manual",
+    }
+    _write_events(data_dir / "events.jsonl", [duplicate, duplicate, manual])
+
+    applied = rebuild_db_from_jsonl(data_dir=str(data_dir))
+
+    assert applied["source_count"] == 3
+    assert applied["written_count"] == 2
+    assert applied["skipped_count"] == 1
+    assert len(read_sqlite(data_dir / "events.db")) == 2
 
 
 def test_cli_storage_migration_dry_run_json_output(

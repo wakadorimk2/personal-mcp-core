@@ -28,7 +28,7 @@
 | 取得対象 | GitHub API `/users/{username}/events` first page（最大 100 件） |
 | 出力 | Event Contract v1 レコード、`domain: "eng"` 固定 |
 | source 値 | `"github"` 固定 |
-| dedup キー | `data.github_event_id`（既存 `source: "github"` レコードから検索） |
+| dedup キー | `data.github_event_id` → storage boundary で `"github:{id}"` に正規化し DB UNIQUE 制約で担保（#307） |
 | skip 対象 | `WatchEvent` / `PublicEvent` / `MemberEvent` |
 
 **責務の限界（MVP 意図どおり）:**

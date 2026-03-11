@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from personal_mcp.storage.jsonl import read_jsonl
 from personal_mcp.storage.path import resolve_data_dir
@@ -17,10 +17,17 @@ def _paths(data_dir: Optional[str]) -> tuple[Path, Path]:
     return resolved / PRIMARY_STORAGE, resolved / COMPAT_STORAGE
 
 
-def append_event(record: Dict[str, Any], data_dir: Optional[str] = None) -> None:
-    """Write an event to the runtime primary storage."""
+def append_event(
+    record: Dict[str, Any], data_dir: Optional[str] = None
+) -> Literal["saved", "skipped"]:
+    """Write an event to the runtime primary storage.
+
+    Returns 'saved' on new insert, 'skipped' if a duplicate dedup_key exists.
+    Dedup responsibility is at the storage boundary; callers should not
+    pre-filter duplicates by reading existing records.
+    """
     db_path, _ = _paths(data_dir)
-    append_sqlite(db_path, record)
+    return append_sqlite(db_path, record)
 
 
 def read_events(data_dir: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -79,7 +86,14 @@ def rebuild_db_from_jsonl(data_dir: Optional[str] = None, dry_run: bool = False)
 
     if db_path.exists():
         db_path.unlink()
+    written_count = 0
+    skipped_count = 0
     for record in source_records:
-        append_sqlite(db_path, record)
-    result["written_count"] = len(source_records)
+        outcome = append_sqlite(db_path, record)
+        if outcome == "saved":
+            written_count += 1
+        else:
+            skipped_count += 1
+    result["written_count"] = written_count
+    result["skipped_count"] = skipped_count
     return result

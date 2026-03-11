@@ -13,13 +13,13 @@ Verifies:
 from __future__ import annotations
 
 import json
+import sqlite3
 from pathlib import Path
 from typing import Any, Dict
 
 from personal_mcp.storage.events_store import append_event, rebuild_db_from_jsonl
 from personal_mcp.storage.sqlite import read_sqlite
 from personal_mcp.tools.github_ingest import (
-    _load_existing_github_event_ids,
     _map_github_event,
     _normalize_ts,
     github_ingest,
@@ -33,6 +33,34 @@ from personal_mcp.tools.github_ingest import (
 
 def _read_runtime_events(data_dir: Path) -> list[dict]:
     return read_sqlite(data_dir / "events.db")
+
+
+def _insert_pre307_row(data_dir: Path, record: Dict[str, Any]) -> None:
+    db_path = data_dir / "events.db"
+    with sqlite3.connect(str(db_path)) as conn:
+        conn.executescript(
+            """
+            CREATE TABLE events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ts TEXT NOT NULL,
+                domain TEXT NOT NULL,
+                kind TEXT,
+                raw TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_events_ts ON events (ts);
+            CREATE INDEX IF NOT EXISTS idx_events_domain ON events (domain);
+            """
+        )
+        conn.execute(
+            "INSERT INTO events (ts, domain, kind, raw) VALUES (?, ?, ?, ?)",
+            (
+                record["ts"],
+                record["domain"],
+                record["kind"],
+                json.dumps(record, ensure_ascii=False),
+            ),
+        )
+        conn.commit()
 
 
 def _push_event(event_id: str = "100") -> Dict[str, Any]:
@@ -336,73 +364,39 @@ def test_map_fallback_without_repo_returns_none() -> None:
 
 
 # ---------------------------------------------------------------------------
-# _load_existing_github_event_ids
+# DB dedup key — storage boundary (Issue #307)
 # ---------------------------------------------------------------------------
 
 
-def test_load_ids_returns_empty_when_no_events(data_dir: Path) -> None:
-    assert _load_existing_github_event_ids(str(data_dir)) == set()
+def test_github_ingest_dedup_key_stored_in_db(data_dir: Path, monkeypatch) -> None:
+    """Storage boundary writes dedup_key='github:EVENT_ID' into the DB row."""
+    import personal_mcp.tools.github_ingest as mod
+
+    monkeypatch.setattr(mod, "_fetch_github_events", lambda u, t: [_push_event("100")])
+    github_ingest(username="user", data_dir=str(data_dir))
+
+    db_path = data_dir / "events.db"
+    with sqlite3.connect(str(db_path)) as conn:
+        row = conn.execute("SELECT dedup_key FROM events WHERE dedup_key IS NOT NULL").fetchone()
+    assert row is not None
+    assert row[0] == "github:100"
 
 
-def test_load_ids_returns_github_source_ids(data_dir: Path) -> None:
-    github_event = {
-        "v": 1,
-        "ts": "2026-03-07T10:00:00+00:00",
-        "domain": "eng",
-        "kind": "artifact",
-        "data": {"text": "x", "github_event_id": "abc"},
-        "tags": [],
-        "source": "github",
-    }
-    manual_event = {
-        "v": 1,
-        "ts": "2026-03-07T10:00:00+00:00",
-        "domain": "eng",
-        "kind": "note",
-        "data": {"text": "manual"},
-        "tags": [],
-        "source": "manual",
-    }
-    append_event(github_event, data_dir=str(data_dir))
-    append_event(manual_event, data_dir=str(data_dir))
-    assert _load_existing_github_event_ids(str(data_dir)) == {"abc"}
+def test_github_ingest_idempotent_on_retry(data_dir: Path, monkeypatch) -> None:
+    """Calling github_ingest twice with the same events returns saved=0 on the second call."""
+    import personal_mcp.tools.github_ingest as mod
 
-
-def test_load_ids_after_recovery_migration_includes_github_rows(data_dir: Path) -> None:
-    append_event(
-        {
-            "v": 1,
-            "ts": "2026-03-07T10:00:00+00:00",
-            "domain": "general",
-            "kind": "note",
-            "data": {"text": "db row"},
-            "tags": [],
-            "source": "manual",
-        },
-        data_dir=str(data_dir),
+    monkeypatch.setattr(
+        mod,
+        "_fetch_github_events",
+        lambda u, t: [_push_event("100"), _issues_event("closed", "200")],
     )
-    manual_event = {
-        "v": 1,
-        "ts": "2026-03-07T10:00:00+00:00",
-        "domain": "general",
-        "kind": "note",
-        "data": {"text": "db row"},
-        "tags": [],
-        "source": "manual",
-    }
-    github_jsonl_only = {
-        "v": 1,
-        "ts": "2026-03-07T10:00:00+00:00",
-        "domain": "eng",
-        "kind": "artifact",
-        "data": {"text": "legacy", "github_event_id": "abc"},
-        "tags": [],
-        "source": "github",
-    }
-    _write_events(data_dir / "events.jsonl", [manual_event, github_jsonl_only])
-    rebuild_db_from_jsonl(data_dir=str(data_dir))
+    first = github_ingest(username="user", data_dir=str(data_dir))
+    second = github_ingest(username="user", data_dir=str(data_dir))
 
-    assert _load_existing_github_event_ids(str(data_dir)) == {"abc"}
+    assert first == {"saved": 2, "skipped": 0, "failed": 0}
+    assert second == {"saved": 0, "skipped": 2, "failed": 0}
+    assert len(_read_runtime_events(data_dir)) == 2
 
 
 # ---------------------------------------------------------------------------
@@ -445,6 +439,30 @@ def test_github_ingest_skips_duplicate(data_dir: Path, monkeypatch) -> None:
 
     assert result["saved"] == 0
     assert result["skipped"] == 1
+    assert len(_read_runtime_events(data_dir)) == 1
+
+
+def test_github_ingest_skips_duplicate_in_pre307_db(data_dir: Path, monkeypatch) -> None:
+    import personal_mcp.tools.github_ingest as mod
+
+    existing = {
+        "v": 1,
+        "ts": "2026-03-07T10:00:00+00:00",
+        "domain": "eng",
+        "kind": "artifact",
+        "data": {"text": "already saved", "github_event_id": "100"},
+        "tags": [],
+        "source": "github",
+    }
+    _insert_pre307_row(data_dir, existing)
+    monkeypatch.setattr(mod, "_fetch_github_events", lambda u, t: [_push_event("100")])
+
+    result = github_ingest(username="user", data_dir=str(data_dir))
+
+    assert result == {"saved": 0, "skipped": 1, "failed": 0}
+    with sqlite3.connect(str(data_dir / "events.db")) as conn:
+        rows = conn.execute("SELECT dedup_key FROM events ORDER BY id ASC").fetchall()
+    assert rows == [("github:100",)]
     assert len(_read_runtime_events(data_dir)) == 1
 
 
