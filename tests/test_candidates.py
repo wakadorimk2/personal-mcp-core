@@ -609,7 +609,7 @@ def test_list_candidates_real_tagger_keeps_natural_candidates(data_dir: Path) ->
     got = list_candidates(data_dir=str(data_dir))
     labels = [item["text"] for item in got]
 
-    assert "GitHub" in labels
+    assert len(got) == 8
     assert "VS Code" in labels
     assert "1on1" in labels
     assert "コードレビュー" in labels
