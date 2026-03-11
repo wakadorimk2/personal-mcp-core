@@ -50,10 +50,9 @@ ls -lh <backup-dir>/
 
 ```sh
 ls -lh <data-dir>/
-wc -l <data-dir>/events.jsonl
 ```
 
-正本がまだ読み取れる状態であれば、復元前に現状を別の場所に退避しておくことを検討する。
+runtime は `events.db` を正本とする。復元前に `events.db` の有無を確認し、正本がまだ読み取れる状態であれば現状を別の場所に退避しておくことを検討する。
 
 ---
 
@@ -65,7 +64,15 @@ wc -l <data-dir>/events.jsonl
 rsync -av <backup-dir>/ <data-dir>/
 ```
 
-### 特定ファイルのみ復元する場合
+### 正本ファイル (`events.db`) のみ復元する場合
+
+```sh
+rsync -av <backup-dir>/events.db <data-dir>/events.db
+```
+
+### `events.jsonl` だけが残っているバックアップを復元する場合
+
+`events.db` がなく `events.jsonl` だけが復元元に残っている場合は、まず compat file を戻し、その後に migration tool で `events.db` を再生成する。
 
 ```sh
 rsync -av <backup-dir>/events.jsonl <data-dir>/events.jsonl
@@ -95,22 +102,15 @@ rsync -av <backup-dir>/events.jsonl <data-dir>/events.jsonl
 
 ## 復元後の確認手順
 
-### 1. ファイルの存在と行数を確認する
+### 1. 正本ファイルの存在を確認する
 
 ```sh
 ls -lh <data-dir>/
-wc -l <data-dir>/events.jsonl
 ```
 
-### 2. 最新レコードを目視確認する
+`events.db` が存在すれば runtime の正本は戻っている。`events.jsonl` は recovery 用なので、なくてもただちに runtime 異常とはみなさない。
 
-```sh
-tail -n 5 <data-dir>/events.jsonl
-```
-
-### 3. 片方向欠損時は migration tool で再生成する
-
-`events.db` / `events.jsonl` どちらかが欠損した場合は、まず dry-run で件数差分を確認する。
+### 2. `events.db` がない場合だけ migration tool で再生成する
 
 ```sh
 # events.db -> events.jsonl 再生成（dry-run）
@@ -132,10 +132,10 @@ personal-mcp storage-jsonl-to-db --data-dir <data-dir>
 
 > **Note**: `storage-jsonl-to-db` は JSONL の内容を **忠実に再構築** する（dedup なし）。
 > JSONL に重複レコードが含まれる場合、DB にも同数のレコードが挿入される。
-> 将来の重複排除は runtime の `github-sync` / `github-ingest` が担う。
+> runtime の重複排除は `github-sync` / `github-ingest` が担う。
 > この挙動は「復元はデータの回収であり、内容の修正ではない」という原則と一致する。
 
-### 4. `event-list` で読み取れることを確認する
+### 3. `event-list` で runtime が読み取れることを確認する
 
 ```sh
 personal-mcp event-list --n 10 --data-dir <data-dir>
@@ -163,9 +163,9 @@ personal-mcp event-list --since YYYY-MM-DD --data-dir <data-dir>
 - [ ] バックアップ後の追記分の有無を確認した（回収できないデータの把握）
 - [ ] 復元先の data-dir が repo 外であることを確認した
 - [ ] `--delete` を使わない形で rsync を実行した
-- [ ] 復元後、`ls` でファイルの存在を確認した
-- [ ] 復元後、`wc -l` でレコード数を確認した
-- [ ] 復元後、`personal-mcp event-list` で読み取れることを確認した
+- [ ] 復元後、`ls` で `events.db` を含むファイルの存在を確認した
+- [ ] `events.db` が欠損していた場合は migration tool で再生成した
+- [ ] 復元後、`personal-mcp event-list` で runtime が読み取れることを確認した
 - [ ] 最新レコードのタイムスタンプが想定の範囲内であることを確認した
 
 ---
