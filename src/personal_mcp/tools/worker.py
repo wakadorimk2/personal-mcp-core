@@ -103,19 +103,14 @@ def worker_board_rows(data_dir: Optional[str] = None) -> List[Dict[str, Any]]:
         terminal_id = data.get("terminal_id")
         status = data.get("status")
         board_columns = (worker_id, worker_name, terminal_id, status)
-        if not all(
-            isinstance(value, str) and value.strip()
-            for value in board_columns
-        ):
+        if not all(isinstance(value, str) and value.strip() for value in board_columns):
             continue
         if status not in ALLOWED_WORKER_STATUSES:
             continue
 
         current_issue = data.get("current_issue")
         normalized_issue = (
-            current_issue
-            if isinstance(current_issue, str) and current_issue.strip()
-            else None
+            current_issue if isinstance(current_issue, str) and current_issue.strip() else None
         )
         record_ts = record.get("ts")
         record_ts_dt = _parse_ts(record_ts)
@@ -172,20 +167,13 @@ def format_worker_board(rows: List[Dict[str, Any]]) -> str:
         "updated": "updated",
     }
     widths = {
-        key: max(len(headers[key]), max(len(row[key]) for row in rendered_rows))
-        for key in headers
+        key: max(len(headers[key]), max(len(row[key]) for row in rendered_rows)) for key in headers
     }
     column_order = ("worker", "status", "issue", "terminal", "updated")
 
     lines = ["AI TEAM", ""]
-    lines.append(
-        "  ".join(headers[key].ljust(widths[key]) for key in column_order)
-    )
-    lines.append(
-        "  ".join("-" * widths[key] for key in column_order)
-    )
+    lines.append("  ".join(headers[key].ljust(widths[key]) for key in column_order))
+    lines.append("  ".join("-" * widths[key] for key in column_order))
     for row in rendered_rows:
-        lines.append(
-            "  ".join(row[key].ljust(widths[key]) for key in column_order)
-        )
+        lines.append("  ".join(row[key].ljust(widths[key]) for key in column_order))
     return "\n".join(lines)
