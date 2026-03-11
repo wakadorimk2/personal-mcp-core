@@ -53,9 +53,28 @@ If a deletion is needed, provide:
 ```bash
 # Install in editable mode (development)
 pip install -e ".[dev]"
+# or via Makefile shorthand:
+make setup
 
-# Run the entrypoint (prints loaded context length)
-python -m personal_mcp.server
+# Lint and format (Makefile targets wrap ruff)
+make lint          # ruff check .
+make fmt           # ruff format .
+
+# Run tests
+make test          # pytest
+
+# Run the CLI — subcommand is required
+python -m personal_mcp.server --help
+python -m personal_mcp.server event-today
+python -m personal_mcp.server event-add "note text" --domain worklog
+python -m personal_mcp.server web-serve --port 8080
+
+# Makefile shortcuts for common CLI operations
+make log TEXT="note text" DOMAIN=worklog   # event-add
+make today                                 # event-today
+make summary DATE=2026-03-11               # summary-generate
+make run                                   # web-serve (port 8080)
+make smoke                                 # log + today + summary smoke check
 
 # Verify Ruff using pyproject.toml as the source of truth
 python -m ruff check .
@@ -63,12 +82,14 @@ python -m ruff format --check .
 
 # Verify AI_GUIDE.md copies are in sync
 diff AI_GUIDE.md src/personal_mcp/AI_GUIDE.md
+make guide-check
 ````
 
 Notes:
 
-* Ruff and pytest are configured in this repo.
+* Ruff, pytest, and make targets are all configured in this repo.
 * Ruff `line-length` and `E501` policy are defined in `pyproject.toml`; do not override them with CLI flags in docs or CI.
+* `python -m personal_mcp.server` without a subcommand exits with a usage error — always supply a subcommand.
 
 ## Architecture
 
@@ -78,9 +99,12 @@ src/personal_mcp/
 AI_GUIDE.md                        ← Packaged copy (must match root AI_GUIDE.md)
 core/guide.py                      ← load_ai_guide(): loads the guide with two-stage fallback
 adapters/mcp_server.py             ← get_system_context(): thin adapter returning the guide text
-server.py                          ← CLI entrypoint (placeholder, calls get_system_context)
+adapters/http_server.py            ← web-serve HTTP adapter (mobile log form)
+tools/                             ← one file per domain tool (event, daily_summary, github_*, …)
+storage/                           ← storage boundary: events_store, jsonl, sqlite, path
+server.py                          ← subcommand CLI (event-add, event-today, web-serve, …)
 
-Data flow: server.py → adapters/mcp_server.py → core/guide.py → AI_GUIDE.md
+Data flow: server.py → tools/* / adapters/* → storage/* / core/guide.py → AI_GUIDE.md / data/
 
 Event model principle:
 * All domains converge to a common event format (timestamp, domain, payload)
@@ -93,7 +117,7 @@ Event model principle:
 | ------------------------------------------ | ---------------------------------------------------------------------------- |
 | AI behavior rules (attitude, prohibitions) | AI_GUIDE.md (root), then sync to src/personal_mcp/AI_GUIDE.md                |
 | New MCP adapter                            | src/personal_mcp/adapters/<name>.py + entry in docs/adapters.md              |
-| New MCP tool                               | src/personal_mcp/tools/<name>.py + entry in docs/tools.md (create if needed) |
+| New MCP tool                               | src/personal_mcp/tools/<name>.py + entry in docs/adapters.md or docs/tools/<name>.md |
 | Architecture decisions                     | docs/architecture.md                                                         |
 | Bug fix / refactor                         | Relevant .py file only; update docs only if public behavior changes          |
 | Claude Code skill definitions              | .claude/skills/<name>/SKILL.md                                               |
