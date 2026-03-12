@@ -250,6 +250,7 @@ Issue 本文編集の最終ポリシー:
 成功時:
 - PR を作成する
 - PR 本文に以下を含める
+  - 対応 Issue の linked issue 記載（close する場合は `Closes/Fixes/Resolves #<issue-number>`、close しない場合は `Refs #<issue-number>` と手動リンク方針）
   - 実行したコマンド
   - 結果
   - 最小修正の内容

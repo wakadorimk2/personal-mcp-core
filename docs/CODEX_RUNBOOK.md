@@ -258,6 +258,13 @@ git commit -m "docs: add CODEX_RUNBOOK for executor flow"
 
 目的: 実行結果と残リスクを残してレビューに渡す。
 
+linked issue ルール:
+
+- 対応 Issue を PR 本文に 1 件以上明記する
+- merge 時に Issue を閉じる場合は `Closes #<issue-number>` / `Fixes #<issue-number>` / `Resolves #<issue-number>` を使う
+- merge 時に閉じない場合は `Refs #<issue-number>` を書き、必要なら GitHub 上で linked issue を手動設定する
+- PR title 末尾の `(#123)` や本文中の単なる `#123` 記載だけでは linked issue とみなさない
+
 コマンド例:
 
 ```bash
@@ -285,6 +292,10 @@ EOF
 ## PR Body Template
 
 ```md
+## Linked Issue
+- Closes #<issue-number>
+<!-- close しない場合は `Refs #<issue-number>` に置き換え、必要なら linked issue を手動設定する -->
+
 ## Summary
 - What changed:
 - Why:
