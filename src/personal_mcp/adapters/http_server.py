@@ -356,11 +356,14 @@ _DASHBOARD_HTML_TEMPLATE = """\
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>活動</title>
 <style>
-body { font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 1rem; }
+body { --heatmap-cell-size: 5px; --heatmap-gap: 1px; font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 1rem; }
+@media (min-width: 402px) {
+  body { --heatmap-cell-size: 6px; }
+}
 h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
-.heatmap-scroll { overflow-x: auto; margin-bottom: 1.5rem; -webkit-overflow-scrolling: touch; }
-.heatmap { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 12px); grid-auto-columns: 12px; gap: 3px; width: max-content; }
-.heatmap-cell { width: 12px; height: 12px; border-radius: 2px; }
+.heatmap-scroll { display: flex; justify-content: flex-end; overflow: hidden; margin-bottom: 1.25rem; }
+.heatmap { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, var(--heatmap-cell-size)); grid-auto-columns: var(--heatmap-cell-size); gap: var(--heatmap-gap); width: max-content; margin-left: auto; }
+.heatmap-cell { width: var(--heatmap-cell-size); height: var(--heatmap-cell-size); border-radius: 1px; }
 .heatmap-cell-empty { background: transparent; }
 #candidates { margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .candidate-tag {
@@ -609,14 +612,6 @@ function renderHeatmapGrid(el, weeks) {
   });
 }
 
-function scrollHeatmapToLatest() {
-  var wrapper = document.getElementById('heatmap-scroll');
-  if (!wrapper) return;
-  requestAnimationFrame(function() {
-    wrapper.scrollLeft = wrapper.scrollWidth;
-  });
-}
-
 function renderCandidateMode() {
   var composeActive = candidateTapMode === "compose";
   document.getElementById("candidate-compose-mode").classList.toggle("active", composeActive);
@@ -722,7 +717,6 @@ async function loadHeatmap() {
   var data = await r.json();
   var el = document.getElementById('heatmap');
   renderHeatmapGrid(el, shapeToWeekGrid(data));
-  scrollHeatmapToLatest();
 }
 
 async function loadCandidates() {
