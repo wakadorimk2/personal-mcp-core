@@ -95,7 +95,7 @@ def rebuild_db_from_jsonl(data_dir: Optional[str] = None, dry_run: bool = False)
     written_count = 0
     skipped_count = 0
     for record in source_records:
-        outcome = append_sqlite(db_path, record)
+        outcome = append_sqlite(db_path, record, enforce_dedup=False)
         if outcome == "saved":
             written_count += 1
         else:

@@ -80,7 +80,12 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
     conn.executescript(_DEDUP_INDEX_DDL)
 
 
-def append_sqlite(db_path: Path, record: Dict[str, Any]) -> Literal["saved", "skipped"]:
+def append_sqlite(
+    db_path: Path,
+    record: Dict[str, Any],
+    *,
+    enforce_dedup: bool = True,
+) -> Literal["saved", "skipped"]:
     """Insert record into SQLite DB.
 
     Returns 'saved' when the row is newly inserted.
@@ -89,7 +94,7 @@ def append_sqlite(db_path: Path, record: Dict[str, Any]) -> Literal["saved", "sk
     always saved because SQLite treats each NULL as distinct.
     """
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    dedup_key = _github_dedup_key(record)
+    dedup_key = _github_dedup_key(record) if enforce_dedup else None
     with sqlite3.connect(str(db_path)) as conn:
         _ensure_schema(conn)
         try:
