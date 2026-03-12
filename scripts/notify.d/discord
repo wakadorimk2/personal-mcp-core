@@ -5,5 +5,5 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/_discord_webhook.sh"
 
 send_discord_webhook_notification \
-  "DISCORD_WEBHOOK_URL" \
+  "DISCORD_WEBHOOK_AI_STATUS" \
   "$HOME/.config/secrets/discord_webhook.env"

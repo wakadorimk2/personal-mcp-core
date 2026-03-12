@@ -23,11 +23,11 @@ Discord webhook 向けの最小契約は
 ## Discord webhook channel
 
 Set `NOTIFY_CHANNEL=discord` or pass `--channel discord`, then provide a
-Discord incoming webhook URL through `DISCORD_WEBHOOK_URL`.
+Discord incoming webhook URL through `DISCORD_WEBHOOK_AI_STATUS`.
 
 ```bash
 export NOTIFY_CHANNEL=discord
-export DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
+export DISCORD_WEBHOOK_AI_STATUS="https://discord.com/api/webhooks/..."
 notify --event task_completed --title "issue #238" --source codex-tui "done"
 ```
 
@@ -44,10 +44,10 @@ configuration exits with code `2`; HTTP or transport failures exit with code
 
 Webhook secret は次の優先順位で解決される。
 
-1. `DISCORD_WEBHOOK_URL` environment variable
+1. `DISCORD_WEBHOOK_AI_STATUS` environment variable
 2. `~/.config/secrets/discord_webhook.env` fallback
 
-adapter は `DISCORD_WEBHOOK_URL` が未設定のときだけ fallback file を読む。
+adapter は `DISCORD_WEBHOOK_AI_STATUS` が未設定のときだけ fallback file を読む。
 そのため、一時的な差し替えや検証では process env を優先できる。
 
 Example:
@@ -56,7 +56,7 @@ Example:
 mkdir -p ~/.config/secrets
 chmod 700 ~/.config/secrets
 
-echo 'export DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."' \
+echo 'export DISCORD_WEBHOOK_AI_STATUS="https://discord.com/api/webhooks/..."' \
   > ~/.config/secrets/discord_webhook.env
 
 chmod 600 ~/.config/secrets/discord_webhook.env
@@ -65,20 +65,20 @@ chmod 600 ~/.config/secrets/discord_webhook.env
 ## Discord smoke-test channel
 
 Set `NOTIFY_CHANNEL=discord-test` or pass `--channel discord-test`, then
-provide a Discord incoming webhook URL through `DISCORD_TEST_WEBHOOK_URL`.
+provide a Discord incoming webhook URL through `DISCORD_WEBHOOK_AI_STATUS_TEST`.
 
 ```bash
 export NOTIFY_CHANNEL=discord-test
-export DISCORD_TEST_WEBHOOK_URL="https://discord.com/api/webhooks/..."
+export DISCORD_WEBHOOK_AI_STATUS_TEST="https://discord.com/api/webhooks/..."
 notify --event task_completed --title "issue #336 smoke" --source codex-tui "done"
 ```
 
 `discord-test` uses the same payload format and optional overrides as the
 `discord` adapter, but it resolves a different webhook and fails closed:
 
-- `DISCORD_TEST_WEBHOOK_URL` environment variable
+- `DISCORD_WEBHOOK_AI_STATUS_TEST` environment variable
 - `~/.config/secrets/discord_test_webhook.env` fallback
-- no fallback to `DISCORD_WEBHOOK_URL`
+- no fallback to `DISCORD_WEBHOOK_AI_STATUS`
 
 Example:
 
@@ -86,7 +86,7 @@ Example:
 mkdir -p ~/.config/secrets
 chmod 700 ~/.config/secrets
 
-echo 'export DISCORD_TEST_WEBHOOK_URL="https://discord.com/api/webhooks/..."' \
+echo 'export DISCORD_WEBHOOK_AI_STATUS_TEST="https://discord.com/api/webhooks/..."' \
   > ~/.config/secrets/discord_test_webhook.env
 
 chmod 600 ~/.config/secrets/discord_test_webhook.env
@@ -103,7 +103,7 @@ Invocation pattern:
 ```bash
 PATH="$PWD/scripts:$PATH"
 export NOTIFY_CHANNEL=discord
-export DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
+export DISCORD_WEBHOOK_AI_STATUS="https://discord.com/api/webhooks/..."
 
 scripts/claude-notify <claude-args...>
 ```
@@ -121,7 +121,7 @@ Setup requirements:
 1. `claude` must be available on `PATH` in the same shell that runs
    `scripts/claude-notify`.
 2. `NOTIFY_CHANNEL=discord` must be set in that same shell, shell startup
-   file, or launcher script. `DISCORD_WEBHOOK_URL` は process env または
+   file, or launcher script. `DISCORD_WEBHOOK_AI_STATUS` は process env または
    `~/.config/secrets/discord_webhook.env` fallback で解決される。
 3. If you use WSL or another wrapper shell, configure the environment where
    `claude`, `curl`, and `python3` actually execute.
@@ -245,7 +245,7 @@ claude ok
 - stderr contains both:
 
 ```text
-discord notify: DISCORD_WEBHOOK_URL is required
+discord notify: DISCORD_WEBHOOK_AI_STATUS is required
 claude-notify: notify delivery failed
 ```
 
@@ -263,7 +263,7 @@ chmod +x "$tmpdir/curl"
 
 PATH="$tmpdir:/usr/bin:/bin" \
 NOTIFY_CHANNEL=discord \
-DISCORD_WEBHOOK_URL="https://discord.example/webhook" \
+DISCORD_WEBHOOK_AI_STATUS="https://discord.example/webhook" \
 scripts/claude-notify
 echo $?
 ```
@@ -288,7 +288,7 @@ chmod +x "$tmpdir/curl"
 
 PATH="$tmpdir:/usr/bin:/bin" \
 NOTIFY_CHANNEL=discord \
-DISCORD_WEBHOOK_URL="https://discord.example/webhook" \
+DISCORD_WEBHOOK_AI_STATUS="https://discord.example/webhook" \
 scripts/claude-notify
 echo $?
 ```
@@ -303,7 +303,7 @@ claude-notify: notify delivery failed
 
 Operational checklist:
 
-- If `DISCORD_WEBHOOK_URL is required` appears, export the webhook in the same
+- If `DISCORD_WEBHOOK_AI_STATUS is required` appears, export the webhook in the same
   environment that launches `scripts/claude-notify`
 - If `webhook POST failed with HTTP ...` appears, verify the webhook URL,
   webhook rotation state, and any proxy or ingress policy between the runner
@@ -329,8 +329,8 @@ payload shape into this repo's `scripts/notify` wrapper.
    repo's bridge script.
 2. Export Discord delivery variables in the shell environment that launches
    Codex. For smoke tests, use `NOTIFY_CHANNEL=discord-test` with
-   `DISCORD_TEST_WEBHOOK_URL`; for day-to-day delivery, use `discord` with
-   `DISCORD_WEBHOOK_URL`.
+   `DISCORD_WEBHOOK_AI_STATUS_TEST`; for day-to-day delivery, use `discord` with
+   `DISCORD_WEBHOOK_AI_STATUS`.
 3. Run a dry-run locally through `scripts/codex_notify.py` before attempting a
    real Discord delivery.
 
@@ -344,14 +344,14 @@ Discord delivery environment:
 
 ```bash
 export NOTIFY_CHANNEL=discord
-export DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
+export DISCORD_WEBHOOK_AI_STATUS="https://discord.com/api/webhooks/..."
 ```
 
 Smoke-test delivery environment:
 
 ```bash
 export NOTIFY_CHANNEL=discord-test
-export DISCORD_TEST_WEBHOOK_URL="https://discord.com/api/webhooks/..."
+export DISCORD_WEBHOOK_AI_STATUS_TEST="https://discord.com/api/webhooks/..."
 ```
 
 Optional overrides:
@@ -366,9 +366,9 @@ Where to configure them:
 - Put `notify = [...]` in `~/.codex/config.toml`
 - Put `NOTIFY_CHANNEL` in the shell startup file or wrapper script that
   launches Codex
-- Put `DISCORD_WEBHOOK_URL` either in the shell startup / wrapper environment
+- Put `DISCORD_WEBHOOK_AI_STATUS` either in the shell startup / wrapper environment
   or in `~/.config/secrets/discord_webhook.env`
-- Put `DISCORD_TEST_WEBHOOK_URL` either in the smoke-test shell environment or
+- Put `DISCORD_WEBHOOK_AI_STATUS_TEST` either in the smoke-test shell environment or
   in `~/.config/secrets/discord_test_webhook.env`
 - If you use WSL, configure them inside the WSL environment where `codex` and
   `python3` actually run; Windows-side env vars are not assumed to propagate
@@ -409,14 +409,14 @@ Expected result with the default `stdout` channel:
 ```
 
 If you want to verify the Discord path without editing `~/.codex/config.toml`
-yet, export `NOTIFY_CHANNEL=discord` and `DISCORD_WEBHOOK_URL` in the same
+yet, export `NOTIFY_CHANNEL=discord` and `DISCORD_WEBHOOK_AI_STATUS` in the same
 shell, then rerun the command above. A successful Discord webhook send produces
 no stdout output and exits with code `0`.
 
 For smoke tests that must not reach the prod webhook, switch to
-`NOTIFY_CHANNEL=discord-test` and provide `DISCORD_TEST_WEBHOOK_URL` instead.
+`NOTIFY_CHANNEL=discord-test` and provide `DISCORD_WEBHOOK_AI_STATUS_TEST` instead.
 If that test webhook is missing, the adapter exits with code `2` and does not
-fall back to `DISCORD_WEBHOOK_URL`.
+fall back to `DISCORD_WEBHOOK_AI_STATUS`.
 
 Real Discord smoke-test evidence is now recorded in
 [`docs/infra/ai-cli-discord-smoke-log.md`](./ai-cli-discord-smoke-log.md), so

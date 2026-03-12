@@ -33,7 +33,7 @@ Discord 送信実装そのものは対象外とする。
 
 | env var | meaning |
 |---|---|
-| `DISCORD_WEBHOOK_URL` | Discord incoming webhook URL |
+| `DISCORD_WEBHOOK_AI_STATUS` | Discord incoming webhook URL |
 
 ### Optional
 
@@ -44,7 +44,7 @@ Discord 送信実装そのものは対象外とする。
 
 ### Rules
 
-- `DISCORD_WEBHOOK_URL` が未設定または空文字なら adapter は送信を試みない
+- `DISCORD_WEBHOOK_AI_STATUS` が未設定または空文字なら adapter は送信を試みない
 - channel 選択は既存どおり `NOTIFY_CHANNEL=discord` または `notify --channel discord` を使う
 - Discord 固有の設定は adapter 内に閉じ込め、`scripts/notify` の共通引数へ追加しない
 
@@ -119,7 +119,7 @@ Rules:
 
 ### Missing webhook configuration
 
-- `DISCORD_WEBHOOK_URL` が未設定または空文字なら stderr に原因を書く
+- `DISCORD_WEBHOOK_AI_STATUS` が未設定または空文字なら stderr に原因を書く
 - exit code は `2` とする
 - これは usage / configuration error として扱い、HTTP request は送らない
 
