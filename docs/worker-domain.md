@@ -2,6 +2,7 @@
 
 > 関連 Issue: #324
 > 関連ポリシー: [`docs/domain-extension-policy.md`](./domain-extension-policy.md)
+> 関連 coordination 境界: [`docs/worker-registry-coordination.md`](./worker-registry-coordination.md)
 
 ## 目的
 
@@ -21,6 +22,7 @@
   - 通知契約
   - 人間向け評価やスコア
   - TUI / アニメーション表現
+  - claim / handoff / maintainer override の authoritative record
 
 ## 既存 domain と重複しない理由
 
@@ -71,6 +73,8 @@ worker board では `worker_id` / `terminal_id` / `status` を持つ定型イベ
 - `status`
 
 `current_issue` は任意。
+これは worker が現在扱っている issue のヒントであり、
+issue ownership や claim の成立を表すものではない。
 
 `last_update` のような mutable field は持たず、
 最新時刻はイベントの `ts` から復元する。

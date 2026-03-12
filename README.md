@@ -219,6 +219,7 @@ Start here if you want the current source of truth for specific areas:
 | [docs/data-directory.md](./docs/data-directory.md) | Data directory rules |
 | [docs/daily-input-ux-mvp.md](./docs/daily-input-ux-mvp.md) | Heatmap-first daily input direction |
 | [docs/worker-domain.md](./docs/worker-domain.md) | AI worker status domain |
+| [docs/worker-registry-coordination.md](./docs/worker-registry-coordination.md) | Registry と GitHub の orchestration 境界 |
 | [docs/infra/notify-wrapper.md](./docs/infra/notify-wrapper.md) | Notification wrapper and channel behavior |
 | [docs/domain-extension-policy.md](./docs/domain-extension-policy.md) | Rules for adding new domains |
 
