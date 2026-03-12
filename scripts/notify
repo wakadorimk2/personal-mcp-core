@@ -11,6 +11,9 @@ SOURCE="${NOTIFY_SOURCE:-}"
 READ_STDIN="0"
 CHANNEL_ARG_SET="0"
 EVENT_ARG_SET="0"
+ADAPTER_CHANNEL=""
+DISCORD_WEBHOOK_ENV_NAME=""
+DISCORD_WEBHOOK_SECRET_FILE=""
 
 notification_kind_event() {
   case "$1" in
@@ -29,13 +32,33 @@ notification_kind_event() {
   esac
 }
 
-notification_kind_channel() {
+notification_kind_route() {
   case "$1" in
     smoke_test)
       printf '%s' "discord-test"
       ;;
     *)
       printf '%s' ""
+      ;;
+  esac
+}
+
+resolve_notification_route() {
+  local logical_channel="$1"
+
+  ADAPTER_CHANNEL="$logical_channel"
+  DISCORD_WEBHOOK_ENV_NAME=""
+  DISCORD_WEBHOOK_SECRET_FILE=""
+
+  case "$logical_channel" in
+    discord)
+      DISCORD_WEBHOOK_ENV_NAME="DISCORD_WEBHOOK_AI_STATUS"
+      DISCORD_WEBHOOK_SECRET_FILE="$HOME/.config/secrets/discord_webhook.env"
+      ;;
+    discord-test)
+      ADAPTER_CHANNEL="discord"
+      DISCORD_WEBHOOK_ENV_NAME="DISCORD_WEBHOOK_AI_STATUS_TEST"
+      DISCORD_WEBHOOK_SECRET_FILE="$HOME/.config/secrets/discord_test_webhook.env"
       ;;
   esac
 }
@@ -112,9 +135,9 @@ if [[ -n "$KIND" ]]; then
     exit 2
   fi
 
-  resolved_channel="$(notification_kind_channel "$KIND")"
-  if [[ -n "$resolved_channel" ]]; then
-    CHANNEL="$resolved_channel"
+  resolved_route="$(notification_kind_route "$KIND")"
+  if [[ -n "$resolved_route" ]]; then
+    CHANNEL="$resolved_route"
   fi
 fi
 
@@ -138,7 +161,9 @@ if [[ -z "$MESSAGE" ]]; then
   exit 2
 fi
 
-ADAPTER_PATH="$CHANNEL_DIR/$CHANNEL"
+resolve_notification_route "$CHANNEL"
+
+ADAPTER_PATH="$CHANNEL_DIR/$ADAPTER_CHANNEL"
 if [[ ! -f "$ADAPTER_PATH" ]]; then
   echo "notify: channel adapter not found: $CHANNEL ($ADAPTER_PATH)" >&2
   exit 2
@@ -154,6 +179,13 @@ export NOTIFY_MESSAGE="$MESSAGE"
 export NOTIFY_TITLE="$TITLE"
 export NOTIFY_EVENT="$EVENT"
 export NOTIFY_SOURCE="$SOURCE"
+if [[ -n "$DISCORD_WEBHOOK_ENV_NAME" ]]; then
+  export NOTIFY_DISCORD_WEBHOOK_ENV_NAME="$DISCORD_WEBHOOK_ENV_NAME"
+  export NOTIFY_DISCORD_WEBHOOK_SECRET_FILE="$DISCORD_WEBHOOK_SECRET_FILE"
+else
+  unset NOTIFY_DISCORD_WEBHOOK_ENV_NAME || true
+  unset NOTIFY_DISCORD_WEBHOOK_SECRET_FILE || true
+fi
 
 # Send the normalized message over stdin as well as env vars so adapters can
 # choose the mechanism that fits the target platform best.

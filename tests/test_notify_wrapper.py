@@ -108,15 +108,17 @@ def test_notify_kind_can_override_channel(tmp_path: Path) -> None:
     )
     capture.chmod(capture.stat().st_mode | stat.S_IXUSR)
 
-    discord_test = tmp_path / "discord-test"
-    discord_test.write_text(
+    discord = tmp_path / "discord"
+    discord.write_text(
         "#!/usr/bin/env bash\n"
         "set -euo pipefail\n"
         "printf 'channel=%s\\n' \"$NOTIFY_CHANNEL_NAME\"\n"
-        "printf 'event=%s\\n' \"$NOTIFY_EVENT\"\n",
+        "printf 'event=%s\\n' \"$NOTIFY_EVENT\"\n"
+        "printf 'webhook_env=%s\\n' \"$NOTIFY_DISCORD_WEBHOOK_ENV_NAME\"\n"
+        "printf 'secret_file=%s\\n' \"$NOTIFY_DISCORD_WEBHOOK_SECRET_FILE\"\n",
         encoding="utf-8",
     )
-    discord_test.chmod(discord_test.stat().st_mode | stat.S_IXUSR)
+    discord.chmod(discord.stat().st_mode | stat.S_IXUSR)
 
     result = _run_notify(
         "--kind",
@@ -131,6 +133,38 @@ def test_notify_kind_can_override_channel(tmp_path: Path) -> None:
     assert result.stdout.splitlines() == [
         "channel=discord-test",
         "event=task_completed",
+        "webhook_env=DISCORD_WEBHOOK_AI_STATUS_TEST",
+        f"secret_file={Path.home()}/.config/secrets/discord_test_webhook.env",
+    ]
+
+
+def test_notify_channel_alias_routes_discord_test_through_discord_adapter(tmp_path: Path) -> None:
+    discord = tmp_path / "discord"
+    discord.write_text(
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        "printf 'channel=%s\\n' \"$NOTIFY_CHANNEL_NAME\"\n"
+        "printf 'event=%s\\n' \"$NOTIFY_EVENT\"\n"
+        "printf 'webhook_env=%s\\n' \"$NOTIFY_DISCORD_WEBHOOK_ENV_NAME\"\n"
+        "printf 'secret_file=%s\\n' \"$NOTIFY_DISCORD_WEBHOOK_SECRET_FILE\"\n",
+        encoding="utf-8",
+    )
+    discord.chmod(discord.stat().st_mode | stat.S_IXUSR)
+
+    result = _run_notify(
+        "--channel",
+        "discord-test",
+        "--event",
+        "task-complete",
+        "smoke done",
+        env={"NOTIFY_CHANNEL_DIR": str(tmp_path)},
+    )
+
+    assert result.stdout.splitlines() == [
+        "channel=discord-test",
+        "event=task-complete",
+        "webhook_env=DISCORD_WEBHOOK_AI_STATUS_TEST",
+        f"secret_file={Path.home()}/.config/secrets/discord_test_webhook.env",
     ]
 
 

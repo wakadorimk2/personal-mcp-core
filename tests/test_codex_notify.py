@@ -80,7 +80,7 @@ def test_codex_notify_preserves_unknown_payload_type_as_event() -> None:
 
 
 def test_codex_notify_smoke_test_flag_routes_to_discord_test(tmp_path: Path) -> None:
-    adapter = tmp_path / "discord-test"
+    adapter = tmp_path / "discord"
     adapter.write_text(
         "#!/usr/bin/env bash\n"
         "set -euo pipefail\n"

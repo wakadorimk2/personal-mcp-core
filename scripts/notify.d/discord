@@ -4,6 +4,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/_discord_webhook.sh"
 
+webhook_env_name="${NOTIFY_DISCORD_WEBHOOK_ENV_NAME:-DISCORD_WEBHOOK_AI_STATUS}"
+secret_file="${NOTIFY_DISCORD_WEBHOOK_SECRET_FILE:-$HOME/.config/secrets/discord_webhook.env}"
+
 send_discord_webhook_notification \
-  "DISCORD_WEBHOOK_AI_STATUS" \
-  "$HOME/.config/secrets/discord_webhook.env"
+  "$webhook_env_name" \
+  "$secret_file"

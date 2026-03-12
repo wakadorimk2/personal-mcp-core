@@ -2,9 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# Reuse the same Discord payload and POST path as the prod adapter.
-source "$SCRIPT_DIR/_discord_webhook.sh"
-
-send_discord_webhook_notification \
-  "DISCORD_WEBHOOK_AI_STATUS_TEST" \
-  "$HOME/.config/secrets/discord_test_webhook.env"
+# Keep the dedicated adapter path working, but route it through the shared
+# Discord delivery script with the test destination selected centrally.
+export NOTIFY_DISCORD_WEBHOOK_ENV_NAME="${NOTIFY_DISCORD_WEBHOOK_ENV_NAME:-DISCORD_WEBHOOK_AI_STATUS_TEST}"
+export NOTIFY_DISCORD_WEBHOOK_SECRET_FILE="${NOTIFY_DISCORD_WEBHOOK_SECRET_FILE:-$HOME/.config/secrets/discord_test_webhook.env}"
+exec "$SCRIPT_DIR/discord"
