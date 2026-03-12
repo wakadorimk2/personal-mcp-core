@@ -356,10 +356,12 @@ _DASHBOARD_HTML_TEMPLATE = """\
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>活動</title>
 <style>
-body { font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 1rem; }
+body { --heatmap-cell-size: clamp(24px, 3.4vh, 29px); --heatmap-gap: 2px; font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 1rem; }
 h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
-.heatmap { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-bottom: 1.5rem; }
-.heatmap-cell { aspect-ratio: 1; border-radius: 2px; }
+.heatmap-scroll { overflow-x: auto; overflow-y: hidden; margin-bottom: 1.25rem; -webkit-overflow-scrolling: touch; }
+.heatmap { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, var(--heatmap-cell-size)); grid-auto-columns: var(--heatmap-cell-size); gap: var(--heatmap-gap); width: max-content; }
+.heatmap-cell { width: var(--heatmap-cell-size); height: var(--heatmap-cell-size); border-radius: 2px; }
+.heatmap-cell-empty { background: transparent; }
 #candidates { margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .candidate-tag {
   margin-top: 0;
@@ -453,8 +455,8 @@ h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
 </style>
 </head>
 <body>
-<h2>直近28日</h2>
-<div class="heatmap" id="heatmap"></div>
+<h2>直近365日</h2>
+<div class="heatmap-scroll" id="heatmap-scroll"><div class="heatmap" id="heatmap"></div></div>
 <button type="button" id="refresh-btn">再読み込み</button>
 <div class="candidate-mode-switcher" aria-label="候補タグ動作切替">
   <button type="button" id="candidate-compose-mode" class="candidate-mode-btn active">入力してから保存</button>
@@ -571,6 +573,50 @@ function candidateSource(item) {
   return "";
 }
 
+function shapeToWeekGrid(items) {
+  if (!Array.isArray(items) || items.length === 0) return [];
+  var firstDate = new Date(items[0].date + "T00:00:00");
+  var firstWeekday = firstDate.getDay();
+  var weeks = [];
+  items.forEach(function(item, index) {
+    var slot = firstWeekday + index;
+    var weekIndex = Math.floor(slot / 7);
+    var weekdayIndex = slot % 7;
+    if (!weeks[weekIndex]) {
+      weeks[weekIndex] = [null, null, null, null, null, null, null];
+    }
+    weeks[weekIndex][weekdayIndex] = item;
+  });
+  return weeks;
+}
+
+function renderHeatmapGrid(el, weeks) {
+  el.innerHTML = '';
+  weeks.forEach(function(week) {
+    week.forEach(function(item) {
+      var cell = document.createElement('div');
+      cell.className = 'heatmap-cell';
+      if (!item) {
+        cell.classList.add('heatmap-cell-empty');
+        cell.setAttribute('aria-hidden', 'true');
+        el.appendChild(cell);
+        return;
+      }
+      cell.style.background = heatColor(item.count);
+      cell.title = item.date + ': ' + item.count + '件';
+      el.appendChild(cell);
+    });
+  });
+}
+
+function scrollHeatmapToLatest() {
+  var wrapper = document.getElementById('heatmap-scroll');
+  if (!wrapper) return;
+  requestAnimationFrame(function() {
+    wrapper.scrollLeft = wrapper.scrollWidth;
+  });
+}
+
 function renderCandidateMode() {
   var composeActive = candidateTapMode === "compose";
   document.getElementById("candidate-compose-mode").classList.toggle("active", composeActive);
@@ -671,18 +717,12 @@ function renderCandidates(items) {
 }
 
 async function loadHeatmap() {
-  var r = await fetch('/api/heatmap');
+  var r = await fetch('/api/heatmap?days=365');
   if (!r.ok) throw new Error("http " + r.status);
   var data = await r.json();
   var el = document.getElementById('heatmap');
-  el.innerHTML = '';
-  data.forEach(function(item) {
-    var cell = document.createElement('div');
-    cell.className = 'heatmap-cell';
-    cell.style.background = heatColor(item.count);
-    cell.title = item.date + ': ' + item.count + '件';
-    el.appendChild(cell);
-  });
+  renderHeatmapGrid(el, shapeToWeekGrid(data));
+  scrollHeatmapToLatest();
 }
 
 async function loadCandidates() {
@@ -878,6 +918,21 @@ def _make_html() -> str:
     return _HTML.replace("DOMAIN_OPTIONS", domain_opts).replace("KIND_OPTIONS", kind_opts)
 
 
+def _parse_positive_int_query(params: dict[str, list[str]], key: str, *, default: int) -> int:
+    values = params.get(key, [])
+    if not values:
+        return default
+    if len(values) != 1 or not values[0]:
+        raise ValueError(f"{key} query param must be a positive integer")
+    try:
+        parsed = int(values[0])
+    except ValueError as exc:
+        raise ValueError(f"{key} query param must be a positive integer") from exc
+    if parsed <= 0:
+        raise ValueError(f"{key} query param must be a positive integer")
+    return parsed
+
+
 def _make_handler(data_dir: str):
     class _Handler(BaseHTTPRequestHandler):
         def log_message(self, fmt: str, *args: Any) -> None:
@@ -934,7 +989,13 @@ def _make_handler(data_dir: str):
                 else:
                     self._json(200, rec)
             elif parsed.path == "/api/heatmap":
-                self._json(200, count_events_by_date(28, data_dir or None))
+                params = parse_qs(parsed.query, keep_blank_values=True)
+                try:
+                    days = _parse_positive_int_query(params, "days", default=28)
+                except ValueError as exc:
+                    self._json(400, {"error": str(exc)})
+                    return
+                self._json(200, count_events_by_date(days, data_dir or None))
             elif parsed.path == "/api/heatmap/debug":
                 self._json(200, count_events_by_date_debug(28, data_dir or None))
             elif parsed.path == "/api/candidates":

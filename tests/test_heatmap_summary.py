@@ -344,8 +344,9 @@ def test_http_get_dashboard_200(data_dir: Path) -> None:
     statuses, headers, html = _do_get_html(handler_cls, "/dashboard")
     assert statuses == [200]
     assert headers["Content-Type"] == "text/html; charset=utf-8"
-    assert "直近28日" in html
+    assert "直近365日" in html
     assert 'id="heatmap"' in html
+    assert 'id="heatmap-scroll"' in html
     assert 'id="refresh-btn"' in html
     assert 'id="draft-preview"' in html
     assert "再読み込みに失敗しました。再試行してください。" in html
@@ -387,6 +388,42 @@ def test_http_get_heatmap_200(data_dir: Path) -> None:
     assert all("date" in item and "count" in item for item in body)
 
 
+def test_http_get_heatmap_accepts_days_param_365(data_dir: Path) -> None:
+    handler_cls = _make_handler_for_test(str(data_dir))
+    status, body = _do_get_json(handler_cls, "/api/heatmap?days=365")[0]
+    assert status == 200
+    assert len(body) == 365
+    assert all("date" in item and "count" in item for item in body)
+
+
+def test_http_get_heatmap_rejects_non_integer_days_param(data_dir: Path) -> None:
+    handler_cls = _make_handler_for_test(str(data_dir))
+    status, body = _do_get_json(handler_cls, "/api/heatmap?days=abc")[0]
+    assert status == 400
+    assert body == {"error": "days query param must be a positive integer"}
+
+
+def test_http_get_heatmap_rejects_non_positive_days_param(data_dir: Path) -> None:
+    handler_cls = _make_handler_for_test(str(data_dir))
+    status, body = _do_get_json(handler_cls, "/api/heatmap?days=0")[0]
+    assert status == 400
+    assert body == {"error": "days query param must be a positive integer"}
+
+
+def test_http_get_heatmap_rejects_blank_days_param(data_dir: Path) -> None:
+    handler_cls = _make_handler_for_test(str(data_dir))
+    status, body = _do_get_json(handler_cls, "/api/heatmap?days=")[0]
+    assert status == 400
+    assert body == {"error": "days query param must be a positive integer"}
+
+
+def test_http_get_heatmap_rejects_multiple_days_params(data_dir: Path) -> None:
+    handler_cls = _make_handler_for_test(str(data_dir))
+    status, body = _do_get_json(handler_cls, "/api/heatmap?days=365&days=28")[0]
+    assert status == 400
+    assert body == {"error": "days query param must be a positive integer"}
+
+
 def test_http_get_heatmap_returns_shipped_density_for_mixed_day(data_dir: Path) -> None:
     db_path = data_dir / "events.db"
     today_local = _today_local()
@@ -424,7 +461,7 @@ def test_http_get_summaries_list_200_with_record(data_dir: Path) -> None:
 def test_http_get_dashboard_layout_order(data_dir: Path) -> None:
     handler_cls = _make_handler_for_test(str(data_dir))
     _, _, html = _do_get_html(handler_cls, "/dashboard")
-    heatmap_pos = html.find('id="heatmap"')
+    heatmap_pos = html.find('id="heatmap-scroll"')
     candidates_pos = html.find('id="candidates"')
     log_text_pos = html.find('id="log-text"')
     assert heatmap_pos != -1
@@ -469,6 +506,25 @@ def test_http_get_dashboard_candidate_tap_script_exists(data_dir: Path) -> None:
     assert "flow.editedBeforeSubmit = true;" in html
     assert "resetDashboardInputFlow();" in html
     assert 'await fetch("/api/candidates")' in html
+
+
+def test_http_get_dashboard_heatmap_uses_365_day_grid_contract(data_dir: Path) -> None:
+    handler_cls = _make_handler_for_test(str(data_dir))
+    _, _, html = _do_get_html(handler_cls, "/dashboard")
+    assert "body { --heatmap-cell-size: clamp(24px, 3.4vh, 29px); --heatmap-gap: 2px;" in html
+    assert ".heatmap-scroll { overflow-x: auto; overflow-y: hidden;" in html
+    assert ".heatmap { display: grid; grid-auto-flow: column;" in html
+    assert "grid-template-rows: repeat(7, var(--heatmap-cell-size));" in html
+    assert "grid-auto-columns: var(--heatmap-cell-size);" in html
+    assert "gap: var(--heatmap-gap);" in html
+    assert "function shapeToWeekGrid(items) {" in html
+    assert "function renderHeatmapGrid(el, weeks) {" in html
+    assert "weeks.forEach(function(week) {" in html
+    assert "week.forEach(function(item) {" in html
+    assert "await fetch('/api/heatmap?days=365')" in html
+    assert "function scrollHeatmapToLatest() {" in html
+    assert "requestAnimationFrame(function() {" in html
+    assert "wrapper.scrollLeft = wrapper.scrollWidth;" in html
 
 
 def test_http_get_dashboard_ignores_broken_pipe_from_client_disconnect(data_dir: Path) -> None:
