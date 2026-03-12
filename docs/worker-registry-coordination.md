@@ -2,7 +2,7 @@
 
 > 関連 Issue: #376
 > 関連 Issue: #324, #375, #373, #374, #378, #379
-> 関連 docs: [`docs/worker-domain.md`](./worker-domain.md), [`docs/AI_WORKFLOW.md`](./AI_WORKFLOW.md)
+> 関連 docs: [`docs/worker-domain.md`](./worker-domain.md), [`docs/worker-claim-protocol.md`](./worker-claim-protocol.md), [`docs/AI_WORKFLOW.md`](./AI_WORKFLOW.md)
 
 ## 目的
 
@@ -86,7 +86,7 @@ registry が担わないもの:
 GitHub 側に置く情報:
 
 - 誰が issue を claim したか
-- claim が release / expire / override されたか
+- claim が release / handoff / override されたか
 - どの worker へ handoff したいか、handoff が成立したか
 - maintainer が介入した判断ログ
 
@@ -117,7 +117,9 @@ registry 側に置く情報:
 
 ### Claim Protocol（#375）
 
-- claim / release / expire / handoff の状態遷移と正規 record 形式を定義する
+- GitHub Issue comments を canonical event log とする claim protocol を定義する
+- current owner / current claim state は event log から導出する
+- v1 では `refresh` / 自動 `expire` を入れず、stale claim は maintainer override で扱う
 - registry はその protocol を補助的に可視化してよいが、正本の置換をしない
 
 ## divergence rule
@@ -134,7 +136,6 @@ GitHub 側と registry 側で状態がずれた場合は、次の順で扱う。
 
 ## follow-up items
 
-- #375: claim / handoff record の具体形式と stale claim ルールを定義する
 - #373: playbook 上の着手 / 中断 / handoff / 再開条件を、この境界に合わせて記述する
 - #374: dispatch policy 上の確認順序を `GitHub claim -> registry observability` に揃える
 - #379: dashboard や `worker-status-set` の baseline 実装を、この責務分担に沿って更新する
