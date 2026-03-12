@@ -107,7 +107,9 @@ def test_notify_discord_channel_posts_expected_payload(tmp_path: Path) -> None:
 def test_notify_discord_channel_uses_secret_file_fallback(tmp_path: Path) -> None:
     _, args_file = _write_fake_curl(tmp_path)
     home = tmp_path / "home"
-    _write_secret_file(home, 'export DISCORD_WEBHOOK_AI_STATUS="https://discord.example/from-file"\n')
+    _write_secret_file(
+        home, 'export DISCORD_WEBHOOK_AI_STATUS="https://discord.example/from-file"\n'
+    )
 
     result = _run_notify(
         "--channel",
@@ -132,7 +134,9 @@ def test_notify_discord_channel_uses_secret_file_fallback(tmp_path: Path) -> Non
 def test_notify_discord_channel_prefers_env_over_secret_file(tmp_path: Path) -> None:
     _, args_file = _write_fake_curl(tmp_path)
     home = tmp_path / "home"
-    _write_secret_file(home, 'export DISCORD_WEBHOOK_AI_STATUS="https://discord.example/from-file"\n')
+    _write_secret_file(
+        home, 'export DISCORD_WEBHOOK_AI_STATUS="https://discord.example/from-file"\n'
+    )
 
     result = _run_notify(
         "--channel",
