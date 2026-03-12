@@ -22,7 +22,7 @@ def _run_codex_notify(payload: dict[str, object]) -> subprocess.CompletedProcess
         capture_output=True,
         text=True,
         check=True,
-        env=os.environ.copy(),
+        env={**os.environ, "NOTIFY_CHANNEL": "stdout"},
     )
 
 
@@ -53,4 +53,17 @@ def test_codex_notify_accepts_legacy_snake_case_input_messages() -> None:
     )
 
     assert result.stdout == "[task_completed/codex] run the smoke test: Smoke test completed.\n"
+    assert result.stderr == ""
+
+
+def test_codex_notify_preserves_unknown_payload_type_as_event() -> None:
+    result = _run_codex_notify(
+        {
+            "type": "review_complete",
+            "input_messages": ["summarize the diff"],
+            "last-assistant-message": "Review completed.",
+        }
+    )
+
+    assert result.stdout == "[review_complete/codex] summarize the diff: Review completed.\n"
     assert result.stderr == ""

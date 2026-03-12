@@ -4,20 +4,52 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CHANNEL_DIR="${NOTIFY_CHANNEL_DIR:-$SCRIPT_DIR/notify.d}"
 CHANNEL="${NOTIFY_CHANNEL:-stdout}"
+KIND=""
 TITLE="${NOTIFY_TITLE:-}"
 EVENT="${NOTIFY_EVENT:-generic}"
 SOURCE="${NOTIFY_SOURCE:-}"
 READ_STDIN="0"
+CHANNEL_ARG_SET="0"
+EVENT_ARG_SET="0"
+
+notification_kind_event() {
+  case "$1" in
+    ai_task_completed)
+      printf '%s' "task_completed"
+      ;;
+    ai_task_failed)
+      printf '%s' "task_failed"
+      ;;
+    smoke_test)
+      printf '%s' "task_completed"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+notification_kind_channel() {
+  case "$1" in
+    smoke_test)
+      printf '%s' "discord-test"
+      ;;
+    *)
+      printf '%s' ""
+      ;;
+  esac
+}
 
 usage() {
   cat <<'EOF'
-usage: notify [--channel NAME] [--title TEXT] [--event NAME] [--source NAME] [--stdin] MESSAGE
+usage: notify [--channel NAME] [--title TEXT] [--event NAME] [--kind NAME] [--source NAME] [--stdin] MESSAGE
 
 Common notification wrapper for CLI tools.
 
 Examples:
   notify "build finished"
   notify --event input-required --title "Codex" "Need approval"
+  notify --kind ai_task_completed --title "Claude Code" "Task completed"
   printf 'long message' | notify --stdin --channel stdout
 EOF
 }
@@ -26,6 +58,11 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --channel)
       CHANNEL="$2"
+      CHANNEL_ARG_SET="1"
+      shift 2
+      ;;
+    --kind)
+      KIND="$2"
       shift 2
       ;;
     --title)
@@ -34,6 +71,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     --event)
       EVENT="$2"
+      EVENT_ARG_SET="1"
       shift 2
       ;;
     --source)
@@ -62,6 +100,23 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [[ -n "$KIND" ]]; then
+  if [[ "$EVENT_ARG_SET" == "1" || "$CHANNEL_ARG_SET" == "1" ]]; then
+    echo "notify: --kind cannot be combined with --event or --channel" >&2
+    exit 2
+  fi
+
+  if ! EVENT="$(notification_kind_event "$KIND")"; then
+    echo "notify: unknown notification kind: $KIND" >&2
+    exit 2
+  fi
+
+  resolved_channel="$(notification_kind_channel "$KIND")"
+  if [[ -n "$resolved_channel" ]]; then
+    CHANNEL="$resolved_channel"
+  fi
+fi
 
 if [[ "$READ_STDIN" == "1" ]]; then
   if [[ $# -ne 0 ]]; then

@@ -7,6 +7,16 @@ import sys
 from pathlib import Path
 
 
+class NotificationKind:
+    AI_TASK_COMPLETED = "ai_task_completed"
+    AI_TASK_FAILED = "ai_task_failed"
+
+
+_RAW_TYPE_TO_KIND: dict[str, str] = {
+    "agent-turn-complete": NotificationKind.AI_TASK_COMPLETED,
+}
+
+
 def _repo_root() -> Path:
     path = Path(__file__).resolve().parent
     while path != path.parent:
@@ -43,8 +53,8 @@ def _single_line(text: str, limit: int = 80) -> str:
 
 
 def _notify_args(payload: dict[str, object]) -> list[str]:
-    raw_event = _payload_text(payload, "type") or "agent-turn-complete"
-    event = "task_completed" if raw_event == "agent-turn-complete" else raw_event
+    raw_type = _payload_text(payload, "type") or "agent-turn-complete"
+    kind = _RAW_TYPE_TO_KIND.get(raw_type)
     source = _payload_text(payload, "client") or "codex"
     input_messages = _payload_list(payload, "input-messages", "input_messages")
     title = _single_line(input_messages[-1]) if input_messages else "Codex task completed"
@@ -53,7 +63,8 @@ def _notify_args(payload: dict[str, object]) -> list[str]:
         message = "Codex finished the requested task."
 
     notify = _repo_root() / "scripts" / "notify"
-    return [str(notify), "--event", event, "--title", title, "--source", source, message]
+    event_args = ["--kind", kind] if kind is not None else ["--event", raw_type]
+    return [str(notify), *event_args, "--title", title, "--source", source, message]
 
 
 def main() -> int:

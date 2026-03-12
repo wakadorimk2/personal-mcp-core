@@ -4,6 +4,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+KIND_AI_TASK_COMPLETED="ai_task_completed"
+KIND_AI_TASK_FAILED="ai_task_failed"
+
 cd "$REPO_ROOT"
 
 set +e
@@ -12,15 +15,15 @@ status=$?
 set -e
 
 if [[ "$status" -eq 0 ]]; then
-  event="task_completed"
+  kind="$KIND_AI_TASK_COMPLETED"
   message="Claude Code task completed"
 else
-  event="task_failed"
+  kind="$KIND_AI_TASK_FAILED"
   message="Claude Code exited with status $status"
 fi
 
 if ! "$REPO_ROOT/scripts/notify" \
-  --event "$event" \
+  --kind "$kind" \
   --title "Claude Code" \
   --source "claude_code" \
   "$message"; then
