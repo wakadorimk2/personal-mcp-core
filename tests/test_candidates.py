@@ -533,6 +533,11 @@ def test_list_candidates_caps_at_8_even_when_text_yields_multiple_candidates(
     got = list_candidates(data_dir=str(data_dir))
     assert len(got) == 8
     assert _sources(got) == ["recent"] * 8
+    # recent source is consumed in newest-first order, and each text can emit up to
+    # two candidates. In this fixture those eight slots fill with:
+    # 休憩, 移動, 1on1, 振り返り, VS Code, Codex, GitHub, コードレビュー.
+    # GitHub stays because the tokenizer tries shorter noun chunks once
+    # "GitHub issue triage" exceeds MAX_CANDIDATE_LENGTH.
     assert [item["text"] for item in got] == [
         "休憩",
         "移動",
@@ -608,4 +613,7 @@ def test_list_candidates_real_tagger_keeps_natural_candidates(data_dir: Path) ->
     assert "VS Code" in labels
     assert "1on1" in labels
     assert "コードレビュー" in labels
+    assert "消費" not in labels
+    assert "実施" not in labels
+    assert "調査" not in labels
     assert all("山田" not in label for label in labels)

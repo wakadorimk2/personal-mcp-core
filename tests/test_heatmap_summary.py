@@ -17,6 +17,7 @@ from personal_mcp.tools.daily_summary import (
     count_events_by_date,
     count_events_by_date_debug,
     generate_daily_summary,
+    heatmap_density_audit,
     list_summaries,
 )
 
@@ -576,3 +577,48 @@ def test_http_get_heatmap_debug_200(data_dir: Path) -> None:
     assert len(body) == 28
     expected_keys = {"date", "raw_count", "shipped_density", "telemetry_count", "life_count"}
     assert all(set(item.keys()) == expected_keys for item in body)
+
+
+def test_heatmap_density_audit_uses_last_365_days_as_primary_window(data_dir: Path) -> None:
+    db_path = data_dir / "events.db"
+    old_ts = _date_days_ago(400) + "T12:00:00+00:00"
+    today_ts = datetime.now(timezone.utc).isoformat()
+    _add_event(db_path, ts=old_ts)
+    _add_event(db_path, ts=today_ts)
+
+    result = heatmap_density_audit(data_dir=str(data_dir))
+
+    assert result["policy"]["primary_window_days"] == 365
+    assert result["primary_window"]["label"] == "last_365_days"
+    assert result["primary_window"]["role"] == "primary_conclusion"
+    assert result["primary_window"]["stats"]["total_days"] == 365
+    assert result["primary_window"]["stats"]["max"] == 1
+    assert result["all_time_reference"] is not None
+    assert result["all_time_reference"]["role"] == "secondary_reference"
+    assert result["all_time_reference"]["stats"]["total_days"] == 401
+    assert result["all_time_reference"]["start_date"] == _date_days_ago(400)
+
+
+def test_heatmap_density_audit_marks_heuristics_as_advisory_only(data_dir: Path) -> None:
+    db_path = data_dir / "events.db"
+    _add_event(db_path, ts=datetime.now(timezone.utc).isoformat())
+    for _ in range(20):
+        _add_event(db_path, ts=datetime.now(timezone.utc).isoformat())
+
+    result = heatmap_density_audit(data_dir=str(data_dir))
+    flags = result["primary_window"]["heuristic_flags"]
+
+    assert flags["advisory_only"] is True
+    assert "p95_over_p75" in flags["rules"]
+    assert "max_over_p90" in flags["rules"]
+    assert flags["rules"]["p95_over_p75"]["note"].endswith("not a decision rule.")
+    assert flags["rules"]["max_over_p90"]["note"].endswith("not a decision rule.")
+
+
+def test_heatmap_density_audit_returns_no_all_time_reference_when_empty(data_dir: Path) -> None:
+    result = heatmap_density_audit(data_dir=str(data_dir))
+
+    assert result["earliest_real_data_date"] is None
+    assert result["all_time_reference"] is None
+    assert result["primary_window"]["stats"]["total_days"] == 365
+    assert result["primary_window"]["stats"]["zero_day_ratio"] == 1

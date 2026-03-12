@@ -2,13 +2,30 @@ from __future__ import annotations
 
 import json
 import urllib.request
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional
 
 from personal_mcp.core.event import build_v1_record
 from personal_mcp.storage.events_store import append_event, read_events
 
 
 _SKIP_TYPES: frozenset = frozenset({"WatchEvent", "PublicEvent", "MemberEvent"})
+
+
+def _load_existing_github_event_ids(data_dir: Optional[str] = None) -> set[str]:
+    """Return github_event_id values already stored in runtime events.
+
+    github_sync no longer uses a pre-read for dedup; storage-boundary UNIQUE
+    handling is the source of truth. This helper remains as a read-only utility
+    for tests and diagnostics.
+    """
+    ids: set[str] = set()
+    for record in read_events(data_dir=data_dir):
+        if record.get("source") != "github":
+            continue
+        github_event_id = record.get("data", {}).get("github_event_id")
+        if github_event_id:
+            ids.add(str(github_event_id))
+    return ids
 
 
 def _fetch_github_events(username: str, token: Optional[str]) -> List[Dict[str, Any]]:
@@ -96,17 +113,6 @@ def _map_event_to_record(gh_event: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     )
 
 
-def _load_existing_github_event_ids(data_dir: Optional[str]) -> Set[str]:
-    """Return github_event_id values stored in the runtime primary storage."""
-    ids: Set[str] = set()
-    for r in read_events(data_dir):
-        if r.get("source") == "github":
-            eid = r.get("data", {}).get("github_event_id")
-            if eid:
-                ids.add(str(eid))
-    return ids
-
-
 def github_sync(
     username: str,
     token: Optional[str] = None,
@@ -115,8 +121,9 @@ def github_sync(
     """Fetch GitHub user events and append new ones via storage boundary.
 
     Returns {"saved": int, "skipped": int, "failed": int}.
+    Dedup is handled at the storage boundary via DB UNIQUE constraint on
+    dedup_key; no pre-read of existing records is performed.
     """
-    existing_ids = _load_existing_github_event_ids(data_dir)
     try:
         gh_events = _fetch_github_events(username, token)
     except Exception:
@@ -127,18 +134,16 @@ def github_sync(
 
     saved = skipped = failed = 0
     for gh_event in gh_events:
-        event_id = str(gh_event.get("id", ""))
-        if event_id in existing_ids:
-            skipped += 1
-            continue
         try:
             record = _map_event_to_record(gh_event)
             if record is None:
                 skipped += 1
                 continue
-            append_event(record, data_dir=data_dir)
-            existing_ids.add(event_id)
-            saved += 1
+            outcome = append_event(record, data_dir=data_dir)
+            if outcome == "saved":
+                saved += 1
+            else:
+                skipped += 1
         except Exception:
             failed += 1
 

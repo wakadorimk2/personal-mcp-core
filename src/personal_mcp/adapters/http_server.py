@@ -577,7 +577,7 @@ function renderCandidateMode() {
   document.getElementById("candidate-quick-mode").classList.toggle("active", !composeActive);
   document.getElementById("candidate-mode-hint").textContent = composeActive
     ? "候補タグをタップすると入力欄に入り、内容を確認してから保存できます。"
-    : "Quickログ ON: 候補タグをタップするとそのまま保存します。";
+    : "Quickログ: 次の候補タップ 1 回だけ即保存します。";
 }
 
 function currentDraftText() {
@@ -816,6 +816,7 @@ async function saveCandidateQuickLog(text, source) {
     trigger: "candidate_quick_save",
     candidate_source: source || ""
   });
+  setCandidateTapMode("compose");
 }
 
 document.getElementById("candidate-compose-mode").addEventListener("click", function() {

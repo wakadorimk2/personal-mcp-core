@@ -139,6 +139,21 @@ def test_cli_summary_generate_text_output_contains_date(
     assert _DATE in capsys.readouterr().out
 
 
+def test_cli_heatmap_density_audit_json_uses_365_day_primary_window(
+    data_dir: Path, capsys: pytest.CaptureFixture
+) -> None:
+    from personal_mcp.server import main
+
+    event_add_sqlite(domain="mood", kind="note", text="x", data_dir=str(data_dir))
+
+    main(["heatmap-density-audit", "--json", "--data-dir", str(data_dir)])
+    result = json.loads(capsys.readouterr().out)
+
+    assert result["policy"]["primary_window_days"] == 365
+    assert result["primary_window"]["label"] == "last_365_days"
+    assert result["primary_window"]["heuristic_flags"]["advisory_only"] is True
+
+
 def _get_summaries(handler_cls, path: str):
     handler = handler_cls.__new__(handler_cls)
     handler.headers = {}

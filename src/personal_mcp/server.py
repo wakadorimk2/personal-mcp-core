@@ -12,7 +12,7 @@ from personal_mcp.adapters.mcp_server import get_system_context
 from personal_mcp.storage.events_store import rebuild_db_from_jsonl, rebuild_jsonl_from_db
 from personal_mcp.storage.path import resolve_data_dir
 from personal_mcp.tools.event import event_add, event_list
-from personal_mcp.tools.daily_summary import generate_daily_summary
+from personal_mcp.tools.daily_summary import generate_daily_summary, heatmap_density_audit
 from personal_mcp.tools.github_sync import github_sync
 from personal_mcp.tools.github_ingest import github_ingest
 from personal_mcp.tools.poe2_client_watcher import watch_client_log
@@ -194,6 +194,18 @@ def main(argv: Optional[List[str]] = None) -> int:
     p_summary.add_argument("--interpretation", default=None, help="optional interpretation text")
     p_summary.add_argument("--data-dir", default=None)
     p_summary.add_argument("--json", action="store_true")
+    p_heatmap_audit = sub.add_parser(
+        "heatmap-density-audit",
+        help="summarize shipped_density distribution for heatmap scale calibration",
+    )
+    p_heatmap_audit.add_argument(
+        "--primary-days",
+        type=int,
+        default=365,
+        help="primary analysis window in days (default: 365)",
+    )
+    p_heatmap_audit.add_argument("--data-dir", default=None)
+    p_heatmap_audit.add_argument("--json", action="store_true")
     p_db_to_jsonl = sub.add_parser(
         "storage-db-to-jsonl",
         help="recovery-only maintenance: regenerate events.jsonl from events.db",
@@ -377,6 +389,33 @@ def main(argv: Optional[List[str]] = None) -> int:
             print(json.dumps(record, ensure_ascii=False, indent=2))
         else:
             print(f"summary generated for {target_date}: {record['data']['text'][:60]}")
+        return 0
+
+    if args.cmd == "heatmap-density-audit":
+        result = heatmap_density_audit(primary_days=args.primary_days, data_dir=data_dir)
+        if args.json:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        else:
+            primary = result["primary_window"]
+            primary_stats = primary["stats"]
+            print(
+                f"primary {primary['label']} "
+                f"{primary['start_date']}..{primary['end_date']} "
+                f"p50={primary_stats['p50']} p90={primary_stats['p90']} "
+                f"p95={primary_stats['p95']} max={primary_stats['max']} "
+                f"zero_day_ratio={primary_stats['zero_day_ratio']}"
+            )
+            all_time = result.get("all_time_reference")
+            if all_time is not None:
+                all_time_stats = all_time["stats"]
+                print(
+                    f"secondary {all_time['label']} "
+                    f"{all_time['start_date']}..{all_time['end_date']} "
+                    f"p50={all_time_stats['p50']} p90={all_time_stats['p90']} "
+                    f"p95={all_time_stats['p95']} max={all_time_stats['max']} "
+                    f"zero_day_ratio={all_time_stats['zero_day_ratio']}"
+                )
+            print("heuristics are advisory only")
         return 0
 
     if args.cmd == "storage-db-to-jsonl":

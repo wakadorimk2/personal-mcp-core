@@ -168,6 +168,8 @@ make test
 
 `make setup` は `python -m pip install -e ".[dev]"` の薄いラッパーなので、optional dependency の `dev` を毎回思い出さなくてよい。
 
+project 自体の editable install は、`pytest` を動かすための前提ではない。テスト時の import 補助は [`tests/conftest.py`](./tests/conftest.py) で行っている。
+
 ```bash
 # 開発用インストール
 make setup
