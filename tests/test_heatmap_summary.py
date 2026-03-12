@@ -511,10 +511,8 @@ def test_http_get_dashboard_candidate_tap_script_exists(data_dir: Path) -> None:
 def test_http_get_dashboard_heatmap_uses_365_day_grid_contract(data_dir: Path) -> None:
     handler_cls = _make_handler_for_test(str(data_dir))
     _, _, html = _do_get_html(handler_cls, "/dashboard")
-    assert "body { --heatmap-cell-size: 5px; --heatmap-gap: 1px;" in html
-    assert "@media (min-width: 402px) {" in html
-    assert "body { --heatmap-cell-size: 6px; }" in html
-    assert ".heatmap-scroll { display: flex; justify-content: flex-end; overflow: hidden;" in html
+    assert "body { --heatmap-cell-size: 6px; --heatmap-gap: 1px;" in html
+    assert ".heatmap-scroll { overflow-x: auto; overflow-y: hidden;" in html
     assert ".heatmap { display: grid; grid-auto-flow: column;" in html
     assert "grid-template-rows: repeat(7, var(--heatmap-cell-size));" in html
     assert "grid-auto-columns: var(--heatmap-cell-size);" in html
@@ -524,7 +522,9 @@ def test_http_get_dashboard_heatmap_uses_365_day_grid_contract(data_dir: Path) -
     assert "weeks.forEach(function(week) {" in html
     assert "week.forEach(function(item) {" in html
     assert "await fetch('/api/heatmap?days=365')" in html
-    assert "margin-left: auto;" in html
+    assert "function scrollHeatmapToLatest() {" in html
+    assert "requestAnimationFrame(function() {" in html
+    assert "wrapper.scrollLeft = wrapper.scrollWidth;" in html
 
 
 def test_http_get_dashboard_ignores_broken_pipe_from_client_disconnect(data_dir: Path) -> None:
