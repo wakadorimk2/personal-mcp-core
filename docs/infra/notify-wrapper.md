@@ -40,14 +40,28 @@ The adapter sends plain-text webhook payloads only. Missing webhook
 configuration exits with code `2`; HTTP or transport failures exit with code
 `1`.
 
+If you need normal Discord delivery split by environment, set
+`NOTIFY_ENV=dev` or `NOTIFY_ENV=prod` before calling `notify`. In that case
+the logical `discord` route switches to env-specific webhook names:
+
+| `NOTIFY_ENV` | webhook env var | secret-file fallback |
+|---|---|---|
+| unset | `DISCORD_WEBHOOK_AI_STATUS` | `~/.config/secrets/discord_webhook.env` |
+| `dev` | `DISCORD_WEBHOOK_AI_STATUS_DEV` | `~/.config/secrets/discord_webhook_dev.env` |
+| `prod` | `DISCORD_WEBHOOK_AI_STATUS_PROD` | `~/.config/secrets/discord_webhook_prod.env` |
+
+This split applies only to the normal `discord` route. Purpose-aware routing
+still takes precedence, so `--kind smoke_test` continues to land on
+`discord-test` and does not reuse the `dev` / `prod` webhook selection.
+
 ### Secret management
 
 Webhook secret は次の優先順位で解決される。
 
-1. `DISCORD_WEBHOOK_AI_STATUS` environment variable
-2. `~/.config/secrets/discord_webhook.env` fallback
+1. route-selected environment variable
+2. route-selected secret-file fallback
 
-adapter は `DISCORD_WEBHOOK_AI_STATUS` が未設定のときだけ fallback file を読む。
+adapter は route-selected webhook env var が未設定のときだけ fallback file を読む。
 そのため、一時的な差し替えや検証では process env を優先できる。
 
 Example:
@@ -60,6 +74,14 @@ echo 'export DISCORD_WEBHOOK_AI_STATUS="https://discord.com/api/webhooks/..."' \
   > ~/.config/secrets/discord_webhook.env
 
 chmod 600 ~/.config/secrets/discord_webhook.env
+```
+
+Environment-specific example:
+
+```bash
+export NOTIFY_ENV=dev
+export DISCORD_WEBHOOK_AI_STATUS_DEV="https://discord.com/api/webhooks/..."
+notify --event task_completed --title "issue #285" --source codex-tui "routed to dev"
 ```
 
 ## Discord smoke-test channel
@@ -393,8 +415,10 @@ Current mapping for Codex task completion:
 
 The bridge keeps `scripts/notify` as the single notification entrypoint, so
 channel selection for day-to-day delivery still comes from `NOTIFY_CHANNEL` /
-`NOTIFY_CHANNEL_DIR`. `--smoke-test` uses kind routing and lands on
-`discord-test`.
+`NOTIFY_CHANNEL_DIR`. If `NOTIFY_ENV=dev|prod` is set and the route stays on
+logical `discord`, the wrapper selects `DISCORD_WEBHOOK_AI_STATUS_DEV` or
+`DISCORD_WEBHOOK_AI_STATUS_PROD`. `--smoke-test` still uses kind routing and
+lands on `discord-test`.
 
 ### Dry-run verification
 

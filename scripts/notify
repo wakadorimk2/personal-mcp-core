@@ -52,8 +52,24 @@ resolve_notification_route() {
 
   case "$logical_channel" in
     discord)
-      DISCORD_WEBHOOK_ENV_NAME="DISCORD_WEBHOOK_AI_STATUS"
-      DISCORD_WEBHOOK_SECRET_FILE="$HOME/.config/secrets/discord_webhook.env"
+      case "${NOTIFY_ENV:-}" in
+        "")
+          DISCORD_WEBHOOK_ENV_NAME="DISCORD_WEBHOOK_AI_STATUS"
+          DISCORD_WEBHOOK_SECRET_FILE="$HOME/.config/secrets/discord_webhook.env"
+          ;;
+        dev)
+          DISCORD_WEBHOOK_ENV_NAME="DISCORD_WEBHOOK_AI_STATUS_DEV"
+          DISCORD_WEBHOOK_SECRET_FILE="$HOME/.config/secrets/discord_webhook_dev.env"
+          ;;
+        prod)
+          DISCORD_WEBHOOK_ENV_NAME="DISCORD_WEBHOOK_AI_STATUS_PROD"
+          DISCORD_WEBHOOK_SECRET_FILE="$HOME/.config/secrets/discord_webhook_prod.env"
+          ;;
+        *)
+          echo "notify: unsupported NOTIFY_ENV: ${NOTIFY_ENV}" >&2
+          exit 2
+          ;;
+      esac
       ;;
     discord-test)
       ADAPTER_CHANNEL="discord"
