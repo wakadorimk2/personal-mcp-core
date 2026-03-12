@@ -3,6 +3,7 @@
 この文書は [`docs/RUNBOOK_BASELINE.md`](./RUNBOOK_BASELINE.md) で定義した runtime-specific runbook baseline の exemplar（Codex CLI 用）です。
 
 Codex はこの runbook に従って、`review -> ruff -> pytest -> 最小修正 -> 再実行 -> Draft PR` の順で進む。役割境界の正本は [docs/AI_ROLE_POLICY.md](./AI_ROLE_POLICY.md) とし、この文書は実行手順に絞る。
+Repo-wide AI entrypoint は [`AGENTS.md`](../AGENTS.md) です。Codex はまず `AGENTS.md` で read order と precedence を確認し、その後この runbook を使います。
 
 ## Codex がやること
 
@@ -32,7 +33,7 @@ Codex はこの runbook に従って、`review -> ruff -> pytest -> 最小修正
 
 ## 境界変更同期チェック（policy/runbook 系 Issue）
 
-`docs/AI_ROLE_POLICY.md`・`AI_GUIDE.md`・`CLAUDE.md`・`docs/CODEX_RUNBOOK.md`・skills 配布物をまたぐ Issue では、
+`AGENTS.md`・`docs/AI_ROLE_POLICY.md`・`AI_GUIDE.md`・`CLAUDE.md`・`docs/CODEX_RUNBOOK.md`・skills 配布物をまたぐ Issue では、
 Standard Flow の前に次のチェックポイントを実施する。
 
 | Checkpoint | 完了条件 | 次ステップ進行条件 | 停止条件 |

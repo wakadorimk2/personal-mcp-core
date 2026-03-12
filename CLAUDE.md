@@ -6,16 +6,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a personal MCP (Model Context Protocol) context server. Its goal is not to make AI smarter, but to provide stable **assumptions and principles** ("ground")
 so that AI misunderstands the owner less. It exposes `AI_GUIDE.md` as a system-level context payload for LLM/tool clients.
+Repo-wide AI entrypoint is [`AGENTS.md`](./AGENTS.md); this file is Claude Code-specific routing and constraints only.
 
 ## AI workflow: read in this order
 
 When starting any task, read files in this order before writing or changing anything:
 
-1. `CLAUDE.md` (this file) — constraints and conventions
+1. `AGENTS.md` — repo-wide entrypoint, precedence, and source-of-truth map
 2. `AI_GUIDE.md` — the owner's values and behavioral expectations for AI
 3. `docs/AI_ROLE_POLICY.md` — authoritative role split for Claude/Codex operations
-4. `docs/architecture.md` — system structure and extension points (if it exists)
-5. Only then: the specific files relevant to the task
+4. `docs/AI_WORKFLOW.md` — worktree / branch / VSCode rules when operational context matters
+5. `CLAUDE.md` (this file) — Claude-specific routing and constraints
+6. `docs/architecture.md` — system structure and extension points (if it exists)
+7. Only then: the specific files relevant to the task
 
 ## AI role split
 
@@ -30,7 +33,7 @@ If this file, `AI_GUIDE.md`, old templates, or historical comments conflict with
 
 To avoid false stops caused by stale wording, never treat non-authoritative role notes as a blocker by themselves.
 
-`CLAUDE.md` is a routing document for Claude Code — it provides constraints and routes to authoritative sources. It does not replicate role boundary definitions, runtime runbooks, or notification operations.
+`CLAUDE.md` is a routing document for Claude Code after `AGENTS.md` — it provides Claude-specific constraints and routes to authoritative sources. It does not replicate role boundary definitions, runtime runbooks, or notification operations.
 
 ## Practical guardrails for Claude Code
 
