@@ -1,6 +1,9 @@
-# personal-mcp-core
+# orange-garden
+
+A personal observability garden for life events, annotations, and AI agents.
 
 ## What is this
+
 
 個人の活動をローカルに append-only で記録する、CLI ベースのセルフ観測ツール。
 ゲームセッション・気分・作業ログなどを共通の Event Contract v1 レコードとして扱い、runtime では `events.db` に保存してタイムライン表示やドメイン別フィルタリングができる。
