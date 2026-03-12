@@ -511,7 +511,7 @@ def test_http_get_dashboard_candidate_tap_script_exists(data_dir: Path) -> None:
 def test_http_get_dashboard_heatmap_uses_365_day_grid_contract(data_dir: Path) -> None:
     handler_cls = _make_handler_for_test(str(data_dir))
     _, _, html = _do_get_html(handler_cls, "/dashboard")
-    assert "body { --heatmap-cell-size: 6px; --heatmap-gap: 1px;" in html
+    assert "body { --heatmap-cell-size: clamp(24px, 3.4vh, 29px); --heatmap-gap: 2px;" in html
     assert ".heatmap-scroll { overflow-x: auto; overflow-y: hidden;" in html
     assert ".heatmap { display: grid; grid-auto-flow: column;" in html
     assert "grid-template-rows: repeat(7, var(--heatmap-cell-size));" in html

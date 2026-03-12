@@ -356,11 +356,11 @@ _DASHBOARD_HTML_TEMPLATE = """\
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>活動</title>
 <style>
-body { --heatmap-cell-size: 6px; --heatmap-gap: 1px; font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 1rem; }
+body { --heatmap-cell-size: clamp(24px, 3.4vh, 29px); --heatmap-gap: 2px; font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 1rem; }
 h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
 .heatmap-scroll { overflow-x: auto; overflow-y: hidden; margin-bottom: 1.25rem; -webkit-overflow-scrolling: touch; }
 .heatmap { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, var(--heatmap-cell-size)); grid-auto-columns: var(--heatmap-cell-size); gap: var(--heatmap-gap); width: max-content; }
-.heatmap-cell { width: var(--heatmap-cell-size); height: var(--heatmap-cell-size); border-radius: 1px; }
+.heatmap-cell { width: var(--heatmap-cell-size); height: var(--heatmap-cell-size); border-radius: 2px; }
 .heatmap-cell-empty { background: transparent; }
 #candidates { margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .candidate-tag {
