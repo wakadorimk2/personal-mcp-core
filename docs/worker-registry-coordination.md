@@ -72,6 +72,8 @@ registry が担わないもの:
 - registry へ worker 状態を append する writer
 - 書いてよいのは worker の runtime 状態のみ
 - claim の取得 / 解放 / handoff 完了をこの command 単体で成立させない
+- baseline 実装では `--current-issue` を **registry hint** として扱い、
+  ownership を表す入力にはしない
 
 ### dashboard / `ai-board`
 
@@ -80,6 +82,8 @@ registry が担わないもの:
   ownership 判定ロジックは dashboard に持たせない
 - registry と GitHub 側に不一致がある場合は、
   GitHub claim/handoff を優先し、dashboard 側は stale / unknown として扱う
+- baseline 実装では board row に `current_issue_source=registry_hint` と
+  `ownership_source=github_issue` を含め、表示上も ownership 境界を注記する
 
 ## GitHub metadata との責務分担
 
@@ -133,6 +137,39 @@ GitHub 側と registry 側で状態がずれた場合は、次の順で扱う。
 
 このルールにより、二重書きの見かけ上の不整合が起きても
 「どちらを信じるべきか」が固定される。
+
+## baseline implementation mapping
+
+現行 baseline では、責務分担を次の経路に反映する。
+
+- `worker-status-set`: `worker` domain event を append するだけで、
+  claim / release / handoff は成立させない
+- `ai-board` / `worker-board --json`: `current_issue` を返すが、
+  併せて `current_issue_source=registry_hint` と
+  `ownership_source=github_issue` を返す
+- `ai-board` の標準出力: issue 列が hint であり、
+  claim/handoff ownership は GitHub 側にあることを注記する
+
+手動検証の最小手順:
+
+```bash
+python -m personal_mcp.server worker-status-set \
+  --worker-id claude-1 \
+  --terminal-id tty-1 \
+  --current-issue 379 \
+  --status working \
+  --data-dir /tmp/og-registry-check
+
+python -m personal_mcp.server ai-board --json --data-dir /tmp/og-registry-check
+python -m personal_mcp.server ai-board --data-dir /tmp/og-registry-check
+```
+
+期待結果:
+
+- JSON 出力に `current_issue`, `current_issue_source`, `ownership_source` が含まれる
+- `current_issue_source` は `registry_hint`
+- `ownership_source` は `github_issue`
+- テキスト出力に「issue は registry hint」「ownership は GitHub」という注記が出る
 
 ## follow-up items
 

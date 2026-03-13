@@ -211,6 +211,8 @@ def test_worker_status_set_and_ai_board_json(tmp_path: Path) -> None:
             "worker_name": "Claude-1",
             "terminal_id": "tty-1",
             "current_issue": "#324",
+            "current_issue_source": "registry_hint",
+            "ownership_source": "github_issue",
             "status": "working",
             "last_update": rows[0]["last_update"],
         }
@@ -254,6 +256,8 @@ def test_worker_board_shows_latest_state_per_worker(tmp_path: Path) -> None:
     assert rows[0]["worker_id"] == "claude-1"
     assert rows[0]["worker_name"] == "claude-1"
     assert rows[0]["current_issue"] == "#325"
+    assert rows[0]["current_issue_source"] == "registry_hint"
+    assert rows[0]["ownership_source"] == "github_issue"
     assert rows[0]["status"] == "reviewing"
 
 
@@ -284,6 +288,8 @@ def test_worker_board_prefers_latest_timestamp_over_append_order(tmp_path: Path)
 
     assert len(rows) == 1
     assert rows[0]["current_issue"] == "#325"
+    assert rows[0]["current_issue_source"] == "registry_hint"
+    assert rows[0]["ownership_source"] == "github_issue"
     assert rows[0]["status"] == "reviewing"
     assert rows[0]["last_update"] == "2026-03-11T10:00:00+09:00"
 
@@ -314,6 +320,8 @@ def test_ai_board_default_output_renders_table(tmp_path: Path) -> None:
     assert "terminal" in result.stdout
     assert "Claude-1" in result.stdout
     assert "#324" in result.stdout
+    assert "registry hint" in result.stdout
+    assert "lives on GitHub" in result.stdout
 
 
 def test_worker_status_set_rejects_invalid_status(tmp_path: Path) -> None:

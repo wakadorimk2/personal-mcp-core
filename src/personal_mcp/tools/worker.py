@@ -8,6 +8,8 @@ from personal_mcp.tools.event import event_add
 
 
 ALLOWED_WORKER_STATUSES = frozenset({"working", "waiting", "reviewing", "idle", "done"})
+CURRENT_ISSUE_SOURCE = "registry_hint"
+OWNERSHIP_SOURCE = "github_issue"
 
 
 def _normalize_required(value: str, *, field_name: str) -> str:
@@ -126,6 +128,8 @@ def worker_board_rows(data_dir: Optional[str] = None) -> List[Dict[str, Any]]:
             "worker_name": worker_name,
             "terminal_id": terminal_id,
             "current_issue": normalized_issue,
+            "current_issue_source": CURRENT_ISSUE_SOURCE,
+            "ownership_source": OWNERSHIP_SOURCE,
             "status": status,
             "last_update": record_ts if isinstance(record_ts, str) else None,
         }
@@ -176,4 +180,10 @@ def format_worker_board(rows: List[Dict[str, Any]]) -> str:
     lines.append("  ".join("-" * widths[key] for key in column_order))
     for row in rendered_rows:
         lines.append("  ".join(row[key].ljust(widths[key]) for key in column_order))
+    lines.extend(
+        [
+            "",
+            "note: issue is a registry hint; claim/handoff ownership lives on GitHub",
+        ]
+    )
     return "\n".join(lines)

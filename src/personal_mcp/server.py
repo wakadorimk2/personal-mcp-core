@@ -113,19 +113,23 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     p_worker_status = sub.add_parser(
         "worker-status-set",
-        help="append an AI worker status event",
+        help="append an AI worker registry event (observability only)",
     )
     p_worker_status.add_argument("--worker-id", required=True)
     p_worker_status.add_argument("--worker-name", default=None)
     p_worker_status.add_argument("--terminal-id", required=True)
-    p_worker_status.add_argument("--current-issue", default=None)
+    p_worker_status.add_argument(
+        "--current-issue",
+        default=None,
+        help="issue hint for the registry board; does not claim ownership",
+    )
     p_worker_status.add_argument("--status", required=True, choices=sorted(ALLOWED_WORKER_STATUSES))
     p_worker_status.add_argument("--data-dir", default=None)
 
     p_worker_board = sub.add_parser(
         "ai-board",
         aliases=["worker-board"],
-        help="display the latest AI worker board",
+        help="display the latest AI worker registry board (ownership stays on GitHub)",
     )
     p_worker_board.add_argument("--data-dir", default=None)
     p_worker_board.add_argument("--json", action="store_true")
