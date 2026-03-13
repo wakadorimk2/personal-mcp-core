@@ -1,7 +1,7 @@
 # AI Worker Playbook
 
 > 関連 Issue: #373
-> 関連 docs: [`docs/AI_WORKFLOW.md`](./AI_WORKFLOW.md), [`docs/AI_ROLE_POLICY.md`](./AI_ROLE_POLICY.md), [`docs/CODEX_RUNBOOK.md`](./CODEX_RUNBOOK.md), [`docs/worker-claim-protocol.md`](./worker-claim-protocol.md), [`docs/worker-registry-coordination.md`](./worker-registry-coordination.md)
+> 関連 docs: [`docs/AI_WORKFLOW.md`](./AI_WORKFLOW.md), [`docs/AI_ROLE_POLICY.md`](./AI_ROLE_POLICY.md), [`docs/CODEX_RUNBOOK.md`](./CODEX_RUNBOOK.md), [`docs/WORKER_POLICY.md`](./WORKER_POLICY.md), [`docs/worker-claim-protocol.md`](./worker-claim-protocol.md), [`docs/worker-registry-coordination.md`](./worker-registry-coordination.md)
 
 ## 目的
 
@@ -34,6 +34,7 @@ AI worker が 1 つの Issue を受け取ってから、
 
 - 環境運用: [`docs/AI_WORKFLOW.md`](./AI_WORKFLOW.md)
 - side-effect 境界: [`docs/AI_ROLE_POLICY.md`](./AI_ROLE_POLICY.md)
+- dispatch policy: [`docs/WORKER_POLICY.md`](./WORKER_POLICY.md)
 - runtime 別手順: [`docs/CODEX_RUNBOOK.md`](./CODEX_RUNBOOK.md) などの runbook
 - claim / release / handoff event: [`docs/worker-claim-protocol.md`](./worker-claim-protocol.md)
 - registry と GitHub の canonical source 境界: [`docs/worker-registry-coordination.md`](./worker-registry-coordination.md)
