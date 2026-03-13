@@ -113,7 +113,7 @@ PMC_GIT_GUARD_BYPASS=1 python scripts/codex_git_guard.py -- pull origin main
 
 ### 2. Review
 
-目的: 変更意図、リスク、確認対象を短く把握する。
+目的: 変更意図、リスク、確認対象を固定手順で把握する。
 
 コマンド例:
 
@@ -123,7 +123,20 @@ git diff --stat
 git diff
 ```
 
-期待結果: 何を変えたか、どこが壊れ得るか、どのファイルを見るべきかを 3 点以内で説明できる。
+確認順:
+
+1. 各変更ファイルの module responsibility を特定する
+2. diff context を収集する
+3. 差分の全体像を要約する
+4. 変更ファイルを影響度順に並べる
+5. 各ファイルを以下の lens で確認する
+   - Regression risk
+   - State mutation safety
+   - Boundary conditions
+   - Scope deviation
+   - Missing tests
+
+期待結果: 何を変えたか、どこが壊れ得るか、どのファイルを優先して見るべきかを、上記の固定順で説明できる。
 
 次に進む条件: Issue スコープ内であると判断できる。
 

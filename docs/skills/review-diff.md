@@ -20,16 +20,17 @@
 以下の手順をこの順序で実行する。省略・並べ替え・別手順への置き換えはしない。
 
 1. 各変更ファイルの module responsibility を特定し、diff 評価前に役割を把握する
-2. 差分の全体像を要約する
-3. 変更ファイルを影響度順に並べる
-4. 各ファイルを以下の観点で確認する
+2. 現在タスクの diff context を収集する
+3. 差分の全体像を要約する
+4. 変更ファイルを影響度順に並べる
+5. 各ファイルを以下の観点で確認する
    - Regression risk: 既存の動作を壊す変更がないか
    - State mutation safety: 書き込み、cache、event、async state の扱いが安全か
    - Boundary conditions: edge case、空入力、上限値で破綻しないか
    - Scope deviation: Issue スコープ外の変更が混ざっていないか
    - Missing tests: 挙動変更に対応するテストがないか
-5. finding をリスク順（HIGH → MEDIUM → LOW）で列挙する
-6. 根拠が不足する場合は断定せず、追加で見るべきファイルまたは前提を 1 行で示す
+6. finding をリスク順（HIGH → MEDIUM → LOW）で列挙する
+7. 根拠が不足する場合は断定せず、追加で見るべきファイルまたは前提を 1 行で示す
 
 詳細な位置づけと停止条件は `docs/CODEX_RUNBOOK.md` を参照する。この skill は runbook 全体の代替ではなく、差分レビュー部分のテンプレである。
 
