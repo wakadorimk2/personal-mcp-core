@@ -22,6 +22,11 @@ from personal_mcp.tools.worker import (
     worker_board_rows,
     worker_status_set,
 )
+from personal_mcp.tools.worker_claim import (
+    EVENT_TYPES as WORKER_CLAIM_EVENT_TYPES,
+    worker_claim_post,
+    worker_claim_state,
+)
 
 
 def _cmd_web_serve(args) -> int:
@@ -133,6 +138,35 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     p_worker_board.add_argument("--data-dir", default=None)
     p_worker_board.add_argument("--json", action="store_true")
+
+    p_worker_claim_state = sub.add_parser(
+        "worker-claim-state",
+        help="derive worker-claim/v1 ownership state from GitHub issue comments",
+    )
+    p_worker_claim_state.add_argument("--owner", required=True)
+    p_worker_claim_state.add_argument("--repo", required=True)
+    p_worker_claim_state.add_argument("--issue-number", required=True)
+    p_worker_claim_state.add_argument("--token", default=None)
+    p_worker_claim_state.add_argument("--json", action="store_true")
+
+    p_worker_claim_post = sub.add_parser(
+        "worker-claim-post",
+        help="post a worker-claim/v1 protocol event to a GitHub issue comment",
+    )
+    p_worker_claim_post.add_argument("--owner", required=True)
+    p_worker_claim_post.add_argument("--repo", required=True)
+    p_worker_claim_post.add_argument("--issue-number", required=True)
+    p_worker_claim_post.add_argument("--token", default=None)
+    p_worker_claim_post.add_argument(
+        "--event-type", required=True, choices=sorted(WORKER_CLAIM_EVENT_TYPES)
+    )
+    p_worker_claim_post.add_argument("--worker-id", required=True)
+    p_worker_claim_post.add_argument("--runtime", required=True)
+    p_worker_claim_post.add_argument("--reason", required=True)
+    p_worker_claim_post.add_argument("--ref", default=None)
+    p_worker_claim_post.add_argument("--target-worker-id", default=None)
+    p_worker_claim_post.add_argument("--dry-run", action="store_true")
+    p_worker_claim_post.add_argument("--json", action="store_true")
 
     p_log = sub.add_parser(
         "poe2-log-add", help="append a poe2 log entry"
@@ -305,6 +339,51 @@ def main(argv: Optional[List[str]] = None) -> int:
             print(json.dumps(rows, ensure_ascii=False, indent=2))
         else:
             print(format_worker_board(rows))
+        return 0
+
+    if args.cmd == "worker-claim-state":
+        state = worker_claim_state(
+            owner=args.owner,
+            repo=args.repo,
+            issue_number=args.issue_number,
+            token=args.token,
+        )
+        if args.json:
+            print(json.dumps(state, ensure_ascii=False, indent=2))
+        else:
+            print(
+                json.dumps(
+                    {
+                        "state": state["state"],
+                        "owner": state["owner"],
+                        "claim_ref": state["claim_ref"],
+                        "handoff_target_worker_id": state["handoff_target_worker_id"],
+                        "offer_ref": state["offer_ref"],
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
+        return 0
+
+    if args.cmd == "worker-claim-post":
+        result = worker_claim_post(
+            owner=args.owner,
+            repo=args.repo,
+            issue_number=args.issue_number,
+            token=args.token,
+            event_type=args.event_type,
+            worker_id=args.worker_id,
+            runtime=args.runtime,
+            reason=args.reason,
+            ref=args.ref,
+            target_worker_id=args.target_worker_id,
+            dry_run=args.dry_run,
+        )
+        if args.json:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        else:
+            print(result["comment_body"])
         return 0
 
     if args.cmd == "poe2-log-add":

@@ -84,7 +84,10 @@ v1 で定義する protocol event は以下に限定する。
 
 - event ordering は GitHub comment の `created_at` を主、comment id を副として扱う
 - comment body 内の timestamp は補助情報であり、canonical ordering には使わない
-- exact serialization は実装で固定してよいが、人手でも読め、後で parse しやすい形を要件とする
+- exact serialization は実装で固定してよく、baseline では
+  `src/personal_mcp/tools/worker_claim.py` の serializer / parser を正本とする
+- 実装 surface は `python -m personal_mcp.server worker-claim-state` と
+  `python -m personal_mcp.server worker-claim-post` を使う
 
 例:
 
@@ -203,10 +206,32 @@ offer だけでは ownership は移らない。
 - GitHub Issue comment への protocol event 記録経路を実装する
 - derived state の取得ロジックを実装する
 - label / registry mirror は optional とし、canonical state を上書きしない
+- baseline command:
+
+```bash
+python -m personal_mcp.server worker-claim-state \
+  --owner wakadorimk2 \
+  --repo orange-garden \
+  --issue-number 378 \
+  --json
+
+python -m personal_mcp.server worker-claim-post \
+  --owner wakadorimk2 \
+  --repo orange-garden \
+  --issue-number 378 \
+  --event-type claim \
+  --worker-id codex-1 \
+  --runtime codex \
+  --reason "start claim baseline" \
+  --dry-run
+```
+
+- `worker-claim-post` は `release` / `handoff_offer` / `handoff_accept` /
+  `maintainer_override` で `--ref` を省略した場合、
+  直前の derived state から active ref を補完する
+- `--dry-run` を外すと GitHub Issue comment へ protocol event を実際に投稿する
 
 ## follow-up
 
 - label mirror を採用する場合は、derived state の projection であることを明記する
-- exact serialization の固定と parser 実装は #378 で扱う
 - `refresh` や自動 `expire` が必要になった場合は、v1 へ追加せず別 Issue で検討する
-

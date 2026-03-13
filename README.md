@@ -199,6 +199,20 @@ python -m personal_mcp.server worker-status-set \
   --terminal-id tty-1 \
   --current-issue '#324' \
   --status working
+python -m personal_mcp.server worker-claim-state \
+  --owner wakadorimk2 \
+  --repo orange-garden \
+  --issue-number 378 \
+  --json
+python -m personal_mcp.server worker-claim-post \
+  --owner wakadorimk2 \
+  --repo orange-garden \
+  --issue-number 378 \
+  --event-type claim \
+  --worker-id codex-1 \
+  --runtime codex \
+  --reason "start claim baseline" \
+  --dry-run
 ```
 
 Notes:

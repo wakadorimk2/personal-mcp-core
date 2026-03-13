@@ -130,6 +130,38 @@ git diff
 
 停止条件: Issue 外変更、仕様追加、広範囲修正が混ざっている。
 
+### 2.1 Claim Protocol Check
+
+orchestration 系 task では、着手前に GitHub 側の claim state を確認する。
+
+コマンド例:
+
+```bash
+python -m personal_mcp.server worker-claim-state \
+  --owner wakadorimk2 \
+  --repo orange-garden \
+  --issue-number 378 \
+  --json
+
+python -m personal_mcp.server worker-claim-post \
+  --owner wakadorimk2 \
+  --repo orange-garden \
+  --issue-number 378 \
+  --event-type claim \
+  --worker-id codex-1 \
+  --runtime codex \
+  --reason "start claim baseline" \
+  --dry-run
+```
+
+補足:
+
+- `worker-claim-post` は `--dry-run` で comment body を確認できる
+- `release` / `handoff_offer` / `handoff_accept` / `maintainer_override` は、
+  `--ref` を省略すると current derived state から active ref を補完する
+- ownership の正本は引き続き GitHub Issue comment であり、
+  registry は `current_issue` hint のまま扱う
+
 ### 3. Ruff
 
 目的: lint / import / format 系の失敗を先に潰す。

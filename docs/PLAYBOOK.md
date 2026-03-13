@@ -94,6 +94,8 @@ worker が作業を始めてよいのは、次を満たすときに限る。
 - `unclaimed` のときだけ新規 `claim` できる
 - 自分が handoff target なら、`handoff_accept` 成立後に続行できる
 - registry の `current_issue` は補助情報であり、claim の代わりにしない
+- baseline では `worker-claim-state` で derived state を確認し、
+  `worker-claim-post` で protocol event を残す
 
 最低限残すもの:
 
