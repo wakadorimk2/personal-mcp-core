@@ -23,11 +23,12 @@
 2. `AI_GUIDE.md`
 3. `docs/AI_ROLE_POLICY.md`
 4. 必要に応じて `docs/AI_WORKFLOW.md`
-5. 自分が使う runtime の文書
+5. 必要に応じて `docs/PLAYBOOK.md`
+6. 自分が使う runtime の文書
    - Claude Code: `CLAUDE.md`
    - Codex CLI: `docs/CODEX_RUNBOOK.md`
    - 将来の runtime: 対応する runbook
-6. Issue / task に直接関係するファイル
+7. Issue / task に直接関係するファイル
 
 ## Source of Truth Map
 
@@ -36,6 +37,7 @@
 | AI の行動原則・姿勢 | `AI_GUIDE.md` | 導線のみ |
 | side-effect 境界・許可 / 禁止・停止条件 | `docs/AI_ROLE_POLICY.md` | 導線のみ |
 | worktree / branch / VSCode 運用 | `docs/AI_WORKFLOW.md` | 導線のみ |
+| AI worker の共通作業フロー | `docs/PLAYBOOK.md` | 導線のみ |
 | runtime-specific 実行手順 | `CLAUDE.md`、`docs/CODEX_RUNBOOK.md`、将来の runbook | 導線のみ |
 
 ## Precedence And Conflict Handling

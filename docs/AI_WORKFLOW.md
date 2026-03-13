@@ -3,6 +3,7 @@
 この文書は、AI worker を含む開発の最小運用ルールを定義する。
 副作用権限（Claude/Codex の境界）は [docs/AI_ROLE_POLICY.md](./AI_ROLE_POLICY.md) を正本とし、
 本書は作業場所と運用手順に限定する。
+Issue 着手から handoff までの共通進行管理は [docs/PLAYBOOK.md](./PLAYBOOK.md) を正本とする。
 
 ---
 
