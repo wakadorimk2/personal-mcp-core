@@ -13,6 +13,7 @@
 副作用権限の detail は [docs/AI_ROLE_POLICY.md](./AI_ROLE_POLICY.md)、
 Issue 着手から handoff までの phase flow detail は [docs/PLAYBOOK.md](./PLAYBOOK.md) を参照します。
 本書は作業場所と運用手順に限定します。
+他の docs 導線は [`docs/README.md`](./README.md) を参照します。
 
 ---
 

@@ -1,6 +1,7 @@
 # repo 内 `data/` の位置づけと運用ルール
 
 > 保存先解決ロジックの仕様は [`docs/architecture.md`](./architecture.md) を参照。
+> docs 全体の入口は [`docs/README.md`](./README.md) を参照。
 
 ## 定義
 

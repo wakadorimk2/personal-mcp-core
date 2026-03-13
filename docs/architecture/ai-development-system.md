@@ -9,6 +9,7 @@
 This document is the canonical parent for the repo's AI development system.
 It explains how entrypoint docs, behavior principles, role boundaries,
 workflow, dispatch, protocol children, and runtime runbooks fit together.
+For a broader docs map, see [`docs/README.md`](../README.md).
 
 This document does:
 

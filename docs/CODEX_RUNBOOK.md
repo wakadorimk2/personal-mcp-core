@@ -4,6 +4,7 @@
 
 Codex はこの runbook に従って、`review -> ruff -> pytest -> 最小修正 -> 再実行 -> Draft PR` の順で進む。役割境界の正本は [docs/AI_ROLE_POLICY.md](./AI_ROLE_POLICY.md) とし、この文書は実行手順に絞る。
 Repo-wide AI entrypoint は [`AGENTS.md`](../AGENTS.md) です。Codex はまず `AGENTS.md` で read order と precedence を確認し、その後この runbook を使います。Issue 着手から handoff までの共通進行管理は [`docs/PLAYBOOK.md`](./PLAYBOOK.md)、runtime 間の dispatch policy は [`docs/WORKER_POLICY.md`](./WORKER_POLICY.md) を正本とし、この文書では再定義しません。
+他の docs 導線は [`docs/README.md`](./README.md) を参照する。
 
 ## Codex がやること
 
