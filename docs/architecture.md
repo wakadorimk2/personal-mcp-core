@@ -32,7 +32,7 @@ personal-mcp-core
 | Adapter | `adapters/mcp_server.py` | Translates MCP protocol to internal calls |
 | Adapter | `adapters/http_server.py` | HTTP server for mobile log form (`web-serve`) |
 | Tools | `tools/*.py` | Domain logic: event, daily_summary, github_*, worker, poe2 |
-| Storage | `storage/events_store.py` | Storage boundary: read/write events (DB + JSONL dual-write) |
+| Storage | `storage/events_store.py` | Storage boundary: runtime read/write against `events.db`, plus explicit recovery rebuild commands for `events.jsonl` |
 | Core | `core/guide.py` | Loads and caches the AI guide text |
 | Data | `AI_GUIDE.md` | The guide content itself |
 
@@ -66,6 +66,21 @@ Persistent storage (daily logs, habit data, game state) belongs in
 Data-dir resolution is a CLI concern in `src/personal_mcp/server.py`.
 Resolution order is `--data-dir`, `PERSONAL_MCP_DATA_DIR`, then the XDG default.
 Tool-layer functions receive a resolved `data_dir` and do not interpret env vars or XDG.
+
+### Current external input surfaces
+
+Current runtime input surfaces are split between adapters and tool-driven ingest.
+
+| Surface | Entry point | Layer | Notes |
+|---|---|---|---|
+| MCP context | `adapters/mcp_server.py` | adapter | MCP-facing interface |
+| Mobile log form | `web-serve` -> `adapters/http_server.py` | adapter | HTTP input surface for event capture |
+| GitHub manual sync MVP | `github-sync` -> `tools/github_sync.py` | tool | Reads `/users/{username}/events` first page and writes `eng` events |
+| GitHub richer ingest | `github-ingest` -> `tools/github_ingest.py` | tool | Same endpoint, richer `data.*` payload per `docs/eng-ingest-impl.md` |
+| Local client log watch | `poe2-watch` -> `tools/poe2_client_watcher.py` | tool | Tails a local file and appends events on area transitions |
+
+GitHub integration is currently implemented as tool-layer CLI ingest, not as an
+adapter module. The only runtime adapters shipped today are MCP and HTTP.
 
 ## Skills layer
 
@@ -123,9 +138,9 @@ Tradeoff: manual sync is required. Accepted because the file changes rarely.
 
 `server.py` exposes a multi-subcommand CLI (via `argparse`) registered as the
 `personal-mcp` console script in `pyproject.toml`. Key subcommands include
-`event-add`, `event-today`, `event-list`, `web-serve`, `summary-generate`,
-`github-ingest`, and storage-maintenance commands (`storage-db-to-jsonl`,
-`storage-jsonl-to-db`).
+`event-add`, `event-today`, `event-list`, `web-serve`, `poe2-watch`,
+`github-sync`, `github-ingest`, `summary-generate`, and storage-maintenance
+commands (`storage-db-to-jsonl`, `storage-jsonl-to-db`).
 
 Running `python -m personal_mcp.server` without a subcommand exits with a usage
 error. Always supply a subcommand (or `--help`) when invoking it directly.
