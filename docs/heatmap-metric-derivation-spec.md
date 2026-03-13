@@ -115,7 +115,56 @@ Step 1 therefore treats current shipped semantics as a fixed baseline that later
 
 ---
 
-## 7. Downstream Implications
+## 7. Step 2 - Source Family Inventory And Scale Gap
+
+Current shipped semantics flatten multiple source families into one per-day count.
+
+That is acceptable as a baseline, but it hides a meaningful scale gap between families.
+
+### 7.1 Current source families relevant to heatmap design
+
+| family | representative source/domain | current shipped treatment | scale characteristic | design risk |
+|---|---|---|---|---|
+| manual life logging | `source="web-form"` across `mood`, `general`, `worklog`, `eng` | included | low-frequency, human-authored, semantically dense | quiet days can look too empty if renderer expects GitHub-like volume |
+| GitHub-derived eng activity | `source="github"` in `eng` domain | included | bursty, can produce many same-day events from one work stream | active engineering days can dominate the scale if treated like manual logs |
+| UI telemetry | `source="web-form-ui"` | excluded from shipped, visible in debug | mechanically amplifies one human action into multiple records | would distort observation if allowed into shipped density |
+| summary artifacts | `domain="summary"` | excluded from shipped | derived, not primary observation | would double-count interpretation output as activity |
+
+### 7.2 Why the scale gap matters
+
+The issue is not only telemetry noise.
+
+Even after excluding telemetry and summary artifacts, the shipped population still mixes at least two included families with different behavior:
+
+- manual life logging tends to be sparse but high-signal
+- GitHub-derived `eng` events can arrive in bursts and cluster on a small number of active days
+
+This means a single raw per-day count can over-represent families that naturally emit more events.
+
+### 7.3 Evidence available today
+
+The current audit snapshot already shows a concentrated active range:
+
+- 360 zero days in the primary 365-day window
+- 5 non-zero days in the current active data range
+- non-zero `shipped_density` between 7 and 41
+
+That snapshot is still too young to finalize normalization weights, but it is sufficient to justify separating source-family discussion from renderer-only tuning.
+
+### 7.4 Step 2 decision
+
+Issue `#407` should treat source-family scale gap as a metric-layer problem, not as a renderer-local palette problem.
+
+This step does not yet decide how to normalize those families.
+It only fixes the problem statement:
+
+- raw daily counts are not source-neutral
+- telemetry exclusion alone does not solve source-family skew
+- a future derivation step must be able to distinguish family-level behavior before bucket mapping
+
+---
+
+## 8. Downstream Implications
 
 ### For `#355`
 
@@ -131,20 +180,24 @@ Step 1 therefore treats current shipped semantics as a fixed baseline that later
 
 ---
 
-## 8. Decision Summary For Step 1
+## 9. Decision Summary For Step 1 And Step 2
 
 - keep current `/api/heatmap` semantics fixed as the baseline
 - treat current shipped heatmap as `display_population`, not raw activity count
 - keep debug metrics outside the shipped baseline contract
+- treat source-family scale gap as a metric-layer problem that remains unsolved in the current baseline
 - postpone normalization and derivation design to later steps of `#407`
 
 ---
 
-## 9. References
+## 10. References
 
 - `docs/heatmap-state-density-spec.md`
 - `docs/heatmap-density-audit-2026-03-12.md`
+- `docs/mvp-contract-decisions.md`
+- `docs/eng-domain-concept.md`
 - `src/personal_mcp/tools/daily_summary.py`
+- `src/personal_mcp/tools/log_form.py`
 - Issue `#407`
 - Issue `#355`
 - Issue `#360`
