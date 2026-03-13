@@ -157,7 +157,10 @@ def test_notify_channel_alias_routes_discord_test_through_discord_adapter(tmp_pa
         "--event",
         "task-complete",
         "smoke done",
-        env={"NOTIFY_CHANNEL_DIR": str(tmp_path)},
+        env={
+            "NOTIFY_CHANNEL_DIR": str(tmp_path),
+            "NOTIFY_ENV": "prod",
+        },
     )
 
     assert result.stdout.splitlines() == [

@@ -54,6 +54,28 @@ This split applies only to the normal `discord` route. Purpose-aware routing
 still takes precedence, so `--kind smoke_test` continues to land on
 `discord-test` and does not reuse the `dev` / `prod` webhook selection.
 
+### Routing precedence
+
+`scripts/notify` resolves Discord delivery in three stages:
+
+1. decide the logical route from `--kind` when a purpose-specific route exists
+2. fall back to the requested logical channel (`discord` / `discord-test`)
+3. if the logical route is still `discord`, apply optional `NOTIFY_ENV=dev|prod`
+   webhook selection
+
+Current matrix:
+
+| caller input | logical route | webhook selection | notes |
+|---|---|---|---|
+| `--channel discord` and `NOTIFY_ENV` unset | `discord` | `DISCORD_WEBHOOK_AI_STATUS` | default normal delivery |
+| `--channel discord` and `NOTIFY_ENV=dev` | `discord` | `DISCORD_WEBHOOK_AI_STATUS_DEV` | env split for normal delivery |
+| `--channel discord` and `NOTIFY_ENV=prod` | `discord` | `DISCORD_WEBHOOK_AI_STATUS_PROD` | env split for normal delivery |
+| `--channel discord-test` with any `NOTIFY_ENV` | `discord-test` | `DISCORD_WEBHOOK_AI_STATUS_TEST` | purpose route ignores env split |
+| `--kind smoke_test` with any `NOTIFY_ENV` | `discord-test` | `DISCORD_WEBHOOK_AI_STATUS_TEST` | kind routing wins over env split |
+
+This keeps `dev/prod` split as one branch of the normal Discord route, while
+test-oriented delivery remains purpose-aware and fail-closed.
+
 ### Secret management
 
 Webhook secret は次の優先順位で解決される。
