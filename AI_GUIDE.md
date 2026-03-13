@@ -11,7 +11,7 @@
 
 ---
 
-> **文書責務**: AI 行動原則・姿勢の**正本**。役割境界の正本は [`docs/AI_ROLE_POLICY.md`](./docs/AI_ROLE_POLICY.md) であり、本文書はその**導線**（再定義しない）。runtime 別 runbook 詳細設計・通知運用は scope 外。
+> **文書責務**: AI 行動原則・姿勢の**正本**。repo-wide entrypoint は [`AGENTS.md`](./AGENTS.md) であり、役割境界の正本は [`docs/AI_ROLE_POLICY.md`](./docs/AI_ROLE_POLICY.md) です。共通進行管理は [`docs/PLAYBOOK.md`](./docs/PLAYBOOK.md)、dispatch policy は [`docs/WORKER_POLICY.md`](./docs/WORKER_POLICY.md) を参照し、本文書はそれらを再定義しません。runtime 別 runbook 詳細設計・通知運用は scope 外です。
 
 ## 基本姿勢（最優先）
 
@@ -129,6 +129,13 @@
 - `worktree: 長期 / 役割ベース`、`branch: 短命 / taskベース` を原則としてください
 - VSCode は worktree ごとに作業机を固定し、待機状態を `main + clean` に保ってください
 - 副作用の可否（実行権限）は運用都合よりも [docs/AI_ROLE_POLICY.md](./docs/AI_ROLE_POLICY.md) を優先してください
+
+## AI orchestration docs
+
+- repo-wide の入口と優先順位は [AGENTS.md](./AGENTS.md) を参照してください
+- Issue 着手から handoff までの共通進行管理は [docs/PLAYBOOK.md](./docs/PLAYBOOK.md) を正本とします
+- runtime 間の dispatch policy は [docs/WORKER_POLICY.md](./docs/WORKER_POLICY.md) を正本とします
+- 本文書は行動原則の正本であり、orchestration の具体フローや dispatch rule は再定義しません
 
 ## Tooling source of truth
 
