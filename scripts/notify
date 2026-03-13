@@ -84,6 +84,9 @@ notification_event_severity() {
     needs_input)
       printf '%s' "warning"
       ;;
+    long_task_finished)
+      printf '%s' "info"
+      ;;
     *)
       printf '%s' "info"
       ;;
@@ -94,6 +97,9 @@ notification_event_verbosity() {
   case "$1" in
     task_failed|needs_input)
       printf '%s' "critical"
+      ;;
+    long_task_finished)
+      printf '%s' "normal"
       ;;
     *)
       printf '%s' "normal"

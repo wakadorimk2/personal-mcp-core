@@ -180,6 +180,11 @@ optional metadata 候補の扱いは次の通り整理する。
 | `task_failed` | 失敗対象が分かる | 原因の短い要約 | 強く推奨 |
 | `long_task_finished` | 終了した長時間ジョブが分かる | 所要時間や結果の要約 | 任意 |
 
+現在の `scripts/notify` 既定 policy では、`needs_input` と `task_failed` を
+人間の介入が必要な通知として `warning/critical` または `error/critical` に寄せる。
+`task_completed` と `long_task_finished` は `info/normal` が既定で、`smoke_test` は
+kind policy により `task_completed` へ投影しつつ `info/debug` として扱う。
+
 ## 7. Out of Scope for v1
 
 - channel ごとのタイトル文字数制限や装飾仕様

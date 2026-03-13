@@ -8,7 +8,7 @@ need to emit a notification without depending on a specific delivery channel.
 ```bash
 PATH="$PWD/scripts:$PATH"
 notify "build finished"
-notify --event input-required --title "Codex" "Need approval"
+notify --event needs_input --title "Codex" "Need approval"
 printf 'multiline message' | notify --stdin
 ```
 
@@ -40,6 +40,7 @@ Default mapping:
 | `--kind ai_task_failed` | `task_failed` | `error` | `critical` | 介入が必要な失敗通知 |
 | `--kind smoke_test` | `task_completed` | `info` | `debug` | test webhook 向けの観測通知 |
 | `--event needs_input` | `needs_input` | `warning` | `critical` | 人間の入力待ち |
+| `--event long_task_finished` | `long_task_finished` | `info` | `normal` | 観測用の終了通知 |
 | `--event task_failed` | `task_failed` | `error` | `critical` | kind を通さない失敗通知 |
 | other `--event` values | as passed | `info` | `normal` | 既定値 |
 

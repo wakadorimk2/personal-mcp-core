@@ -89,6 +89,34 @@ def test_notify_exposes_default_event_policy_to_adapters(tmp_path: Path) -> None
     ]
 
 
+def test_notify_exposes_long_task_finished_policy_to_adapters(tmp_path: Path) -> None:
+    adapter = tmp_path / "capture"
+    adapter.write_text(
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        "printf 'event=%s\\n' \"$NOTIFY_EVENT\"\n"
+        "printf 'severity=%s\\n' \"$NOTIFY_SEVERITY\"\n"
+        "printf 'verbosity=%s\\n' \"$NOTIFY_VERBOSITY\"\n",
+        encoding="utf-8",
+    )
+    adapter.chmod(adapter.stat().st_mode | stat.S_IXUSR)
+
+    result = _run_notify(
+        "--channel",
+        "capture",
+        "--event",
+        "long_task_finished",
+        "Sync completed",
+        env={"NOTIFY_CHANNEL_DIR": str(tmp_path)},
+    )
+
+    assert result.stdout.splitlines() == [
+        "event=long_task_finished",
+        "severity=info",
+        "verbosity=normal",
+    ]
+
+
 def test_notify_dispatches_to_custom_adapter_directory(tmp_path: Path) -> None:
     adapter = tmp_path / "capture"
     adapter.write_text(
@@ -171,6 +199,32 @@ def test_notify_kind_can_override_channel(tmp_path: Path) -> None:
         "verbosity=debug",
         "webhook_env=DISCORD_WEBHOOK_AI_STATUS_TEST",
         f"secret_file={Path.home()}/.config/secrets/discord_test_webhook.env",
+    ]
+
+
+def test_notify_failed_kind_uses_error_critical_policy(tmp_path: Path) -> None:
+    adapter = tmp_path / "capture"
+    adapter.write_text(
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        "printf 'event=%s\\n' \"$NOTIFY_EVENT\"\n"
+        "printf 'severity=%s\\n' \"$NOTIFY_SEVERITY\"\n"
+        "printf 'verbosity=%s\\n' \"$NOTIFY_VERBOSITY\"\n",
+        encoding="utf-8",
+    )
+    adapter.chmod(adapter.stat().st_mode | stat.S_IXUSR)
+
+    result = _run_notify(
+        "--kind",
+        "ai_task_failed",
+        "Task failed",
+        env={"NOTIFY_CHANNEL_DIR": str(tmp_path), "NOTIFY_CHANNEL": "capture"},
+    )
+
+    assert result.stdout.splitlines() == [
+        "event=task_failed",
+        "severity=error",
+        "verbosity=critical",
     ]
 
 
