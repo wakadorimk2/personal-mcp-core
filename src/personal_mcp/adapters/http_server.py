@@ -547,11 +547,10 @@ function buildDashboardFlowPayload(text, extraUiData) {
 }
 
 function heatColor(n) {
-  if (n === 0) return '#eeeeee';
-  if (n <= 4) return '#ffd9b3';
-  if (n <= 9) return '#ffaa55';
-  if (n <= 19) return '#ff7700';
-  return '#cc4400';
+  var colors = ['#eeeeee', '#ffd9b3', '#ffaa55', '#ff7700', '#cc4400'];
+  if (n < 0) return colors[0];
+  if (n >= colors.length) return colors[colors.length - 1];
+  return colors[n];
 }
 
 function candidateText(item) {
@@ -679,7 +678,7 @@ async function loadHeatmap() {
   data.forEach(function(item) {
     var cell = document.createElement('div');
     cell.className = 'heatmap-cell';
-    cell.style.background = heatColor(item.count);
+    cell.style.background = heatColor(item.bucket_index);
     cell.title = item.date + ': ' + item.count + '件';
     el.appendChild(cell);
   });

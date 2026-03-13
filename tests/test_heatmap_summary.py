@@ -496,6 +496,14 @@ def test_http_get_dashboard_candidate_tap_script_exists(data_dir: Path) -> None:
     assert 'await fetch("/api/candidates")' in html
 
 
+def test_http_get_dashboard_uses_heatmap_bucket_index_for_color(data_dir: Path) -> None:
+    handler_cls = _make_handler_for_test(str(data_dir))
+    _, _, html = _do_get_html(handler_cls, "/dashboard")
+    assert "var colors = ['#eeeeee', '#ffd9b3', '#ffaa55', '#ff7700', '#cc4400'];" in html
+    assert "cell.style.background = heatColor(item.bucket_index);" in html
+    assert "cell.title = item.date + ': ' + item.count + '件';" in html
+
+
 def test_http_get_dashboard_ignores_broken_pipe_from_client_disconnect(data_dir: Path) -> None:
     handler_cls = _make_handler_for_test(str(data_dir))
     handler = _new_handler(handler_cls, "/dashboard")
