@@ -33,14 +33,14 @@ Repo-wide AI entrypoint は [`AGENTS.md`](../AGENTS.md) です。Codex はまず
 
 ## 境界変更同期チェック（policy/runbook 系 Issue）
 
-`AGENTS.md`・`docs/AI_ROLE_POLICY.md`・`AI_GUIDE.md`・`CLAUDE.md`・`docs/CODEX_RUNBOOK.md`・skills 配布物をまたぐ Issue では、
+`AGENTS.md`・`docs/AI_ROLE_POLICY.md`・`AI_GUIDE.md`・`CLAUDE.md`・`docs/CODEX_RUNBOOK.md`・skill adapters をまたぐ Issue では、
 Standard Flow の前に次のチェックポイントを実施する。
 
 | Checkpoint | 完了条件 | 次ステップ進行条件 | 停止条件 |
 |---|---|---|---|
 | 1. 正本 | `docs/AI_ROLE_POLICY.md`（必要時 `docs/skills/*.md` canonical）で境界変更が確定している | 差分または既存 commit で Step 1 完了を確認できる | 導線/配布物だけ先に更新され、正本が未確定 |
 | 2. 導線 | `AI_GUIDE.md` / `CLAUDE.md` が正本参照と矛盾時導線を保持している | Step 1 と矛盾しないことを確認できる | 正本と導線の矛盾が残る |
-| 3. skills/runbook | `docs/CODEX_RUNBOOK.md` / `docs/skills/*` / `.codex/skills/*` / `.claude/skills/*` が Step 1/2 と一致 | Step 1/2 の完了後に同期差分のみを反映する | Step 1/2 未完了のまま実行手順や配布物だけ更新する |
+| 3. skills/runbook | `docs/CODEX_RUNBOOK.md` / remaining canonical skill docs / `.codex/skills/*` / `.claude/skills/*` が Step 1/2 と一致 | Step 1/2 の完了後に同期差分のみを反映する | Step 1/2 未完了のまま実行手順や配布物だけ更新する |
 
 矛盾発生時の暫定運用:
 
@@ -50,7 +50,7 @@ Standard Flow の前に次のチェックポイントを実施する。
 
 ## review-preflight skill との関係
 
-`review-preflight` skill（[`docs/skills/review-preflight.md`](./skills/review-preflight.md)）は
+`review-preflight` skill（本書の Appendix B を参照）は
 **検査と報告のみ** を責務とし、修正を行わない。
 
 この runbook の Standard Flow（Step 5 Minimal Fix を含む）は、`review-preflight` による
@@ -328,3 +328,141 @@ EOF
 - 実行したコマンドと結果
 - 残リスク
 - 別 Issue 化すべき事項があれば箇条書き
+
+## Skill-backed appendices
+
+この runbook は、日常運用で高頻度に参照される skill spec を吸収している。
+以下は独立 docs ではなく、本書を canonical source とする。
+
+- `review-diff`
+- `review-preflight`
+- `minimal-safe-impl`
+- `issue-create`
+- `issue-project-meta`
+
+### Appendix A. review-diff
+
+目的:
+
+- diff review の観点と出力順を固定する
+- findings を summary より先に、HIGH から LOW の順で並べる
+
+Procedure:
+
+1. diff context を集める
+2. diff を 2 から 5 行で要約する
+3. 影響度順にファイルを並べる
+4. 各ファイルを `regression / scope deviation / missing tests` の 3 観点で見る
+5. finding を `HIGH -> MEDIUM -> LOW` で列挙する
+6. 根拠が不足する点は `Open Questions` に回す
+
+Output:
+
+- `## Findings`
+- `## Open Questions`
+- `## Change Summary`
+- `## Next Step`
+
+Constraints:
+
+- 根拠がない指摘を断定しない
+- review scope 外の推測を広げない
+- `ruff` / `pytest` 失敗が見えても、自動修正には進まない
+
+### Appendix B. review-preflight
+
+目的:
+
+- merge 前 review の検査順と報告形式を固定する
+- 修正を行わず、検査と報告だけに責務を限定する
+
+Fixed Procedure:
+
+1. `git status --short --branch`
+2. `git diff --stat`
+3. `ruff check .`
+4. `pytest`
+5. `contract / scope / migration / docs-impl` の 4 観点チェック
+6. Markdown report を出す
+
+Output:
+
+- `## Summary`
+- `## Preflight Checks`
+- `## Failures`
+- `## Next Step`
+
+Rules:
+
+- 修正しない
+- 自動再試行しない
+- `Next Step` では修正先を 1 行で示すだけに留める
+
+### Appendix C. minimal-safe-impl
+
+目的:
+
+- MVP 互換性ポリシーに従って、Issue scope 内の最小差分実装を行う
+
+Rules:
+
+- Scope 外の refactor / rename / formatting-only 修正を入れない
+- 既存のディレクトリ構造・CLI パターンを踏襲する
+- 恒久互換レイヤや「あとで必要かもしれない」拡張点を追加しない
+- データ形式変更が必要なら移行を同伴し、恒久互換レイヤは作らない
+
+Output:
+
+- 実装方針
+- 変更ファイル一覧
+- 実行コマンド
+- 仮定
+- 完了チェック
+
+### Appendix D. issue-create
+
+目的:
+
+- `issue-draft` 済みの title/body から、再実行可能な GitHub Issue 作成手順を固定する
+
+Fixed Procedure:
+
+1. `issue-draft` 完了を確認する
+2. `gh label list --json name --jq '.[].name'` でラベル存在確認を行う
+3. 重複疑い時は `gh issue list --search` で検索する
+4. `gh issue create --body-file` 形式のコマンドを生成する
+5. URL / 番号 / labels / 作成日時を記録する
+
+Rules:
+
+- 実行前にラベル存在確認を省略しない
+- 重複疑いがあるときは検索を飛ばさない
+- Project / relationship 更新は Appendix E に委譲する
+
+Output:
+
+- ラベル確認コマンド
+- 重複チェックコマンド
+- `gh issue create` コマンド
+- 作成結果記録
+
+### Appendix E. issue-project-meta
+
+目的:
+
+- Issue 作成後に Project item / Status / Priority / dependency metadata を反映する
+
+Fixed Procedure:
+
+1. Issue URL / 番号が確定していることを確認する
+2. `gh project list` / `gh project field-list` / `gh project item-list` で必要な ID を取得する
+3. `gh project item-add` を行う
+4. 必要なら `gh project item-edit` で Status / Priority を更新する
+5. 必要なら blocked-by / sub-issue を API で反映する
+6. Result / TODO / Rationale を記録する
+
+Rules:
+
+- Issue 作成前に実行しない
+- 根拠なしで Status / Priority を更新しない
+- 未実施項目を隠さず `TODO` に残す

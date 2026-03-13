@@ -8,7 +8,7 @@ disable-model-invocation: true
 # issue-project-meta（Claude アダプタ）
 
 > このファイルは Claude Code 用のアダプタです。
-> **正本（AI非依存）**: [`docs/skills/issue-project-meta.md`](../../../docs/skills/issue-project-meta.md)
+> **正本（AI非依存）**: [`docs/CODEX_RUNBOOK.md`](../../../docs/CODEX_RUNBOOK.md) Appendix E
 > 振る舞い・Rules・Procedure・Output テンプレは正本を参照してください。
 > このファイルには Claude 固有の呼び出し構文と引数だけを記載します。
 

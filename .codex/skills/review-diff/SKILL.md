@@ -6,7 +6,7 @@ description: Review a diff in a fixed order, list findings before summary by ris
 # review-diff
 
 This is the canonical execution contract for running a diff review with Codex CLI.
-The human-facing intent lives in [`docs/skills/review-diff.md`](../../../docs/skills/review-diff.md).
+The human-facing intent lives in [`docs/CODEX_RUNBOOK.md`](../../../docs/CODEX_RUNBOOK.md), Appendix A.
 
 ## Goal
 

@@ -154,6 +154,48 @@ git fetch -p origin
 
 ---
 
+## 6.1 Branch cleanup quick reference
+
+branch cleanup は独立 cheatsheet ではなく、この文書の operational appendix として扱う。
+
+新しい branch を作るとき:
+
+```bash
+git fetch origin
+git switch -c feat/<topic> origin/main
+```
+
+削除可否を見るとき:
+
+```bash
+git branch -vv
+git rev-list --left-right --count main...origin/<branch-name>
+git diff --stat $(git merge-base main origin/<branch-name>)..origin/<branch-name>
+git log --oneline --decorate --graph main..origin/<branch-name>
+```
+
+判断の目安:
+
+- branch 側コミット数が `0` なら削除候補
+- 実差分が空なら、古い base branch や role branch の可能性が高い
+- `log` は履歴差、`diff` は実体差として読む
+
+削除コマンド:
+
+```bash
+git push origin --delete <branch-name>
+git branch -d <branch-name>
+git fetch --prune
+```
+
+原則:
+
+- branch の役割は worktree 名で表す
+- 長寿命 base branch は延命しない
+- 削除は手動確認ベースで行う
+
+---
+
 ## 7. GitHub Project Active管理ルール（試行）
 
 この節は、`#417` 時点では canonical parent に吸収していない

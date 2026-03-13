@@ -8,7 +8,7 @@ disable-model-invocation: true
 # issue-create（Claude アダプタ）
 
 > このファイルは Claude Code 用のアダプタです。
-> **正本（AI非依存）**: [`docs/skills/issue-create.md`](../../../docs/skills/issue-create.md)
+> **正本（AI非依存）**: [`docs/CODEX_RUNBOOK.md`](../../../docs/CODEX_RUNBOOK.md) Appendix D
 > 振る舞い・Rules・Procedure・Output テンプレは正本を参照してください。
 > このファイルには Claude 固有の呼び出し構文と引数だけを記載します。
 

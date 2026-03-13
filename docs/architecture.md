@@ -85,17 +85,24 @@ adapter module. The only runtime adapters shipped today are MCP and HTTP.
 ## Skills layer
 
 Skills define how AI agents interact with this repository.
-The canonical (AI-agnostic) definitions live in `docs/skills/`;
-AI-specific adapters reference them from their own directories.
+Most AI-agnostic definitions live in `docs/skills/`, while high-frequency
+execution skills for Codex are folded into `docs/CODEX_RUNBOOK.md`.
+AI-specific adapters reference the appropriate canonical source.
 
 ```
-docs/skills/                          ← Canonical skill definitions (AI-agnostic)
+docs/skills/                          ← Standalone canonical skill definitions
 ├── clarify-request.md
 ├── codex-claude-bridge.md
 ├── implement-only.md
-├── minimal-safe-impl.md
 ├── research-propose-structured.md
-└── review-preflight.md
+└── issue-split.md
+
+docs/CODEX_RUNBOOK.md                 ← Runbook-backed operational skill canon
+├── review-diff
+├── review-preflight
+├── minimal-safe-impl
+├── issue-create
+└── issue-project-meta
 
 .claude/skills/                       ← Claude Code adapters
 ├── clarify-request/SKILL.md
@@ -115,12 +122,15 @@ docs/skills/                          ← Canonical skill definitions (AI-agnost
 | clarify | `docs/skills/clarify-request.md` | `.claude/skills/clarify-request/`, `.codex/skills/clarify-request/` |
 | bridge | `docs/skills/codex-claude-bridge.md` | `.codex/skills/codex-claude-bridge/` |
 | impl | `docs/skills/implement-only.md` | no Codex adapter; Claude-oriented canonical doc |
-| impl | `docs/skills/minimal-safe-impl.md` | `.claude/skills/minimal-safe-impl/`, `.codex/skills/minimal-safe-impl/` |
+| impl | `docs/CODEX_RUNBOOK.md` | `.claude/skills/minimal-safe-impl/`, `.codex/skills/minimal-safe-impl/` |
 | research | `docs/skills/research-propose-structured.md` | `.claude/skills/research-propose-structured/`, `.codex/skills/research-propose-structured/` |
-| preflight | `docs/skills/review-preflight.md` | `.codex/skills/review-preflight/` |
+| review | `docs/CODEX_RUNBOOK.md` | `.codex/skills/review-diff/`, `.codex/skills/review-preflight/`, `.claude/skills/review-preflight/` |
+| issue ops | `docs/CODEX_RUNBOOK.md` | `.codex/skills/issue-create/`, `.codex/skills/issue-project-meta/`, `.claude/skills/issue-create/`, `.claude/skills/issue-project-meta/` |
 
-**Rule**: canonical docs are AI-agnostic. Adapter files contain only tool-specific invocation syntax and constraints.
-`review-preflight` is the explicit Codex execution exception: the docs file explains intent, and `.codex/skills/review-preflight/SKILL.md` is the operational source that Codex should run.
+**Rule**: canonical docs stay tool-agnostic where possible. When a skill is
+effectively a fixed part of the Codex execution flow, `docs/CODEX_RUNBOOK.md`
+acts as the canonical source and adapters keep only invocation syntax and
+runtime-specific constraints.
 
 ---
 

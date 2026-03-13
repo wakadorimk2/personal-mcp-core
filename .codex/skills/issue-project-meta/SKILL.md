@@ -7,7 +7,7 @@ description: Update Projects metadata (Status, Priority, blocked-by, sub-issue) 
 
 This file is a thin Codex adapter.
 
-The canonical source of truth for this skill is [`docs/skills/issue-project-meta.md`](../../../docs/skills/issue-project-meta.md).
+The canonical source of truth for this skill is [`docs/CODEX_RUNBOOK.md`](../../../docs/CODEX_RUNBOOK.md), Appendix E.
 
 Follow the behavior, rules, procedure, and output format defined in that document.
 

@@ -26,7 +26,7 @@
 
 | area | current state | run surface | failure meaning | source |
 |---|---|---|---|---|
-| test | `pytest` を `make test` と `docs/CODEX_RUNBOOK.md` で実行する | local preflight / review 前検証 | 既存挙動 regressions の疑い | `Makefile`, `docs/CODEX_RUNBOOK.md`, `docs/skills/review-preflight.md` |
+| test | `pytest` を `make test` と `docs/CODEX_RUNBOOK.md` で実行する | local preflight / review 前検証 | 既存挙動 regressions の疑い | `Makefile`, `docs/CODEX_RUNBOOK.md` |
 | lint | `ruff check .` を `make lint` で実行する。現状ルールは `E`, `F` の最小集合 | local preflight / review 前検証 | syntax, import, 未使用、基本的な静的ミスの疑い | `pyproject.toml`, `Makefile`, `docs/CODEX_RUNBOOK.md` |
 | format | `ruff format .` を `make fmt` で実行できる | local manual fix | formatting drift | `pyproject.toml`, `Makefile` |
 | guide sync | `make guide-check` で `AI_GUIDE.md` と package copy の同期を確認できる | local preflight / docs change review | docs 配布物の drift | `Makefile` |
@@ -183,7 +183,7 @@ repo 内:
 - `pyproject.toml`: 現在の `ruff` 設定と dev dependencies
 - `Makefile`: `setup`, `lint`, `fmt`, `test`, `guide-check`, `issue-dag-list`
 - `docs/CODEX_RUNBOOK.md`: `ruff` / `pytest` / safety check の標準フロー
-- `docs/skills/review-preflight.md`: review 前検査の固定順序
+- `docs/CODEX_RUNBOOK.md`: review 前検査と実行フローの固定順序
 - `scripts/issue_dag.py`: issue graph 探索の補助スクリプト
 - `#208`, `#227`, `#258`, `#259`, `#260`: 近接 Issue と責務境界
 
