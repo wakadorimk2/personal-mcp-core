@@ -5,6 +5,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from personal_mcp.core.event import build_v1_record
 from personal_mcp.storage.events_store import append_event, read_events
+from personal_mcp.tools.heatmap_buckets import shipped_density_bucket_index
 
 
 def _now_iso() -> str:
@@ -123,7 +124,14 @@ def _count_events_by_date_filtered(
         if local_day and local_day in buckets:
             buckets[local_day] += 1
 
-    return [{"date": day, "count": buckets[day]} for day in sorted(buckets)]
+    return [
+        {
+            "date": day,
+            "count": buckets[day],
+            "bucket_index": shipped_density_bucket_index(buckets[day]),
+        }
+        for day in sorted(buckets)
+    ]
 
 
 def _count_events_by_date_debug_from_rows(
@@ -322,7 +330,7 @@ def heatmap_density_audit(
 
 
 def count_events_by_date(days: int = 28, data_dir: Optional[str] = None) -> List[Dict[str, Any]]:
-    """Return [{date, count}] for the last `days` local days (0-count days included).
+    """Return heatmap entries for the last `days` local days (0-count days included).
 
     The returned ``count`` is ``shipped_density`` as defined in
     ``docs/heatmap-state-density-spec.md`` Section 3 (Issue #312 / #317):
@@ -336,6 +344,9 @@ def count_events_by_date(days: int = 28, data_dir: Optional[str] = None) -> List
     Excluded per observation layer (Section 2):
     - ``domain == "summary"``: derived data (daily summary artifacts)
     - ``source == "web-form-ui"``: UI telemetry (system-generated, weight 0)
+
+    Issue #355 extends each entry with ``bucket_index`` so shipped UI consumers
+    do not re-implement the fixed threshold contract in DOM code.
 
     The ``weight 0 (exclude)`` decision and its rationale are in Section 4 of the
     spec. debug surface (``raw_count`` / ``telemetry_count``) is #256 scope;

@@ -352,14 +352,13 @@ def test_http_get_dashboard_200(data_dir: Path) -> None:
     assert "再読み込みに失敗しました。再試行してください。" in html
 
 
-def test_http_get_dashboard_uses_issue_257_provisional_thresholds(data_dir: Path) -> None:
+def test_http_get_dashboard_uses_issue_257_bucket_contract(data_dir: Path) -> None:
     handler_cls = _make_handler_for_test(str(data_dir))
     _, _, html = _do_get_html(handler_cls, "/dashboard")
-    assert "if (n === 0) return '#eeeeee';" in html
-    assert "if (n <= 4) return '#ffd9b3';" in html
-    assert "if (n <= 9) return '#ffaa55';" in html
-    assert "if (n <= 19) return '#ff7700';" in html
-    assert "return '#cc4400';" in html
+    assert "var colors = ['#eeeeee', '#ffd9b3', '#ffaa55', '#ff7700', '#cc4400'];" in html
+    assert "cell.style.background = heatColor(item.bucket_index);" in html
+    assert "if (n < 0) return colors[0];" in html
+    assert "if (n >= colors.length) return colors[colors.length - 1];" in html
     assert "if (n <= 2) return '#ffd9b3';" not in html
 
 
@@ -396,7 +395,7 @@ def test_http_get_heatmap_200(data_dir: Path) -> None:
     status, body = resp[0]
     assert status == 200
     assert len(body) == 42
-    assert all("date" in item and "count" in item for item in body)
+    assert all("date" in item and "count" in item and "bucket_index" in item for item in body)
 
 
 def test_http_get_heatmap_returns_shipped_density_for_mixed_day(data_dir: Path) -> None:
@@ -414,6 +413,20 @@ def test_http_get_heatmap_returns_shipped_density_for_mixed_day(data_dir: Path) 
     assert status == 200
     today_entry = next(r for r in body if r["date"] == today_local)
     assert today_entry["count"] == 2
+    assert today_entry["bucket_index"] == 1
+
+
+def test_count_events_by_date_returns_bucket_index_from_shared_contract(data_dir: Path) -> None:
+    db_path = data_dir / "events.db"
+    today_local = _today_local()
+    for _ in range(5):
+        _add_event(db_path, domain="mood")
+
+    result = count_events_by_date(28, data_dir=str(data_dir))
+    today_entry = next(item for item in result if item["date"] == today_local)
+
+    assert today_entry["count"] == 5
+    assert today_entry["bucket_index"] == 2
 
 
 def test_http_get_summaries_list_200_empty(data_dir: Path) -> None:
@@ -495,6 +508,14 @@ def test_http_get_dashboard_renders_recent_6_weeks_heatmap_script(data_dir: Path
     assert "flow.editedBeforeSubmit = true;" in html
     assert "resetDashboardInputFlow();" in html
     assert 'await fetch("/api/candidates")' in html
+
+
+def test_http_get_dashboard_uses_heatmap_bucket_index_for_color(data_dir: Path) -> None:
+    handler_cls = _make_handler_for_test(str(data_dir))
+    _, _, html = _do_get_html(handler_cls, "/dashboard")
+    assert "var colors = ['#eeeeee', '#ffd9b3', '#ffaa55', '#ff7700', '#cc4400'];" in html
+    assert "cell.style.background = heatColor(item.bucket_index);" in html
+    assert "cell.title = item.date + ': ' + item.count + '件';" in html
 
 
 def test_http_get_dashboard_ignores_broken_pipe_from_client_disconnect(data_dir: Path) -> None:
@@ -621,7 +642,9 @@ def test_heatmap_density_audit_uses_last_365_days_as_primary_window(data_dir: Pa
     assert result["primary_window"]["stats"]["max"] == 1
     assert result["all_time_reference"] is not None
     assert result["all_time_reference"]["role"] == "secondary_reference"
-    assert result["all_time_reference"]["stats"]["total_days"] == 401
+    start_day = datetime.strptime(result["all_time_reference"]["start_date"], "%Y-%m-%d").date()
+    end_day = datetime.strptime(result["all_time_reference"]["end_date"], "%Y-%m-%d").date()
+    assert result["all_time_reference"]["stats"]["total_days"] == (end_day - start_day).days + 1
     assert result["all_time_reference"]["start_date"] == _date_days_ago(400)
 
 
