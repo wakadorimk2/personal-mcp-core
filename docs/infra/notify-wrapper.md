@@ -20,6 +20,33 @@ Discord webhook 向けの最小契約は
 [`docs/infra/discord-webhook-channel-contract.md`](./discord-webhook-channel-contract.md)
 で別途定義する。
 
+## Notification policy defaults
+
+`scripts/notify` は routing とは別に、通知ごとの policy metadata も正規化する。
+現時点で wrapper が adapter へ渡す policy metadata は次の 2 つ。
+
+- `NOTIFY_SEVERITY`: `info` / `warning` / `error`
+- `NOTIFY_VERBOSITY`: `debug` / `normal` / `critical`
+
+この policy は現在の v1 では advisory metadata として扱い、wrapper 自体は
+suppression や threshold 判定までは行わない。まずは通知の意味と routing に加えて
+「人間にどの強度で見せたいか」を adapter 側で参照できる状態を固定する。
+
+Default mapping:
+
+| input | event | severity | verbosity | note |
+|---|---|---|---|---|
+| `--kind ai_task_completed` | `task_completed` | `info` | `normal` | 通常の完了通知 |
+| `--kind ai_task_failed` | `task_failed` | `error` | `critical` | 介入が必要な失敗通知 |
+| `--kind smoke_test` | `task_completed` | `info` | `debug` | test webhook 向けの観測通知 |
+| `--event needs_input` | `needs_input` | `warning` | `critical` | 人間の入力待ち |
+| `--event task_failed` | `task_failed` | `error` | `critical` | kind を通さない失敗通知 |
+| other `--event` values | as passed | `info` | `normal` | 既定値 |
+
+`--kind` を使う場合は、その kind に紐づく policy が event 既定値より優先される。
+たとえば `--kind smoke_test` は event としては `task_completed` だが、policy は
+通常完了通知ではなく `info/debug` として扱う。
+
 ## Discord webhook channel
 
 Set `NOTIFY_CHANNEL=discord` or pass `--channel discord`, then provide a

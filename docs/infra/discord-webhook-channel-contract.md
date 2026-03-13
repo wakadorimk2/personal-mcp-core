@@ -65,10 +65,17 @@ Discord adapter は次の入力を受け取る。
 | `NOTIFY_TITLE` | no | 1 行の見出し |
 | `NOTIFY_EVENT` | yes | イベント種別 |
 | `NOTIFY_SOURCE` | no | 通知元ラベル |
+| `NOTIFY_SEVERITY` | no | wrapper が解決した advisory severity |
+| `NOTIFY_VERBOSITY` | no | wrapper が解決した advisory verbosity |
 | stdin | yes | `NOTIFY_MESSAGE` と同じ本文 |
 
 `NOTIFY_MESSAGE` が空になる入力は wrapper 側で弾かれるため、adapter は
 wrapper からの正規化済み入力を前提にしてよい。
+
+`NOTIFY_SEVERITY` / `NOTIFY_VERBOSITY` は policy metadata であり、routing や
+payload 必須項目ではない。v1 の Discord adapter はこれらを rendering に必須利用
+しなくてよいが、将来 policy-aware な channel adapter を作る場合の参照値として
+受け取ってよい。
 
 ## 4. Minimal Discord payload
 
@@ -121,6 +128,7 @@ Rules:
 - `NOTIFY_TITLE` は Discord 上で視認しやすいよう太字 1 行に限定する
 - Markdown 装飾は title の強調以外を前提にしない
 - v1 では AI notification contract の optional fields を Discord 専用 field へ展開しない
+- v1 では `NOTIFY_SEVERITY` / `NOTIFY_VERBOSITY` を provenance 行へ埋め込まない
 
 ## 6. Failure and exit-code policy
 
