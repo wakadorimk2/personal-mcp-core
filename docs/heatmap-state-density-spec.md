@@ -3,6 +3,7 @@
 > **スコープ**: Issue #312 — density semantics / telemetry boundary の固定
 > **作成根拠**: Issue #253 で確定した heatmap 意味定義を、v1 の runtime / debug / color-scale follow-up が参照できる粒度へ operationalize する。
 > **この文書の役割**: Issue #256（debug surface 実装）と #257（color scale 検討）の dependency / terminology source。
+> **#407 との関係**: source normalization と future derivation seam は `docs/heatmap-metric-derivation-spec.md` を参照する。
 > **変更禁止**: この文書の決定を覆す変更は Maintainer の明示承認が必要。
 
 ---
