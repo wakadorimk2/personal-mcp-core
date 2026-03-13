@@ -41,6 +41,21 @@
 
 `repo/data/` はこの解決チェーンに含まれない。
 
+## runtime storage steady state
+
+storage 単一化後の runtime は、`events.db` を正本として扱う。
+
+- runtime の read/write は `events.db` のみを参照する
+- dedup も runtime primary storage (`events.db`) 上で行う
+- `events.jsonl` は通常運用の fallback ではなく、明示実行された recovery 入力/出力に限定する
+- `storage-db-to-jsonl` / `storage-jsonl-to-db` は recovery-only 保守 command として維持する
+
+recovery rule:
+
+- `events.jsonl` 欠損時は `events.db` から再生成する
+- `events.db` 欠損時は `events.jsonl` から再生成できる手順を維持する
+- 不一致検出時は `events.db` を優先し、差分を記録したうえで再生成する
+
 ## legacy path / command migration
 
 旧運用との整合は次の方針で扱う。
@@ -67,7 +82,7 @@ ls -lh <data-dir>/events.db
 personal-mcp event-list --n 10 --data-dir <data-dir>
 ```
 
-必要な場合だけ recovery 用 command を明示実行する。
+必要な場合だけ recovery 用 command を明示実行する。通常運用の runtime fallback としては使わない。
 
 ```sh
 personal-mcp storage-db-to-jsonl --dry-run --json --data-dir <data-dir>

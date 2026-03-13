@@ -285,7 +285,7 @@ The following are explicitly deferred to other issues:
 
 - `docs/heatmap-metric-derivation-spec.md` — upstream daily derivation contract (#407)
 - `docs/heatmap-state-density-spec.md` — shipped_density baseline and observation layer definition
-- `docs/heatmap-density-audit-2026-03-12.md` — current dataset snapshot (evidence for sparse baseline)
+- `docs/heatmap-metric-derivation-spec.md` — current dataset snapshot and sparse-baseline evidence are absorbed there
 - Issue #408 — scope and acceptance criteria for this document
 - Issue #407 — daily metric derivation seam (upstream)
 - Issue #391 — history navigation UI (downstream consumer)

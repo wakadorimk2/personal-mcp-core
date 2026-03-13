@@ -32,11 +32,11 @@
 
 ## 1. 前提として読む文書
 
-この pipeline は次の 4 文書を前提にする。
+この pipeline は次の 4 つの前提をもとにする。
 
-| 先行 Issue | 文書 | この pipeline で使うもの |
+| 先行 Issue | 文書 / source | この pipeline で使うもの |
 |---|---|---|
-| `#260` | [`docs/deterministic-toolchain-baseline.md`](./deterministic-toolchain-baseline.md) | local preflight / review 補助 / CI 候補の実行面 |
+| `#260` | `Makefile`, `pyproject.toml`, [`docs/CODEX_RUNBOOK.md`](./CODEX_RUNBOOK.md) | local preflight / review 補助 / CI 候補の current deterministic baseline |
 | `#261` | [`docs/cleanup-architecture.md`](./cleanup-architecture.md) | cleanup taxonomy、automation level、constitution |
 | `#262` | [`docs/import-layering-dependency-constraints.md`](./import-layering-dependency-constraints.md) | structural drift の signal と hard fail / advisory 候補 |
 | `#263` | [`docs/doc-drift-detection.md`](./doc-drift-detection.md) | doc drift detector の signal、report 形式、triage ルール |
@@ -44,6 +44,7 @@
 要点:
 
 - `#261` が「cleanup とみなしてよい境界」を固定する
+- `#260` の baseline は `pytest`, `ruff check .`, `ruff format --check .`, `guide-check`, repo exploration tooling を指す
 - `#260` `#262` `#263` が pipeline に流し込む signal の供給源になる
 - 本文書はそれらを「いつ」「どこで」「何として処理するか」に落とす
 

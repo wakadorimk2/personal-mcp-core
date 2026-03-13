@@ -127,6 +127,31 @@ recent > today_frequent > 7d_frequent > fixed
 - cold start 判定ロジックの実装
 - 重複排除・優先順マージの実装
 
+#### 5.1.1 候補生成 API の最小 contract
+
+MVP の候補生成 API contract はこの文書に吸収して管理する。
+
+- Endpoint: `GET /api/candidates`
+- Response: `200` で候補配列を返す。最大 8 件
+- Field:
+  - `text`: UI に表示する候補テキスト
+  - `source`: 候補ソース（`recent` / `today_frequent` / `7d_frequent` / `fixed`）
+- cold start 判定は API 側で実施する
+  - 対象イベント件数 `< 7`: `fixed` のみ返す
+  - 対象イベント件数 `>= 7`: 4 ソースを有効化する
+- マージ優先順: `recent > today_frequent > 7d_frequent > fixed`
+- 正規化後テキスト重複は 1 件に統合し、より高優先度ソースを採用する
+  - 正規化は `strip + lower`（前後空白除去 + 小文字化）
+- 各 `data.text` からは 1 文あたり最大 2 候補まで返す
+- 候補対象は `domain != summary` かつ `kind != interaction` のイベントに限定する
+
+```json
+[
+  { "text": "休憩", "source": "recent" },
+  { "text": "作業開始", "source": "fixed" }
+]
+```
+
 ### 5.2 UI 観点
 
 - ヒートマップ上部固定レイアウトの実装（既存ヒートマップコンポーネントの配置見直し）
@@ -193,7 +218,7 @@ Issue #213 由来の摩擦改善:
 | 種別 | 配置先 |
 |---|---|
 | 本方針定義（この文書） | `docs/daily-input-ux-mvp.md` |
-| 候補生成 API 仕様 | 後続 Issue → `docs/` 内に新設（例: `docs/candidate-api-v1.md`） |
+| 候補生成 API 最小 contract | この文書 Section 5.1.1 |
 | UI 実装方針 | 後続 Issue → 実装 PR 内に記述 |
 | テスト方針 | 後続 Issue → テスト実装 PR 内に記述 |
 

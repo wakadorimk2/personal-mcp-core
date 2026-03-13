@@ -1,7 +1,9 @@
 # Import / Layering / Dependency Constraints — Issue #262
 
 > スコープ: `src/personal_mcp/` の runtime module に対する structural constraint の設計
-> 前提: [`docs/deterministic-toolchain-baseline.md`](./deterministic-toolchain-baseline.md)（Issue #260）を先に読む
+> 前提: current deterministic baseline は `pytest`, `ruff check .`, `ruff format --check .`,
+> `guide-check` とし、repo tooling (`Makefile`, `pyproject.toml`) および
+> [`docs/CODEX_RUNBOOK.md`](./CODEX_RUNBOOK.md) を正本として扱う
 >
 > **この文書は設計記録であり、enforcement の実装導入は後続 Issue へ分離する。**
 
@@ -225,7 +227,9 @@ from personal_mcp.tools.event import event_add
 
 ## 関連ドキュメント
 
-- [`docs/deterministic-toolchain-baseline.md`](./deterministic-toolchain-baseline.md) — enforcement surface の前提（Issue #260）
+- [`docs/CODEX_RUNBOOK.md`](./CODEX_RUNBOOK.md) — verification flow と non-destructive check の実行順
+- `pyproject.toml` — current `ruff` configuration
+- `Makefile` — baseline check command surface
 - [`docs/architecture.md`](./architecture.md) — 技術アーキテクチャの全体像
 - [`docs/domain-extension-policy.md`](./domain-extension-policy.md) — 別系統の policy gate の例
 - [`docs/AI_ROLE_POLICY.md`](./AI_ROLE_POLICY.md) — docs / policy 側の責務境界

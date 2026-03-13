@@ -467,10 +467,44 @@ Later issues may add implementation details or runtime surfaces, but they should
 
 ---
 
-## 15. References
+## 15. Current density audit evidence (2026-03-12)
+
+The density audit policy and the 2026-03-12 dataset snapshot are absorbed here so that
+the metric derivation baseline keeps its evidence without a separate standalone audit doc.
+
+Policy used for calibration:
+
+- use `last 365 days` as the primary analysis window
+- keep `all-time` only as a reference window from the earliest real data day
+- treat `p95/p75 >= 3` and `max/p90 >= 5` as advisory heuristics, not decision rules
+- keep `/api/heatmap` and `/api/heatmap/debug` semantics unchanged while this evidence is used
+
+Recorded snapshot (`2026-03-12` JST):
+
+| window | total_days | zero_days | zero_day_ratio | min | p50 | p75 | p90 | p95 | max |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| primary `last_365_days` | 365 | 360 | 0.9863 | 0 | 0 | 0 | 0 | 0 | 41 |
+| secondary `all_time_from_earliest_real_data` | 5 | 0 | 0 | 7 | 25 | 30 | 36.6 | 38.8 | 41 |
+
+Non-zero days in the primary window:
+
+| date | raw_count | telemetry_count | shipped_density |
+|---|---:|---:|---:|
+| 2026-03-08 | 66 | 36 | 30 |
+| 2026-03-09 | 123 | 82 | 41 |
+| 2026-03-10 | 77 | 58 | 19 |
+| 2026-03-11 | 125 | 100 | 25 |
+| 2026-03-12 | 37 | 30 | 7 |
+
+Interpretation:
+
+- `last 365 days` remains the shipped display window, but the current dataset is too young for percentile-derived thresholds because only 5 of 365 days are non-zero
+- the short all-time reference window better reflects the currently active data range than the sparse 365-day percentiles
+- upper-tail concentration does not currently look dominated by one pathological outlier; `p95/p75 = 1.29` and `max/p90 = 1.12`
+
+## 16. References
 
 - `docs/heatmap-state-density-spec.md`
-- `docs/heatmap-density-audit-2026-03-12.md`
 - `docs/mvp-contract-decisions.md`
 - `docs/eng-domain-concept.md`
 - `src/personal_mcp/tools/daily_summary.py`

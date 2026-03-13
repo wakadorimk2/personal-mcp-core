@@ -50,11 +50,10 @@
 
 日常の execution skill は `docs/CODEX_RUNBOOK.md` に吸収した。
 
-## 6. Historical records
+## 6. Historical notes policy
 
-長期の canonical source ではなく、decision snapshot / research memo / audit log として読む。
+Issue-specific research snapshots, temporary inventories, and one-off audit notes are
+not indexed here once their lasting rules have been absorbed into canonical docs.
 
-- `docs/development-docs-inventory.md`
-- `docs/storage-unification-plan.md`
-- `docs/usage-monitor-research.md`
-- `docs/heatmap-density-audit-2026-03-12.md`
+長期に参照したい invariant は canonical doc に寄せ、短命な調査メモは Issue か一時 artifact
+として扱う。
