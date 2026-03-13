@@ -51,6 +51,9 @@ Discord 送信実装そのものは対象外とする。
 - adapter は route-selected webhook env var が未設定または空文字なら送信を試みない
 - channel 選択は既存どおり `NOTIFY_CHANNEL=discord` または `notify --channel discord` を使う
 - Discord 固有の設定は adapter 内に閉じ込め、`scripts/notify` の共通引数へ追加しない
+- purpose-aware routing は wrapper 側で先に解決し、`smoke_test` は `NOTIFY_ENV` より優先して `discord-test` へ向かう
+- `NOTIFY_ENV=dev|prod` の分岐は logical route が `discord` のときだけ適用する
+- `discord-test` route は `DISCORD_WEBHOOK_AI_STATUS_TEST` だけを見る fail-closed 動作とし、`DISCORD_WEBHOOK_AI_STATUS*` への fallback をしない
 
 ## 3. Input contract from `scripts/notify`
 
