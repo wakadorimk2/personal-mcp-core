@@ -1,9 +1,18 @@
 # AI Workflow (Git / worktree / VSCode)
 
-この文書は、AI worker を含む開発の最小運用ルールを定義する。
-副作用権限（Claude/Codex の境界）は [docs/AI_ROLE_POLICY.md](./AI_ROLE_POLICY.md) を正本とし、
-本書は作業場所と運用手順に限定する。
-Issue 着手から handoff までの共通進行管理は [docs/PLAYBOOK.md](./PLAYBOOK.md) を正本とする。
+この文書は、AI development system の canonical parent
+[`docs/architecture/ai-development-system.md`](./architecture/ai-development-system.md)
+にぶら下がる **focused detail adapter** です。
+
+この文書に残すもの:
+
+- worktree / branch / VSCode 運用の detail
+- daily operational checks
+- 現時点で parent doc に吸収していない local appendix
+
+副作用権限の detail は [docs/AI_ROLE_POLICY.md](./AI_ROLE_POLICY.md)、
+Issue 着手から handoff までの phase flow detail は [docs/PLAYBOOK.md](./PLAYBOOK.md) を参照します。
+本書は作業場所と運用手順に限定します。
 
 ---
 
@@ -146,6 +155,10 @@ git fetch -p origin
 ---
 
 ## 7. GitHub Project Active管理ルール（試行）
+
+この節は、`#417` 時点では canonical parent に吸収していない
+**local appendix** として残す。
+development system 全体の topology ではなく、現行の ops 運用メモとして扱う。
 
 この節は、Project を「TODO 一覧」ではなく「active management の作業面」にするための最小ルールを定義する。
 試行期間は **2026-03-09 から 2026-03-22（2週間）** とし、期間後に閾値と運用を見直す。

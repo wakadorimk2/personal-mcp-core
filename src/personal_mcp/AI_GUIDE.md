@@ -11,7 +11,7 @@
 
 ---
 
-> **文書責務**: AI 行動原則・姿勢の**正本**。役割境界の正本は [`docs/AI_ROLE_POLICY.md`](./docs/AI_ROLE_POLICY.md) であり、本文書はその**導線**（再定義しない）。runtime 別 runbook 詳細設計・通知運用は scope 外。
+> **文書責務**: AI 行動原則・姿勢の**正本**。repo-wide entrypoint は [`AGENTS.md`](./AGENTS.md) であり、AI development system の親文書は [`docs/architecture/ai-development-system.md`](./docs/architecture/ai-development-system.md) です。`docs/AI_ROLE_POLICY.md`、`docs/AI_WORKFLOW.md`、`docs/PLAYBOOK.md`、`docs/WORKER_POLICY.md` は focused detail docs として参照し、本文書はそれらを再定義しません。runtime 別 runbook 詳細設計・通知運用は scope 外です。
 
 ## 基本姿勢（最優先）
 
@@ -118,17 +118,27 @@
 ## AI役割分離ポリシー
 
 - Claude は副作用を出さない実装担当、Codex は副作用を出す執行・検証担当です
-- 正本は [docs/AI_ROLE_POLICY.md](./docs/AI_ROLE_POLICY.md) です（この節と `CLAUDE.md` は導線です）
-- この節・`CLAUDE.md`・運用メモの記述が正本と矛盾する場合、正本を優先し、副作用を伴う作業は一旦停止して人間 Maintainer にエスカレーションしてください
+- development system の親文書は [docs/architecture/ai-development-system.md](./docs/architecture/ai-development-system.md) です
+- side-effect 境界の detail は [docs/AI_ROLE_POLICY.md](./docs/AI_ROLE_POLICY.md) にあります（この節と `CLAUDE.md` は導線です）
+- この節・`CLAUDE.md`・運用メモの記述が parent doc または focused detail docs と矛盾する場合、それらを優先し、副作用を伴う作業は一旦停止して人間 Maintainer にエスカレーションしてください
 - 旧ルール参照による誤停止を避けるため、判断基準は常に正本に固定してください
 - runtime 別 runbook の詳細設計・通知運用は正本の非ゴール（scope 外）です
 
 ## AI作業環境運用（Git / worktree / VSCode）
 
-- AI worker を含む作業環境の運用ルール正本は [docs/AI_WORKFLOW.md](./docs/AI_WORKFLOW.md) です
+- development system の全体像と read order は [docs/architecture/ai-development-system.md](./docs/architecture/ai-development-system.md) を参照してください
+- AI worker を含む作業環境運用の detail は [docs/AI_WORKFLOW.md](./docs/AI_WORKFLOW.md) にあります
 - `worktree: 長期 / 役割ベース`、`branch: 短命 / taskベース` を原則としてください
 - VSCode は worktree ごとに作業机を固定し、待機状態を `main + clean` に保ってください
 - 副作用の可否（実行権限）は運用都合よりも [docs/AI_ROLE_POLICY.md](./docs/AI_ROLE_POLICY.md) を優先してください
+
+## AI orchestration docs
+
+- repo-wide の入口と優先順位は [AGENTS.md](./AGENTS.md) を参照してください
+- AI development system の parent doc は [docs/architecture/ai-development-system.md](./docs/architecture/ai-development-system.md) です
+- Issue 着手から handoff までの共通進行管理 detail は [docs/PLAYBOOK.md](./docs/PLAYBOOK.md) を参照してください
+- runtime 間の dispatch detail は [docs/WORKER_POLICY.md](./docs/WORKER_POLICY.md) を参照してください
+- 本文書は行動原則の正本であり、orchestration の具体フローや dispatch rule は再定義しません
 
 ## Tooling source of truth
 

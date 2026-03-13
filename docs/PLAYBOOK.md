@@ -1,5 +1,9 @@
 # AI Worker Playbook
 
+この文書は、AI development system の canonical parent
+[`docs/architecture/ai-development-system.md`](./architecture/ai-development-system.md)
+にぶら下がる **focused detail adapter** です。
+
 > 関連 Issue: #373
 > 関連 docs: [`docs/AI_WORKFLOW.md`](./AI_WORKFLOW.md), [`docs/AI_ROLE_POLICY.md`](./AI_ROLE_POLICY.md), [`docs/CODEX_RUNBOOK.md`](./CODEX_RUNBOOK.md), [`docs/WORKER_POLICY.md`](./WORKER_POLICY.md), [`docs/worker-claim-protocol.md`](./worker-claim-protocol.md), [`docs/worker-registry-coordination.md`](./worker-registry-coordination.md)
 
@@ -12,6 +16,7 @@ AI worker が 1 つの Issue を受け取ってから、
 この文書は runtime 固有のコマンドを定義しない。
 「いつ着手できるか」「各フェーズで何を残すか」
 「中断 / 再開 / handoff をどう成立させるか」を固定する。
+development system 全体の topology や read order は parent doc を優先する。
 
 ## この文書が扱うこと / 扱わないこと
 

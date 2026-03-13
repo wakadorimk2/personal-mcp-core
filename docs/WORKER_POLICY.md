@@ -1,5 +1,9 @@
 # AI Worker Policy
 
+この文書は、AI development system の canonical parent
+[`docs/architecture/ai-development-system.md`](./architecture/ai-development-system.md)
+にぶら下がる **focused detail adapter** です。
+
 > 関連 Issue: #374
 > 関連 docs: [`docs/AI_ROLE_POLICY.md`](./AI_ROLE_POLICY.md), [`docs/PLAYBOOK.md`](./PLAYBOOK.md), [`docs/worker-claim-protocol.md`](./worker-claim-protocol.md), [`docs/worker-registry-coordination.md`](./worker-registry-coordination.md)
 
@@ -10,8 +14,10 @@ multi-runtime 環境で、
 どの順で collision を避けるか、
 implementer と reviewer をどう分離するかを定義する。
 
-この文書は dispatch policy の正本であり、
+この文書は dispatch matrix と collision avoidance の focused detail を残し、
 副作用の許可 / 禁止、claim protocol の event 定義、runtime 固有コマンドは再定義しない。
+parent doc が development system 全体の topology を担い、
+本書は dispatch detail に限定する。
 
 ## この文書が扱うこと / 扱わないこと
 

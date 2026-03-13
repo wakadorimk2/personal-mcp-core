@@ -14,24 +14,28 @@ When starting any task, read files in this order before writing or changing anyt
 
 1. `AGENTS.md` — repo-wide entrypoint, precedence, and source-of-truth map
 2. `AI_GUIDE.md` — the owner's values and behavioral expectations for AI
-3. `docs/AI_ROLE_POLICY.md` — authoritative role split for Claude/Codex operations
-4. `docs/AI_WORKFLOW.md` — worktree / branch / VSCode rules when operational context matters
-5. `docs/PLAYBOOK.md` — common issue-to-handoff flow when orchestration context matters
-6. `docs/WORKER_POLICY.md` — dispatch policy when runtime selection or reviewer split matters
-7. `CLAUDE.md` (this file) — Claude-specific routing and constraints
-8. `docs/architecture.md` — system structure and extension points (if it exists)
-9. Only then: the specific files relevant to the task
+3. `docs/architecture/ai-development-system.md` — canonical parent for the AI development system
+4. focused detail docs when needed
+   - `docs/AI_ROLE_POLICY.md` — side-effect boundary detail
+   - `docs/AI_WORKFLOW.md` — worktree / branch / VSCode detail
+   - `docs/PLAYBOOK.md` — issue-to-handoff lifecycle detail
+   - `docs/WORKER_POLICY.md` — dispatch detail
+5. `CLAUDE.md` (this file) — Claude-specific routing and constraints
+6. `docs/architecture.md` — system structure and extension points (if it exists)
+7. Only then: the specific files relevant to the task
 
 ## AI role split
 
 Claude remains the no-side-effect implementation side, and Codex remains the side-effecting executor/verifier.
-Authoritative policy: [`docs/AI_ROLE_POLICY.md`](./docs/AI_ROLE_POLICY.md) (this section is a routing summary, not the source of truth).
+Canonical parent: [`docs/architecture/ai-development-system.md`](./docs/architecture/ai-development-system.md).
+Focused detail for side-effect boundaries: [`docs/AI_ROLE_POLICY.md`](./docs/AI_ROLE_POLICY.md).
 
-If this file, `AI_GUIDE.md`, old templates, or historical comments conflict with the policy:
+If this file, `AI_GUIDE.md`, old templates, or historical comments conflict with the parent doc or focused detail docs:
 
-1. prioritize `docs/AI_ROLE_POLICY.md`
-2. pause side-effecting work
-3. escalate to the human Maintainer with the conflicting citations
+1. prioritize `docs/architecture/ai-development-system.md`
+2. use `docs/AI_ROLE_POLICY.md` for boundary detail
+3. pause side-effecting work
+4. escalate to the human Maintainer with the conflicting citations
 
 To avoid false stops caused by stale wording, never treat non-authoritative role notes as a blocker by themselves.
 
@@ -39,6 +43,7 @@ To avoid false stops caused by stale wording, never treat non-authoritative role
 
 When orchestration-specific decisions are needed:
 
+* use [`docs/architecture/ai-development-system.md`](./docs/architecture/ai-development-system.md) for the development-system topology
 * use [`docs/PLAYBOOK.md`](./docs/PLAYBOOK.md) for phase progression, handoff, pause, and resume rules
 * use [`docs/WORKER_POLICY.md`](./docs/WORKER_POLICY.md) for dispatch policy and implementer/reviewer separation
 * do not redefine those rules in this file

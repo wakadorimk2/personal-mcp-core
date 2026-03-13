@@ -1,11 +1,25 @@
 # AI Role Boundary Policy（共通）
 
-この文書は、personal-mcp-core における **AI runtime 共通の役割境界（role boundary）** の正本です。
-Claude Code・Codex CLI 等の特定の runtime 名に依存せず読めることを意図しています。
-runtime 固有の実行手順・通知運用・CLI 個別事情は runtime 別 runbook に委譲します。
-基準構造は [`docs/RUNBOOK_BASELINE.md`](./RUNBOOK_BASELINE.md) を参照し、既存の Codex CLI 向け具体例は [`docs/CODEX_RUNBOOK.md`](./CODEX_RUNBOOK.md) にあります。
+この文書は、AI development system の canonical parent
+[`docs/architecture/ai-development-system.md`](./architecture/ai-development-system.md)
+にぶら下がる **focused detail adapter** です。
 
-repo-wide entrypoint は [`AGENTS.md`](../AGENTS.md) です。役割境界に関する運用上の判断はこの文書を優先し、`AI_GUIDE.md` と `CLAUDE.md` は導線のみを持ちます。
+この文書に残すもの:
+
+- AI runtime 共通の side-effect 境界の詳細
+- no-side-effect / side-effect の許可 / 禁止 / 最小修正制限
+- GitHub 操作範囲と停止条件の detail
+
+この文書で再定義しないもの:
+
+- repo-wide entrypoint と read order 全体
+- AI development system 全体の topology
+- runtime-specific command surface
+
+Claude Code・Codex CLI 等の特定の runtime 名に依存せず読めることを意図し、
+runtime 固有の実行手順・通知運用・CLI 個別事情は runtime 別 runbook に委譲します。
+基準構造は [`docs/RUNBOOK_BASELINE.md`](./RUNBOOK_BASELINE.md) を参照し、
+既存の Codex CLI 向け具体例は [`docs/CODEX_RUNBOOK.md`](./CODEX_RUNBOOK.md) にあります。
 
 ---
 
@@ -164,22 +178,22 @@ Issue 本文編集の最終ポリシー:
 
 ---
 
-## 境界変更反映の順序（入口 → 正本 → 導線 → skills/runbook）
+## 境界変更反映の順序（入口 → canonical parent → adapters → runtime docs）
 
 役割境界の更新は、次の順序で反映する。順序を飛ばして先行更新しない。
 
 | Step | 対象層 | 対象ファイル群 | 主担当 | 完了条件 | 次ステップ進行条件 |
 |---|---|---|---|---|---|
 | 1 | 入口 | `AGENTS.md` | Maintainer（境界判断）+ side-effect 担当（編集） | repo-wide entrypoint と source-of-truth map が明記されている | Step 1 の routing 方針が確定している |
-| 2 | 正本 | `docs/AI_ROLE_POLICY.md`、必要に応じて `docs/skills/*.md`（canonical） | Maintainer（境界判断）+ side-effect 担当（編集） | 許可/禁止/停止条件が本文で一意に読める | Step 2 の差分が確定し、境界判断が確定している |
-| 3 | 導線 | `AI_GUIDE.md`、`CLAUDE.md` | side-effect 担当（同期）+ Maintainer（確認） | 正本参照と矛盾時の停止/エスカレーション導線が明記されている | Step 2 と矛盾しないことを差分で確認できる |
-| 4 | skills/runbook | `docs/CODEX_RUNBOOK.md`、`docs/skills/*`、`.codex/skills/*`、`.claude/skills/*` | side-effect 担当（同期）+ no-side-effect 担当（提案のみ） | 実行手順と配布物が Step 2/3 の語彙・制約に一致している | Step 2/3 が完了し、残差分がこの層の同期のみである |
+| 2 | canonical parent | `docs/architecture/ai-development-system.md` | Maintainer（境界判断）+ side-effect 担当（編集） | development system の topology と delegated concern が一意に読める | Step 2 の差分が確定している |
+| 3 | focused adapters | `docs/AI_ROLE_POLICY.md`、`docs/AI_WORKFLOW.md`、`docs/PLAYBOOK.md`、`docs/WORKER_POLICY.md` | side-effect 担当（同期）+ Maintainer（確認） | 各文書が parent と矛盾せず、残す detail scope が明記されている | Step 2 と矛盾しないことを差分で確認できる |
+| 4 | runtime / skills | `AI_GUIDE.md`、`CLAUDE.md`、`docs/CODEX_RUNBOOK.md`、`docs/skills/*`、`.codex/skills/*`、`.claude/skills/*` | side-effect 担当（同期）+ no-side-effect 担当（提案のみ） | 導線と実行手順が Step 2/3 の語彙・制約に一致している | Step 2/3 が完了し、残差分がこの層の同期のみである |
 
 移行中の暫定ルール:
 
-- 優先順位は `正本 > 導線 > skills/runbook > 過去 Issue/コメント` とする
+- 優先順位は `canonical parent > focused adapters > runtime/skills > 過去 Issue/コメント` とする
 - 矛盾が副作用可否、禁止事項、停止条件に影響する場合は、副作用を伴う作業を停止し、Maintainer へエスカレーションする
-- 矛盾が文言差や例示差に限られ運用判断へ影響しない場合は、正本を基準に継続し、同期漏れを follow-up に記録する
+- 矛盾が文言差や例示差に限られ運用判断へ影響しない場合は、canonical parent を基準に継続し、同期漏れを follow-up に記録する
 - Step 1 未完了のまま Step 2/3/4 の実作業を開始しない
 
 ---
