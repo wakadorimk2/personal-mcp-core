@@ -164,7 +164,55 @@ It only fixes the problem statement:
 
 ---
 
-## 8. Downstream Implications
+## 8. Step 3 - Normalization Candidate Comparison
+
+Step 3 compares candidate approaches for absorbing source-family skew before bucket mapping.
+
+The purpose here is to narrow the design direction, not to freeze numeric coefficients.
+
+### 8.1 Candidate comparison
+
+| candidate | summary | pros | cons | Step 3 status |
+|---|---|---|---|---|
+| renderer-only adjustment | keep raw shipped counts and solve visibility only with palette or thresholds | minimal implementation churn | leaves source skew in the metric itself; repeats the same problem in every consumer | reject |
+| hard source exclusion | exclude high-volume included families such as GitHub from shipped metric | simple and predictable | collapses meaningful `eng` observation into absence; too destructive for assurance mirror intent | reject |
+| per-event weighting | assign source-family weights before daily aggregation | directly addresses family skew | exact weights become arbitrary too early; hard to explain or audit in current sparse dataset | keep as future sub-technique, not the primary contract |
+| per-family daily normalization | aggregate by family first, then combine family-level daily signals into one derived value | preserves presence while reducing burst domination; creates a reusable seam before bucket mapping | needs explicit terminology and pipeline contract | prefer |
+| compression or cap after daily count | compress daily counts with a cap, log-like curve, or bounded transform | reduces domination by extreme burst days | if applied after family mixing, it still hides which family caused the skew | secondary technique only, after family-level seam exists |
+
+### 8.2 Direction chosen in Step 3
+
+Step 3 prefers a two-layer direction:
+
+1. keep current shipped baseline fixed for backward understanding
+2. design future derivation around per-family daily normalization before bucket mapping
+
+This does not yet fix:
+
+- the list of final family groups
+- any exact weighting numbers
+- any exact compression formula
+
+### 8.3 What Step 3 rejects
+
+Step 3 explicitly rejects using UI palette or threshold tuning as the primary answer to source-family skew.
+
+It also rejects dropping GitHub-derived `eng` activity from the shipped metric entirely, because the problem is disproportion, not irrelevance.
+
+### 8.4 Step 3 decision
+
+The derivation seam introduced by Issue `#407` should be able to represent:
+
+- source-family daily aggregates
+- a family-aware normalization step
+- an optional post-normalization compression or cap step
+- a final heatmap-ready value consumed by bucket mapping
+
+The seam should not require the renderer to rediscover source-level behavior on its own.
+
+---
+
+## 9. Downstream Implications
 
 ### For `#355`
 
@@ -180,17 +228,18 @@ It only fixes the problem statement:
 
 ---
 
-## 9. Decision Summary For Step 1 And Step 2
+## 10. Decision Summary Through Step 3
 
 - keep current `/api/heatmap` semantics fixed as the baseline
 - treat current shipped heatmap as `display_population`, not raw activity count
 - keep debug metrics outside the shipped baseline contract
 - treat source-family scale gap as a metric-layer problem that remains unsolved in the current baseline
-- postpone normalization and derivation design to later steps of `#407`
+- prefer per-family daily normalization over renderer-only adjustment
+- allow compression or cap only after a family-aware seam exists
 
 ---
 
-## 10. References
+## 11. References
 
 - `docs/heatmap-state-density-spec.md`
 - `docs/heatmap-density-audit-2026-03-12.md`
