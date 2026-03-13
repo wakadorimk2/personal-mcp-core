@@ -357,9 +357,32 @@ _DASHBOARD_HTML_TEMPLATE = """\
 <title>活動</title>
 <style>
 body { font-family: system-ui; max-width: 480px; margin: 0 auto; padding: 1rem; }
-h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
-.heatmap { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-bottom: 1.5rem; }
-.heatmap-cell { aspect-ratio: 1; border-radius: 2px; }
+h2 { font-size: 1.1rem; margin: 0; }
+.heatmap-shell { margin-bottom: 1.5rem; }
+.heatmap-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+.heatmap-subtitle {
+  font-size: 0.8rem;
+  color: #666;
+  text-align: right;
+}
+.heatmap { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.5rem; }
+.heatmap-week { display: grid; grid-template-rows: auto repeat(7, 1fr); gap: 3px; min-width: 0; }
+.heatmap-week-label {
+  font-size: 0.72rem;
+  color: #666;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.heatmap-cell { aspect-ratio: 1; border-radius: 4px; }
+.heatmap-cell-empty { box-shadow: inset 0 0 0 1px #e6e6e6; }
 #candidates { margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .candidate-tag {
   margin-top: 0;
@@ -453,8 +476,13 @@ h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
 </style>
 </head>
 <body>
-<h2>直近28日</h2>
-<div class="heatmap" id="heatmap"></div>
+<section class="heatmap-shell" aria-labelledby="heatmap-title">
+  <div class="heatmap-header">
+    <h2 id="heatmap-title">直近6週間</h2>
+    <div id="heatmap-range-label" class="heatmap-subtitle" aria-live="polite"></div>
+  </div>
+  <div class="heatmap" id="heatmap" aria-label="直近6週間のヒートマップ"></div>
+</section>
 <button type="button" id="refresh-btn">再読み込み</button>
 <div class="candidate-mode-switcher" aria-label="候補タグ動作切替">
   <button type="button" id="candidate-compose-mode" class="candidate-mode-btn active">入力してから保存</button>
@@ -552,6 +580,24 @@ function heatColor(n) {
   if (n <= 9) return '#ffaa55';
   if (n <= 19) return '#ff7700';
   return '#cc4400';
+}
+
+function monthDayLabel(dateText) {
+  var parts = (dateText || "").split("-");
+  if (parts.length !== 3) return dateText || "";
+  return Number(parts[1]) + "/" + Number(parts[2]);
+}
+
+function formatHeatmapRange(startDate, endDate) {
+  return monthDayLabel(startDate) + " - " + monthDayLabel(endDate);
+}
+
+function splitHeatmapIntoWeeks(data) {
+  var weeks = [];
+  for (var i = 0; i < data.length; i += 7) {
+    weeks.push(data.slice(i, i + 7));
+  }
+  return weeks;
 }
 
 function candidateText(item) {
@@ -675,13 +721,34 @@ async function loadHeatmap() {
   if (!r.ok) throw new Error("http " + r.status);
   var data = await r.json();
   var el = document.getElementById('heatmap');
+  var rangeLabel = document.getElementById('heatmap-range-label');
   el.innerHTML = '';
-  data.forEach(function(item) {
-    var cell = document.createElement('div');
-    cell.className = 'heatmap-cell';
-    cell.style.background = heatColor(item.count);
-    cell.title = item.date + ': ' + item.count + '件';
-    el.appendChild(cell);
+  if (!Array.isArray(data) || data.length === 0) {
+    if (rangeLabel) rangeLabel.textContent = '記録なし';
+    return;
+  }
+  if (rangeLabel) {
+    rangeLabel.textContent = formatHeatmapRange(data[0].date, data[data.length - 1].date);
+  }
+  splitHeatmapIntoWeeks(data).forEach(function(week) {
+    var weekColumn = document.createElement('div');
+    weekColumn.className = 'heatmap-week';
+
+    var weekLabel = document.createElement('div');
+    weekLabel.className = 'heatmap-week-label';
+    weekLabel.textContent = formatHeatmapRange(week[0].date, week[week.length - 1].date);
+    weekColumn.appendChild(weekLabel);
+
+    week.forEach(function(item) {
+      var cell = document.createElement('div');
+      cell.className = item.count === 0 ? 'heatmap-cell heatmap-cell-empty' : 'heatmap-cell';
+      cell.style.background = heatColor(item.count);
+      cell.title = item.date + ': ' + item.count + '件';
+      cell.setAttribute('aria-label', item.date + ': ' + item.count + '件');
+      weekColumn.appendChild(cell);
+    });
+
+    el.appendChild(weekColumn);
   });
 }
 
@@ -934,9 +1001,9 @@ def _make_handler(data_dir: str):
                 else:
                     self._json(200, rec)
             elif parsed.path == "/api/heatmap":
-                self._json(200, count_events_by_date(28, data_dir or None))
+                self._json(200, count_events_by_date(42, data_dir or None))
             elif parsed.path == "/api/heatmap/debug":
-                self._json(200, count_events_by_date_debug(28, data_dir or None))
+                self._json(200, count_events_by_date_debug(42, data_dir or None))
             elif parsed.path == "/api/candidates":
                 self._json(200, list_candidates(data_dir or None))
             elif parsed.path == "/api/summaries/list":
