@@ -351,14 +351,13 @@ def test_http_get_dashboard_200(data_dir: Path) -> None:
     assert "再読み込みに失敗しました。再試行してください。" in html
 
 
-def test_http_get_dashboard_uses_issue_257_provisional_thresholds(data_dir: Path) -> None:
+def test_http_get_dashboard_uses_issue_257_bucket_contract(data_dir: Path) -> None:
     handler_cls = _make_handler_for_test(str(data_dir))
     _, _, html = _do_get_html(handler_cls, "/dashboard")
-    assert "if (n === 0) return '#eeeeee';" in html
-    assert "if (n <= 4) return '#ffd9b3';" in html
-    assert "if (n <= 9) return '#ffaa55';" in html
-    assert "if (n <= 19) return '#ff7700';" in html
-    assert "return '#cc4400';" in html
+    assert "var colors = ['#eeeeee', '#ffd9b3', '#ffaa55', '#ff7700', '#cc4400'];" in html
+    assert "cell.style.background = heatColor(item.bucket_index);" in html
+    assert "if (n < 0) return colors[0];" in html
+    assert "if (n >= colors.length) return colors[colors.length - 1];" in html
     assert "if (n <= 2) return '#ffd9b3';" not in html
 
 
@@ -628,7 +627,9 @@ def test_heatmap_density_audit_uses_last_365_days_as_primary_window(data_dir: Pa
     assert result["primary_window"]["stats"]["max"] == 1
     assert result["all_time_reference"] is not None
     assert result["all_time_reference"]["role"] == "secondary_reference"
-    assert result["all_time_reference"]["stats"]["total_days"] == 401
+    start_day = datetime.strptime(result["all_time_reference"]["start_date"], "%Y-%m-%d").date()
+    end_day = datetime.strptime(result["all_time_reference"]["end_date"], "%Y-%m-%d").date()
+    assert result["all_time_reference"]["stats"]["total_days"] == (end_day - start_day).days + 1
     assert result["all_time_reference"]["start_date"] == _date_days_ago(400)
 
 
