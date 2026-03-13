@@ -13,6 +13,7 @@ from personal_mcp.tools.daily_summary import (
     get_latest_summary,
     list_summaries,
 )
+from personal_mcp.tools.heatmap_scale import SHIPPED_DENSITY_FILLED_BUCKET_MAXES
 from personal_mcp.tools.log_form import (
     ALLOWED_KINDS,
     event_add_sqlite,
@@ -474,6 +475,8 @@ h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
 <div id="summaries"></div>
 <script>
 var DASHBOARD_FALLBACK_CANDIDATES = DASHBOARD_FALLBACK_CANDIDATES_JSON;
+var HEATMAP_BUCKET_MAXES = HEATMAP_BUCKET_MAXES_JSON;
+var HEATMAP_BUCKET_COLORS = ['#eeeeee', '#ffd9b3', '#ffaa55', '#ff7700', '#cc4400'];
 var candidateTapMode = "compose";
 var dashboardBusy = false;
 var dashboardInputFlow = null;
@@ -546,12 +549,16 @@ function buildDashboardFlowPayload(text, extraUiData) {
   return payload;
 }
 
+function heatBucket(n) {
+  if (n <= 0) return 0;
+  for (var i = 0; i < HEATMAP_BUCKET_MAXES.length; i++) {
+    if (n <= HEATMAP_BUCKET_MAXES[i]) return i + 1;
+  }
+  return HEATMAP_BUCKET_MAXES.length + 1;
+}
+
 function heatColor(n) {
-  if (n === 0) return '#eeeeee';
-  if (n <= 2) return '#ffd9b3';
-  if (n <= 5) return '#ffaa55';
-  if (n <= 10) return '#ff7700';
-  return '#cc4400';
+  return HEATMAP_BUCKET_COLORS[heatBucket(n)];
 }
 
 function candidateText(item) {
@@ -867,6 +874,9 @@ loadSummaries();
 _DASHBOARD_HTML = _DASHBOARD_HTML_TEMPLATE.replace(
     "DASHBOARD_FALLBACK_CANDIDATES_JSON",
     json.dumps(list(FIXED_CANDIDATES), ensure_ascii=False),
+).replace(
+    "HEATMAP_BUCKET_MAXES_JSON",
+    json.dumps(list(SHIPPED_DENSITY_FILLED_BUCKET_MAXES)),
 )
 
 

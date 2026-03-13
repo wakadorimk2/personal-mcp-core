@@ -20,6 +20,10 @@ from personal_mcp.tools.daily_summary import (
     heatmap_density_audit,
     list_summaries,
 )
+from personal_mcp.tools.heatmap_scale import (
+    SHIPPED_DENSITY_FILLED_BUCKET_MAXES,
+    shipped_density_bucket,
+)
 
 
 def _today_utc() -> str:
@@ -262,6 +266,19 @@ def test_scale_population_boundary_ignores_pre_boundary_high_count_days(data_dir
     assert max(item["count"] for item in scale_window) == 1
 
 
+def test_shipped_density_bucket_matches_issue_257_thresholds() -> None:
+    assert SHIPPED_DENSITY_FILLED_BUCKET_MAXES == (4, 9, 19)
+    assert shipped_density_bucket(0) == 0
+    assert shipped_density_bucket(1) == 1
+    assert shipped_density_bucket(4) == 1
+    assert shipped_density_bucket(5) == 2
+    assert shipped_density_bucket(9) == 2
+    assert shipped_density_bucket(10) == 3
+    assert shipped_density_bucket(19) == 3
+    assert shipped_density_bucket(20) == 4
+    assert shipped_density_bucket(41) == 4
+
+
 def test_count_events_by_date_excludes_web_form_ui_source(data_dir: Path) -> None:
     """Telemetry-only day: shipped_density == 0 (source="web-form-ui" excluded)."""
     db_path = data_dir / "events.db"
@@ -451,6 +468,9 @@ def test_http_get_dashboard_candidate_tap_script_exists(data_dir: Path) -> None:
     assert "input.value = text;" in html
     assert "renderComposerState();" in html
     assert "var dashboardInputFlow = null;" in html
+    assert "var HEATMAP_BUCKET_MAXES = [4, 9, 19];" in html
+    assert "function heatBucket(n) {" in html
+    assert "if (n <= 2) return '#ffd9b3';" not in html
     assert (
         'candidateSource: resolveDashboardCandidateSource(mode, next.candidate_source || ""),'
         in html
