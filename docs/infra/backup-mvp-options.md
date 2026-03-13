@@ -95,4 +95,4 @@ MVP段階では、**ローカル正本に対して、別ディスクへの `rsyn
 
 ## 関連文書
 
-- [バックアップからの復元手順（MVPドラフト）](./restore-mvp-draft.md)
+- [repo 内 `data/` の位置づけと運用ルール](../data-directory.md)

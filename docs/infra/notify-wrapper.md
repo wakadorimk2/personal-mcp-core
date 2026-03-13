@@ -496,10 +496,9 @@ For smoke tests that must not reach the prod webhook, switch to
 adapter exits with code `2` and does not fall back to
 `DISCORD_WEBHOOK_AI_STATUS`.
 
-Real Discord smoke-test evidence is now recorded in
-[`docs/infra/ai-cli-discord-smoke-log.md`](./ai-cli-discord-smoke-log.md), so
-this documented setup can stay reproducible without requiring a live webhook
-during issue #267.
+Real Discord smoke-test evidence should be recorded in the relevant Issue or PR,
+so this documented setup can stay reproducible without keeping live webhook logs
+as permanent repo docs.
 
 ## Current event coverage and remaining gaps
 
@@ -538,9 +537,8 @@ Current behavior behind that table:
 ### Scope boundary for closing #255
 
 Issue #255 can close once the currently shipped Codex and Claude completion
-paths are operationalized and the real Discord smoke-test evidence in
-[`docs/infra/ai-cli-discord-smoke-log.md`](./ai-cli-discord-smoke-log.md) is
-recorded. The gaps above should stay explicit follow-up work, not implied
+paths are operationalized and real Discord smoke-test evidence is recorded in
+the relevant Issue or PR. The gaps above should stay explicit follow-up work, not implied
 requirements for closing the Epic:
 
 - `needs_input` remains out of scope for #255

@@ -203,8 +203,6 @@ Issue #94 で確定した cleanup 方針。仕様変更ではなく、Issue #100
 - `payload` / `payload.text` / `payload.meta.*` への直接参照は新規コードおよびメイン docs では使用しない
 - 残置が許容される場所（変更不要）：
   - この文書 Section B / C / D — legacy record 定義・mapping・tolerance の参照資料
-  - `docs/migration.md` — legacy → v1 移行経緯の記録
-  - `docs/issue-79-proposal-review.md` — historical review doc
   - テストの legacy fixture — `_normalize_event_record` の reader tolerance 検証目的
   - 既存の legacy JSONL データ — append-only 原則に従い変更しない
 
@@ -217,7 +215,7 @@ Issue #94 で確定した cleanup 方針。仕様変更ではなく、Issue #100
 
 ### legacy 説明の scope 制限方針
 
-- legacy record の説明・例示は migration / compatibility section（この文書 Section B–D、`docs/migration.md`）に限定する
+- legacy record の説明・例示は compatibility section（この文書 Section B–D）に限定する
 - メイン docs のイベント例は legacy 形式（`payload`）を示さない
 
 ### cleanup の位置づけ

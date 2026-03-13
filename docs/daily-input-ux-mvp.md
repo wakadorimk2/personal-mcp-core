@@ -143,6 +143,26 @@ recent > today_frequent > 7d_frequent > fixed
 
 ---
 
+## 5.4 吸収した historical notes
+
+この文書には、独立 issue memo だった UI 方針を吸収している。
+
+Issue #187 由来の決定:
+
+- `/` を主導線とし、ヒートマップ + 候補タグ + 入力欄を同一画面に置く
+- `/dashboard` は統合画面への alias として扱う
+- 候補タップ後は入力欄へ流し込み、追記・編集を許容する
+
+Issue #213 由来の摩擦改善:
+
+- 保存 CTA は現在の入力内容を反映してよい
+- composer の操作面はモバイル下端でも押しやすさを落とさない
+- キーボード完了フローは短く保つ
+
+これらは独立 record ではなく、daily input UX の一部として読む。
+
+---
+
 ## 6. 非スコープ（この方針定義でやらないこと）
 
 - 高度な LLM 推論・意味ベースのレコメンデーション
@@ -187,3 +207,4 @@ recent > today_frequent > 7d_frequent > fixed
 - [`docs/event-contract-v1.md`](./event-contract-v1.md) — Event Contract v1（`data.text` フィールド定義）
 - [`docs/mvp-contract-decisions.md`](./mvp-contract-decisions.md) — MVP 期間中の契約決定事項
 - [`docs/daily-input-mode-contract-v1.md`](./daily-input-mode-contract-v1.md) — quick/tag/text の責務境界と比較前提
+- [`docs/README.md`](./README.md) — docs index

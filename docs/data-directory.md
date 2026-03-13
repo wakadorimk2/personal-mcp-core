@@ -39,3 +39,43 @@
 保存先解決の優先順位: `--data-dir` > `PERSONAL_MCP_DATA_DIR` > XDG 既定
 
 `repo/data/` はこの解決チェーンに含まれない。
+
+## legacy path / command migration
+
+旧運用との整合は次の方針で扱う。
+
+- `poe2-log-add` / `poe2-log-list` は legacy command として扱う
+- 同等操作は `event-add --domain poe2` / `event-list --domain poe2` へ寄せる
+- `data/poe2/logs.jsonl` は正式正本へ戻さない
+- `repo/data/` は開発・例示用のままとし、実運用正本へ昇格させない
+
+## restore checklist (MVP)
+
+復元の最小方針:
+
+- 復元元は別ディスク上のバックアップ
+- 復元先は常に repo 外の `data-dir`
+- `repo/data/` は復元対象に含めない
+- `rsync --delete` は使わない
+
+復元後の確認:
+
+```sh
+ls -lh <data-dir>/
+ls -lh <data-dir>/events.db
+personal-mcp event-list --n 10 --data-dir <data-dir>
+```
+
+必要な場合だけ recovery 用 command を明示実行する。
+
+```sh
+personal-mcp storage-db-to-jsonl --dry-run --json --data-dir <data-dir>
+personal-mcp storage-jsonl-to-db --dry-run --json --data-dir <data-dir>
+```
+
+```sh
+personal-mcp storage-db-to-jsonl --data-dir <data-dir>
+personal-mcp storage-jsonl-to-db --data-dir <data-dir>
+```
+
+関連比較表は [`docs/infra/backup-mvp-options.md`](./infra/backup-mvp-options.md) を参照。
