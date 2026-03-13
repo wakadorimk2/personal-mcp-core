@@ -26,18 +26,21 @@ If the diff source is not explicitly provided, inspect the local git diff for th
 
 Run the steps in this order. Do not skip, reorder, or substitute steps.
 
-1. Collect the diff context for the current task
-2. Summarize the diff
+1. Identify the module responsibility of each changed file to understand its role before evaluating the diff
+2. Collect the diff context for the current task
+3. Summarize the diff
    - Total files changed, lines added and removed, stated purpose (2 to 5 lines)
-3. Prioritize files by impact
+4. Prioritize files by impact
    - Core logic first, then tests, then documentation
-4. For each file, check against three lenses
-   - Regression: does this change break existing behavior?
+5. For each file, check against five lenses
+   - Regression risk: does this change break existing behavior?
+   - State mutation safety: are writes, caches, events, or async state handled safely?
+   - Boundary conditions: do edge cases, empty inputs, or limits break?
    - Scope deviation: does this change fall outside the issue scope?
    - Missing tests: is there a behavior change without a corresponding test?
-5. Collect findings and sort by risk: HIGH → MEDIUM → LOW
+6. Collect findings and sort by risk: HIGH → MEDIUM → LOW
    - If evidence is insufficient to make a definitive claim, move the item to Open Questions with one line stating what file or assumption is needed
-6. If the reviewed diff or surrounding task context shows `ruff` or `pytest` failures, produce a Next Step line
+7. If the reviewed diff or surrounding task context shows `ruff` or `pytest` failures, produce a Next Step line
 
 ## Output Format
 
