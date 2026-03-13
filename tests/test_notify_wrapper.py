@@ -61,6 +61,34 @@ def test_notify_resolves_known_kind_to_event() -> None:
     assert result.stderr == ""
 
 
+def test_notify_exposes_default_event_policy_to_adapters(tmp_path: Path) -> None:
+    adapter = tmp_path / "capture"
+    adapter.write_text(
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        "printf 'event=%s\\n' \"$NOTIFY_EVENT\"\n"
+        "printf 'severity=%s\\n' \"$NOTIFY_SEVERITY\"\n"
+        "printf 'verbosity=%s\\n' \"$NOTIFY_VERBOSITY\"\n",
+        encoding="utf-8",
+    )
+    adapter.chmod(adapter.stat().st_mode | stat.S_IXUSR)
+
+    result = _run_notify(
+        "--channel",
+        "capture",
+        "--event",
+        "needs_input",
+        "Need approval",
+        env={"NOTIFY_CHANNEL_DIR": str(tmp_path)},
+    )
+
+    assert result.stdout.splitlines() == [
+        "event=needs_input",
+        "severity=warning",
+        "verbosity=critical",
+    ]
+
+
 def test_notify_dispatches_to_custom_adapter_directory(tmp_path: Path) -> None:
     adapter = tmp_path / "capture"
     adapter.write_text(
@@ -71,6 +99,8 @@ def test_notify_dispatches_to_custom_adapter_directory(tmp_path: Path) -> None:
         "printf 'event=%s\\n' \"$NOTIFY_EVENT\"\n"
         "printf 'title=%s\\n' \"$NOTIFY_TITLE\"\n"
         "printf 'source=%s\\n' \"$NOTIFY_SOURCE\"\n"
+        "printf 'severity=%s\\n' \"$NOTIFY_SEVERITY\"\n"
+        "printf 'verbosity=%s\\n' \"$NOTIFY_VERBOSITY\"\n"
         "printf 'message=%s\\n' \"$NOTIFY_MESSAGE\"\n"
         "printf 'stdin=%s\\n' \"$stdin_payload\"\n",
         encoding="utf-8",
@@ -95,6 +125,8 @@ def test_notify_dispatches_to_custom_adapter_directory(tmp_path: Path) -> None:
         "event=task-complete",
         "title=CI",
         "source=pytest",
+        "severity=info",
+        "verbosity=normal",
         "message=All green",
         "stdin=All green",
     ]
@@ -114,6 +146,8 @@ def test_notify_kind_can_override_channel(tmp_path: Path) -> None:
         "set -euo pipefail\n"
         "printf 'channel=%s\\n' \"$NOTIFY_CHANNEL_NAME\"\n"
         "printf 'event=%s\\n' \"$NOTIFY_EVENT\"\n"
+        "printf 'severity=%s\\n' \"$NOTIFY_SEVERITY\"\n"
+        "printf 'verbosity=%s\\n' \"$NOTIFY_VERBOSITY\"\n"
         "printf 'webhook_env=%s\\n' \"$NOTIFY_DISCORD_WEBHOOK_ENV_NAME\"\n"
         "printf 'secret_file=%s\\n' \"$NOTIFY_DISCORD_WEBHOOK_SECRET_FILE\"\n",
         encoding="utf-8",
@@ -133,6 +167,8 @@ def test_notify_kind_can_override_channel(tmp_path: Path) -> None:
     assert result.stdout.splitlines() == [
         "channel=discord-test",
         "event=task_completed",
+        "severity=info",
+        "verbosity=debug",
         "webhook_env=DISCORD_WEBHOOK_AI_STATUS_TEST",
         f"secret_file={Path.home()}/.config/secrets/discord_test_webhook.env",
     ]
@@ -145,6 +181,8 @@ def test_notify_channel_alias_routes_discord_test_through_discord_adapter(tmp_pa
         "set -euo pipefail\n"
         "printf 'channel=%s\\n' \"$NOTIFY_CHANNEL_NAME\"\n"
         "printf 'event=%s\\n' \"$NOTIFY_EVENT\"\n"
+        "printf 'severity=%s\\n' \"$NOTIFY_SEVERITY\"\n"
+        "printf 'verbosity=%s\\n' \"$NOTIFY_VERBOSITY\"\n"
         "printf 'webhook_env=%s\\n' \"$NOTIFY_DISCORD_WEBHOOK_ENV_NAME\"\n"
         "printf 'secret_file=%s\\n' \"$NOTIFY_DISCORD_WEBHOOK_SECRET_FILE\"\n",
         encoding="utf-8",
@@ -163,6 +201,8 @@ def test_notify_channel_alias_routes_discord_test_through_discord_adapter(tmp_pa
     assert result.stdout.splitlines() == [
         "channel=discord-test",
         "event=task-complete",
+        "severity=info",
+        "verbosity=normal",
         "webhook_env=DISCORD_WEBHOOK_AI_STATUS_TEST",
         f"secret_file={Path.home()}/.config/secrets/discord_test_webhook.env",
     ]

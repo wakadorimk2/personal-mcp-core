@@ -8,6 +8,8 @@ KIND=""
 TITLE="${NOTIFY_TITLE:-}"
 EVENT="${NOTIFY_EVENT:-generic}"
 SOURCE="${NOTIFY_SOURCE:-}"
+SEVERITY="${NOTIFY_SEVERITY:-}"
+VERBOSITY="${NOTIFY_VERBOSITY:-}"
 READ_STDIN="0"
 CHANNEL_ARG_SET="0"
 EVENT_ARG_SET="0"
@@ -39,6 +41,62 @@ notification_kind_route() {
       ;;
     *)
       printf '%s' ""
+      ;;
+  esac
+}
+
+notification_kind_severity() {
+  case "$1" in
+    ai_task_failed)
+      printf '%s' "error"
+      ;;
+    ai_task_completed|smoke_test)
+      printf '%s' "info"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+notification_kind_verbosity() {
+  case "$1" in
+    smoke_test)
+      printf '%s' "debug"
+      ;;
+    ai_task_failed)
+      printf '%s' "critical"
+      ;;
+    ai_task_completed)
+      printf '%s' "normal"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+notification_event_severity() {
+  case "$1" in
+    task_failed)
+      printf '%s' "error"
+      ;;
+    needs_input)
+      printf '%s' "warning"
+      ;;
+    *)
+      printf '%s' "info"
+      ;;
+  esac
+}
+
+notification_event_verbosity() {
+  case "$1" in
+    task_failed|needs_input)
+      printf '%s' "critical"
+      ;;
+    *)
+      printf '%s' "normal"
       ;;
   esac
 }
@@ -151,10 +209,28 @@ if [[ -n "$KIND" ]]; then
     exit 2
   fi
 
+  if ! SEVERITY="$(notification_kind_severity "$KIND")"; then
+    echo "notify: unknown notification severity policy for kind: $KIND" >&2
+    exit 2
+  fi
+
+  if ! VERBOSITY="$(notification_kind_verbosity "$KIND")"; then
+    echo "notify: unknown notification verbosity policy for kind: $KIND" >&2
+    exit 2
+  fi
+
   resolved_route="$(notification_kind_route "$KIND")"
   if [[ -n "$resolved_route" ]]; then
     CHANNEL="$resolved_route"
   fi
+fi
+
+if [[ -z "$SEVERITY" ]]; then
+  SEVERITY="$(notification_event_severity "$EVENT")"
+fi
+
+if [[ -z "$VERBOSITY" ]]; then
+  VERBOSITY="$(notification_event_verbosity "$EVENT")"
 fi
 
 if [[ "$READ_STDIN" == "1" ]]; then
@@ -195,6 +271,8 @@ export NOTIFY_MESSAGE="$MESSAGE"
 export NOTIFY_TITLE="$TITLE"
 export NOTIFY_EVENT="$EVENT"
 export NOTIFY_SOURCE="$SOURCE"
+export NOTIFY_SEVERITY="$SEVERITY"
+export NOTIFY_VERBOSITY="$VERBOSITY"
 if [[ -n "$DISCORD_WEBHOOK_ENV_NAME" ]]; then
   export NOTIFY_DISCORD_WEBHOOK_ENV_NAME="$DISCORD_WEBHOOK_ENV_NAME"
   export NOTIFY_DISCORD_WEBHOOK_SECRET_FILE="$DISCORD_WEBHOOK_SECRET_FILE"

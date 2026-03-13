@@ -104,6 +104,8 @@ channel adapter が現時点で直接受け取れる field とは一致しない
 - `NOTIFY_TITLE`
 - `NOTIFY_EVENT`
 - `NOTIFY_SOURCE`
+- `NOTIFY_SEVERITY`
+- `NOTIFY_VERBOSITY`
 - stdin に流す message body
 
 このため Discord webhook の最小実装（#238）は、上記 projection だけで送れる範囲に留める。
@@ -116,6 +118,12 @@ optional metadata 候補の扱いは次の通り整理する。
 | `run_url` | optional。確認用 URL | 送らない | wrapper が field を adapter へ渡していない。必要なら wrapper 拡張で扱う |
 | `next_action` | optional。人間に求める次の行動 | 送らない | `needs_input` / `task_failed` では有用だが、現状は wrapper 拡張なしに adapter へ渡せない |
 | `metadata` | optional。channel 非依存の補助情報 | 送らない | key の正規化と adapter への受け渡し方式を別途決める必要がある |
+
+補足:
+
+- `NOTIFY_SEVERITY` / `NOTIFY_VERBOSITY` は wrapper が kind / event から解決する
+  advisory policy metadata であり、Section 3 の上位入力 JSON に必須追加するものではない
+- 現時点では adapter が rendering や suppression に必ず使う前提は置かない
 
 ### Rules for #238
 
