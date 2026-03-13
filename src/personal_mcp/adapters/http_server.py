@@ -371,7 +371,7 @@ h2 { font-size: 1.1rem; margin: 0; }
   color: #666;
   text-align: right;
 }
-.heatmap { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.5rem; }
+.heatmap { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.5rem; }
 .heatmap-week { display: grid; grid-template-rows: auto repeat(7, 1fr); gap: 3px; min-width: 0; }
 .heatmap-week-label {
   font-size: 0.72rem;
@@ -478,10 +478,10 @@ h2 { font-size: 1.1rem; margin: 0; }
 <body>
 <section class="heatmap-shell" aria-labelledby="heatmap-title">
   <div class="heatmap-header">
-    <h2 id="heatmap-title">直近5週間</h2>
+    <h2 id="heatmap-title">直近6週間</h2>
     <div id="heatmap-range-label" class="heatmap-subtitle" aria-live="polite"></div>
   </div>
-  <div class="heatmap" id="heatmap" aria-label="直近5週間のヒートマップ"></div>
+  <div class="heatmap" id="heatmap" aria-label="直近6週間のヒートマップ"></div>
 </section>
 <button type="button" id="refresh-btn">再読み込み</button>
 <div class="candidate-mode-switcher" aria-label="候補タグ動作切替">
@@ -1001,9 +1001,9 @@ def _make_handler(data_dir: str):
                 else:
                     self._json(200, rec)
             elif parsed.path == "/api/heatmap":
-                self._json(200, count_events_by_date(35, data_dir or None))
+                self._json(200, count_events_by_date(42, data_dir or None))
             elif parsed.path == "/api/heatmap/debug":
-                self._json(200, count_events_by_date_debug(35, data_dir or None))
+                self._json(200, count_events_by_date_debug(42, data_dir or None))
             elif parsed.path == "/api/candidates":
                 self._json(200, list_candidates(data_dir or None))
             elif parsed.path == "/api/summaries/list":

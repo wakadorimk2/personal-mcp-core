@@ -344,7 +344,7 @@ def test_http_get_dashboard_200(data_dir: Path) -> None:
     statuses, headers, html = _do_get_html(handler_cls, "/dashboard")
     assert statuses == [200]
     assert headers["Content-Type"] == "text/html; charset=utf-8"
-    assert "直近5週間" in html
+    assert "直近6週間" in html
     assert 'id="heatmap"' in html
     assert 'id="heatmap-range-label"' in html
     assert 'id="refresh-btn"' in html
@@ -395,7 +395,7 @@ def test_http_get_heatmap_200(data_dir: Path) -> None:
     assert len(resp) == 1
     status, body = resp[0]
     assert status == 200
-    assert len(body) == 35
+    assert len(body) == 42
     assert all("date" in item and "count" in item for item in body)
 
 
@@ -471,11 +471,11 @@ def test_http_get_dashboard_candidate_tap_script_exists(data_dir: Path) -> None:
     assert 'postUiEvent("input_started"' in html
 
 
-def test_http_get_dashboard_renders_recent_5_weeks_heatmap_script(data_dir: Path) -> None:
+def test_http_get_dashboard_renders_recent_6_weeks_heatmap_script(data_dir: Path) -> None:
     handler_cls = _make_handler_for_test(str(data_dir))
     _, _, html = _do_get_html(handler_cls, "/dashboard")
-    assert 'class="heatmap" id="heatmap" aria-label="直近5週間のヒートマップ"' in html
-    assert "grid-template-columns: repeat(5, minmax(0, 1fr));" in html
+    assert 'class="heatmap" id="heatmap" aria-label="直近6週間のヒートマップ"' in html
+    assert "grid-template-columns: repeat(6, minmax(0, 1fr));" in html
     assert "function splitHeatmapIntoWeeks(data) {" in html
     assert "weekColumn.className = 'heatmap-week';" in html
     assert "weekLabel.className = 'heatmap-week-label';" in html
@@ -600,7 +600,7 @@ def test_http_get_heatmap_debug_200(data_dir: Path) -> None:
     assert len(resp) == 1
     status, body = resp[0]
     assert status == 200
-    assert len(body) == 35
+    assert len(body) == 42
     expected_keys = {"date", "raw_count", "shipped_density", "telemetry_count", "life_count"}
     assert all(set(item.keys()) == expected_keys for item in body)
 
